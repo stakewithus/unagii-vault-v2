@@ -36,8 +36,6 @@ struct Strategy:
 
 # Adjust for each token PRECISION_MUL = 10 ** (18 - token.decimals)
 PRECISION_MUL: constant(uint256) = 1
-# Underlying token has fee on transfer
-feeOnTransfer: public(bool)
 
 admin: public(address)
 treasury: public(address)
@@ -64,12 +62,6 @@ def __init__(underlying: address, uToken: address, treasury: address, timeLock: 
     self.uToken = UnagiiToken(uToken)
 
     self.paused = True
-
-
-@external
-def setFeeOnTransfer(feeOnTransfer: bool):
-    assert msg.sender == self.admin, "!admin"
-    self.feeOnTransfer = feeOnTransfer
 
 
 @internal
@@ -115,8 +107,8 @@ def totalAssets() -> uint256:
     return self._totalAssets()
 
 
-# # TODO: deposit log
-# # TODO: deposit / withdraw block
+# TODO: deposit log
+# TODO: deposit / withdraw block
 # @external
 # @nonreentrant("lock")
 # def deposit(amount: uint256, minShares: uint256) -> uint256:
