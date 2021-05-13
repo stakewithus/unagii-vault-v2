@@ -36,6 +36,8 @@ struct Strategy:
 
 # Adjust for each token PRECISION_MUL = 10 ** (18 - token.decimals)
 PRECISION_MUL: constant(uint256) = 1
+# Underlying token has fee on transfer
+feeOnTransfer: public(bool)
 
 admin: public(address)
 treasury: public(address)
@@ -63,16 +65,11 @@ def __init__(underlying: address, uToken: address, treasury: address, timeLock: 
 
     self.paused = True
 
-# utoken set minter
-# v1.pause
-# v1.deposit into migration strategy
-# s approve v2 bal
-# v2 transfer from s
 
-# @external
-# def transferFrom():
-#     assert msg.sender = self.admin, "!admin"
-#     self._safeTransfer(self.token, msg.sender, self, amount)
+@external
+def setFeeOnTransfer(feeOnTransfer: bool):
+    assert msg.sender == self.admin, "!admin"
+    self.feeOnTransfer = feeOnTransfer
 
 
 @internal
