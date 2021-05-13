@@ -421,6 +421,13 @@ def removeStrategyFromQueue(strategy: address):
 # u.transferFrom(v1, v2, bal of v1, {from: v2})
 
 @external
+def skim():
+    assert msg.sender == self.admin, "!admin"
+    diff: uint256 = self.underlying.balanceOf(self) - self.balanceInVault
+    self._safeTransfer(self.underlying.address, self.admin, diff)
+
+
+@external
 def sweep(token: address):
     assert msg.sender == self.admin, "!admin"
     assert token != self.underlying.address, "protected token"
