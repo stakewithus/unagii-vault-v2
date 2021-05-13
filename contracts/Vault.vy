@@ -323,6 +323,22 @@ def withdraw(shares: uint256, minAmount: uint256) -> uint256:
     return diff
 
 
+@external
+def borrow(amount: uint256):
+    pass
+
+
+@external
+def repay(amount: uint256):
+    pass
+
+
+@external
+def sync():
+    pass
+
+
+
 # migration
 
 # u = token token
