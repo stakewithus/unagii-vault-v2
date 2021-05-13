@@ -44,19 +44,19 @@ totalSupply: public(uint256)
 admin: public(address)
 nextAdmin: public(address)
 minter: public(address)
-underlying: public(ERC20)
+token: public(ERC20)
 
 lastBlock: public(HashMap[address, uint256])
 
 @external
-def __init__(underlying: address):
+def __init__(token: address):
     self.admin = msg.sender
-    self.underlying = ERC20(underlying)
+    self.token = ERC20(token)
 
     # TODO: name
-    self.name = concat("unagii_v2_", DetailedERC20(underlying).symbol())
-    self.symbol = concat("u2_", DetailedERC20(underlying).symbol())
-    self.decimals = DetailedERC20(underlying).decimals()
+    self.name = concat("unagii_v2_", DetailedERC20(token).symbol())
+    self.symbol = concat("u2_", DetailedERC20(token).symbol())
+    self.decimals = DetailedERC20(token).decimals()
 
 
 @external

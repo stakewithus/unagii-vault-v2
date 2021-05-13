@@ -10,30 +10,17 @@
 from vyper.interfaces import ERC20
 
 interface UnagiiToken:
-    def underlying() -> address: view
-    def totalSupply(): nonpayable
+    def token() -> address: view
+    def totalSupply() -> uint256: view
+    def balanceOf(owner: address) -> uint256: view
     def mint(receiver: address, amount: uint256): nonpayable
     def burn(spender: address, amount: uint256): nonpayable
 
+
 interface IStrategy:
     def vault() -> address: view
-    def underlying() -> address: view
+    def token() -> address: view
 
-event ApproveStrategy:
-    strategy: indexed(address)
-
-event RevokeStrategy:
-    strategy: indexed(address)
-
-event AddStrategyToQueue:
-    strategy: indexed(address)
-
-event RemoveStrategyFromQueue:
-    strategy: indexed(address)
-
-struct Strategy:
-    approved: bool
-    debt: uint256
 
 # Adjust for each token PRECISION_MUL = 10 ** (18 - token.decimals)
 PRECISION_MUL: constant(uint256) = 1
@@ -41,26 +28,22 @@ PRECISION_MUL: constant(uint256) = 1
 admin: public(address)
 timeLock: public(address)
 guardian: public(address)
-underlying: public(ERC20)
+token: public(ERC20)
 uToken: public(UnagiiToken)
 paused: public(bool)
 balanceInVault: public(uint256)
 totalDebt: public(uint256)  # Amount of tokens that all strategies have borrowed
 
-MAX_STRATEGIES: constant(uint256) = 10
-strategies: public(HashMap[address, Strategy])
-withdrawalQueue: public(address[MAX_STRATEGIES])
-
 
 @external
-def __init__(underlying: address, uToken: address):
+def __init__(token: address, uToken: address):
     self.admin = msg.sender
     self.timeLock = msg.sender
     self.guardian = msg.sender
-    self.underlying = ERC20(underlying)
+    self.token = ERC20(token)
     self.uToken = UnagiiToken(uToken)
 
-    assert self.uToken.underlying() == self.underlying.address, "uToken.underlying != underlying"
+    assert self.uToken.token() == self.token.address, "uToken.token != token"
 
     self.paused = True
 
@@ -108,6 +91,19 @@ def totalAssets() -> uint256:
     return self._totalAssets()
 
 
+# TODO:
+# @view
+# @external
+# def pricePerShare() -> uint256:
+#     totalSupply: uint256 = self.uToken.totalSupply()
+#     totalAssets: uint256 = self._totalAssets()
+
+#     if totalSupply > 0:
+#         return 
+    
+#     return 10 ** ERC20Detail(self.token.address).decimals()
+
+
 # TODO: deposit log
 # TODO: deposit / withdraw block
 @external
@@ -117,14 +113,14 @@ def deposit(amount: uint256, minShares: uint256) -> uint256:
 
     _amount: uint256 = amount
     if _amount == MAX_UINT256:
-        _amount = self.underlying.balanceOf(msg.sender)
+        _amount = self.token.balanceOf(msg.sender)
     assert _amount > 0, "deposit = 0"
 
     # Actual amount transferred may be less than `_amount`,
-    # for example if underlying has fee on transfer
-    balBefore: uint256 = self.underlying.balanceOf(self)
-    self._safeTransferFrom(self.underlying.address, msg.sender, self, _amount)
-    balAfter: uint256 = self.underlying.balanceOf(self)
+    # for example if token has fee on transfer
+    balBefore: uint256 = self.token.balanceOf(self)
+    self._safeTransferFrom(self.token.address, msg.sender, self, _amount)
+    balAfter: uint256 = self.token.balanceOf(self)
     diff: uint256 = balAfter - balBefore
 
     assert diff > 0, "diff = 0"
@@ -230,185 +226,106 @@ def deposit(amount: uint256, minShares: uint256) -> uint256:
 
 
 # # TODO: withdraw log
-# @external
-# @nonreentrant("withdraw")
-# def withdraw(shares: uint256, minAmount: uint256) -> uint256:
-#     _shares: uint256 = shares
-#     if _shares > self.balanceOf[msg.sender]:
-#         _shares = self.balanceOf[msg.sender]
-#     assert _shares > 0, "shares = 0"
-
-#     # s = shares
-#     # T = total supply of shares
-#     # w = amount of underlying token to withdraw
-#     # U = total amount of redeemable underlying token in vault + strategy
-#     # s / T = w / U
-#     # w = s / T * U
-
-#     # TODO: degredation
-#     amount: uint256 = 0
-#     totalSupply: uint256 = self.totalSupply
-#     if totalSupply > 0:
-#         amount = PRECISION_MUL * shares * self._totalAssets() / totalSupply / PRECISION_MUL
-
-#     totalLoss: uint256 = 0
-#     # if value > self.token.balanceOf(self):
-#     #     # We need to go get some from our strategies in the withdrawal queue
-#     #     # NOTE: This performs forced withdrawals from each Strategy. During
-#     #     #       forced withdrawal, a Strategy may realize a loss. That loss
-#     #     #       is reported back to the Vault, and the will affect the amount
-#     #     #       of tokens that the withdrawer receives for their shares. They
-#     #     #       can optionally specify the maximum acceptable loss (in BPS)
-#     #     #       to prevent excessive losses on their withdrawals (which may
-#     #     #       happen in certain edge cases where Strategies realize a loss)
-#     #     for strategy in self.withdrawalQueue:
-#     #         if strategy == ZERO_ADDRESS:
-#     #             break  # We've exhausted the queue
-
-#     #         vault_balance: uint256 = self.token.balanceOf(self)
-#     #         if value <= vault_balance:
-#     #             break  # We're done withdrawing
-
-#     #         amountNeeded: uint256 = value - vault_balance
-
-#     #         # NOTE: Don't withdraw more than the debt so that Strategy can still
-#     #         #       continue to work based on the profits it has
-#     #         # NOTE: This means that user will lose out on any profits that each
-#     #         #       Strategy in the queue would return on next harvest, benefiting others
-#     #         amountNeeded = min(amountNeeded, self.strategies[strategy].totalDebt)
-#     #         if amountNeeded == 0:
-#     #             continue  # Nothing to withdraw from this Strategy, try the next one
-
-#     #         # Force withdraw amount from each Strategy in the order set by governance
-#     #         loss: uint256 = Strategy(strategy).withdraw(amountNeeded)
-#     #         withdrawn: uint256 = self.token.balanceOf(self) - vault_balance
-
-#     #         # NOTE: Withdrawer incurs any losses from liquidation
-#     #         if loss > 0:
-#     #             value -= loss
-#     #             totalLoss += loss
-#     #             self._reportLoss(strategy, loss)
-
-#     #         # Reduce the Strategy's debt by the amount withdrawn ("realized returns")
-#     #         # NOTE: This doesn't add to returns as it's not earned by "normal means"
-#     #         self.strategies[strategy].totalDebt -= withdrawn
-#     #         self.totalDebt -= withdrawn
-
-#     # NOTE: We have withdrawn everything possible out of the withdrawal queue
-#     #       but we still don't have enough to fully pay them back, so adjust
-#     #       to the total amount we've freed up through forced withdrawals
-#     # vault_balance: uint256 = self.token.balanceOf(self)
-#     # if value > vault_balance:
-#     #     value = vault_balance
-#     #     # NOTE: Burn # of shares that corresponds to what Vault has on-hand,
-#     #     #       including the losses that were incurred above during withdrawals
-#     #     shares = self._sharesForAmount(value + totalLoss)
-
-#     # NOTE: This loss protection is put in place to revert if losses from
-#     #       withdrawing are more than what is considered acceptable.
-#     # precisionFactor: uint256 = self.precisionFactor
-#     # assert totalLoss <= precisionFactor * maxLoss * (value + totalLoss) / MAX_BPS / precisionFactor
-
-#     # Burn shares (full value of what is being withdrawn)
-#     self._burn(msg.sender, _shares)
-
-#     assert amount >= minAmount, "amount < min"
-
-#     balBefore: uint256 = self.token.balanceOf(self)
-#     self._safeTransfer(self.token.address, msg.sender, amount)
-#     balAfter: uint256 = self.token.balanceOf(self)
-#     diff: uint256 = balAfter - balBefore
-
-#     self.balanceInVault -= diff
-
-#     # self.safeTransfer(self.token.address, recipient, value)
-
-#     return diff
-
-
 @external
-def approveStrategy(strategy: address):
-    assert not self.paused, "paused"
-    assert msg.sender == self.timeLock, "!time lock"
+@nonreentrant("withdraw")
+def withdraw(shares: uint256, minAmount: uint256) -> uint256:
+    _shares: uint256 = shares
+    _bal: uint256 = self.uToken.balanceOf(msg.sender)
+    if _shares > _bal:
+        _shares = _bal
+    assert _shares > 0, "shares = 0"
 
-    assert not self.strategies[strategy].approved, "approved"
-    assert IStrategy(strategy).vault() == self, "strategy.vault != vault"
-    assert IStrategy(strategy).underlying() == self.underlying.address, "strategy.underlying != underlying"
+    # s = shares
+    # T = total supply of shares
+    # w = amount of token token to withdraw
+    # U = total amount of redeemable token token in vault + strategy
+    # s / T = w / U
+    # w = s / T * U
 
-    self.strategies[strategy] = Strategy({
-        approved: True,
-        debt: 0
-    })
-    log ApproveStrategy(strategy)
+    # TODO: degredation
+    amount: uint256 = 0
+    totalSupply: uint256 = self.uToken.totalSupply()
+    if totalSupply > 0:
+        amount = PRECISION_MUL * shares * self._totalAssets() / totalSupply / PRECISION_MUL
 
+    totalLoss: uint256 = 0
+    # if value > self.token.balanceOf(self):
+    #     # We need to go get some from our strategies in the withdrawal queue
+    #     # NOTE: This performs forced withdrawals from each Strategy. During
+    #     #       forced withdrawal, a Strategy may realize a loss. That loss
+    #     #       is reported back to the Vault, and the will affect the amount
+    #     #       of tokens that the withdrawer receives for their shares. They
+    #     #       can optionally specify the maximum acceptable loss (in BPS)
+    #     #       to prevent excessive losses on their withdrawals (which may
+    #     #       happen in certain edge cases where Strategies realize a loss)
+    #     for strategy in self.withdrawalQueue:
+    #         if strategy == ZERO_ADDRESS:
+    #             break  # We've exhausted the queue
 
-@external
-def revokeStrategy(strategy: address):
-    assert msg.sender == self.admin, "!admin"
-    assert self.strategies[strategy].approved, "!approved"
-    assert strategy not in self.withdrawalQueue, "active"
+    #         vault_balance: uint256 = self.token.balanceOf(self)
+    #         if value <= vault_balance:
+    #             break  # We're done withdrawing
 
-    self.strategies[strategy].approved = False
-    log RevokeStrategy(strategy)
+    #         amountNeeded: uint256 = value - vault_balance
 
+    #         # NOTE: Don't withdraw more than the debt so that Strategy can still
+    #         #       continue to work based on the profits it has
+    #         # NOTE: This means that user will lose out on any profits that each
+    #         #       Strategy in the queue would return on next harvest, benefiting others
+    #         amountNeeded = min(amountNeeded, self.strategies[strategy].totalDebt)
+    #         if amountNeeded == 0:
+    #             continue  # Nothing to withdraw from this Strategy, try the next one
 
-@internal
-def _pack():
-    arr: address[MAX_STRATEGIES] = empty(address[MAX_STRATEGIES])
-    i: uint256 = 0
-    for strat in self.withdrawalQueue:
-        if strat != ZERO_ADDRESS:
-            arr[i] = strat
-            i += 1
-    self.withdrawalQueue = arr
+    #         # Force withdraw amount from each Strategy in the order set by governance
+    #         loss: uint256 = Strategy(strategy).withdraw(amountNeeded)
+    #         withdrawn: uint256 = self.token.balanceOf(self) - vault_balance
 
+    #         # NOTE: Withdrawer incurs any losses from liquidation
+    #         if loss > 0:
+    #             value -= loss
+    #             totalLoss += loss
+    #             self._reportLoss(strategy, loss)
 
-@internal
-def _append(strategy: address):
-    assert self.withdrawalQueue[MAX_STRATEGIES - 1] == ZERO_ADDRESS, "active > max"
-    self.withdrawalQueue[MAX_STRATEGIES - 1] = strategy
-    self._pack()
+    #         # Reduce the Strategy's debt by the amount withdrawn ("realized returns")
+    #         # NOTE: This doesn't add to returns as it's not earned by "normal means"
+    #         self.strategies[strategy].totalDebt -= withdrawn
+    #         self.totalDebt -= withdrawn
 
+    # NOTE: We have withdrawn everything possible out of the withdrawal queue
+    #       but we still don't have enough to fully pay them back, so adjust
+    #       to the total amount we've freed up through forced withdrawals
+    # vault_balance: uint256 = self.token.balanceOf(self)
+    # if value > vault_balance:
+    #     value = vault_balance
+    #     # NOTE: Burn # of shares that corresponds to what Vault has on-hand,
+    #     #       including the losses that were incurred above during withdrawals
+    #     shares = self._sharesForAmount(value + totalLoss)
 
-@internal
-def _remove(i: uint256):
-    assert i < MAX_STRATEGIES, "i >= max"
-    self.withdrawalQueue[i] = ZERO_ADDRESS
-    self._pack()
+    # NOTE: This loss protection is put in place to revert if losses from
+    #       withdrawing are more than what is considered acceptable.
+    # precisionFactor: uint256 = self.precisionFactor
+    # assert totalLoss <= precisionFactor * maxLoss * (value + totalLoss) / MAX_BPS / precisionFactor
 
+    # Burn shares (full value of what is being withdrawn)
+    self.uToken.burn(msg.sender, _shares)
 
-@internal
-@view
-def _find(strategy: address) -> uint256:
-    for i in range(MAX_STRATEGIES):
-        if self.withdrawalQueue[i] == strategy:
-            return i
-    raise "strategy not found"
+    assert amount >= minAmount, "amount < min"
 
+    balBefore: uint256 = self.token.balanceOf(self)
+    self._safeTransfer(self.token.address, msg.sender, amount)
+    balAfter: uint256 = self.token.balanceOf(self)
+    diff: uint256 = balAfter - balBefore
 
-@external
-def addStrategyToQueue(strategy: address):
-    assert msg.sender == self.admin, "!admin"
-    assert self.strategies[strategy].approved, "!approved"
-    assert strategy not in self.withdrawalQueue, "active"
+    self.balanceInVault -= diff
 
-    self._append(strategy)
-    log AddStrategyToQueue(strategy)
+    # self.safeTransfer(self.token.address, recipient, value)
 
-
-@external
-def removeStrategyFromQueue(strategy: address):
-    assert msg.sender == self.admin, "!admin"
-    assert strategy in self.withdrawalQueue, "!active"
-
-    i: uint256 = self._find(strategy)
-    self._remove(i)
-    log RemoveStrategyFromQueue(strategy)
+    return diff
 
 
 # migration
 
-# u = underlying token
+# u = token token
 # ut = unagi token
 # v1 = vault 1
 # v2 = vault 2
@@ -422,12 +339,12 @@ def removeStrategyFromQueue(strategy: address):
 @external
 def skim():
     assert msg.sender == self.admin, "!admin"
-    diff: uint256 = self.underlying.balanceOf(self) - self.balanceInVault
-    self._safeTransfer(self.underlying.address, self.admin, diff)
+    diff: uint256 = self.token.balanceOf(self) - self.balanceInVault
+    self._safeTransfer(self.token.address, self.admin, diff)
 
 
 @external
 def sweep(token: address):
     assert msg.sender == self.admin, "!admin"
-    assert token != self.underlying.address, "protected token"
+    assert token != self.token.address, "protected token"
     self._safeTransfer(token, self.admin, ERC20(token).balanceOf(self))
