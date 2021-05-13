@@ -10,6 +10,7 @@
 from vyper.interfaces import ERC20
 
 interface UnagiiToken:
+    def underlying() -> address: view
     def totalSupply(): nonpayable
     def mint(receiver: address, amount: uint256): nonpayable
     def burn(spender: address, amount: uint256): nonpayable
@@ -60,6 +61,8 @@ def __init__(underlying: address, uToken: address, treasury: address, timeLock: 
     self.guardian = guardian
     self.underlying = ERC20(underlying)
     self.uToken = UnagiiToken(uToken)
+
+    assert self.uToken.underlying() == self.underlying.address, "uToken.underlying != underlying"
 
     self.paused = True
 
