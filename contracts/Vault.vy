@@ -110,46 +110,45 @@ def totalAssets() -> uint256:
 
 # TODO: deposit log
 # TODO: deposit / withdraw block
-# @external
-# @nonreentrant("lock")
-# def deposit(amount: uint256, minShares: uint256) -> uint256:
-#     assert not self.paused, "paused"
+@external
+@nonreentrant("lock")
+def deposit(amount: uint256, minShares: uint256) -> uint256:
+    assert not self.paused, "paused"
 
-#     _amount: uint256 = amount
-#     if _amount == MAX_UINT256:
-#         _amount = self.token.balanceOf(msg.sender)
-#     assert _amount > 0, "deposit = 0"
+    _amount: uint256 = amount
+    if _amount == MAX_UINT256:
+        _amount = self.underlying.balanceOf(msg.sender)
+    assert _amount > 0, "deposit = 0"
 
-#     # Actual amount transferred may be less than `_amount`,
-#     # for example if token has fee on transfer
-#     balBefore: uint256 = self.token.balanceOf(self)
-#     self._safeTransferFrom(self.token.address, msg.sender, self, _amount)
-#     balAfter: uint256 = self.token.balanceOf(self)
-#     diff: uint256 = balAfter - balBefore
+    # Actual amount transferred may be less than `_amount`,
+    # for example if underlying has fee on transfer
+    balBefore: uint256 = self.underlying.balanceOf(self)
+    self._safeTransferFrom(self.underlying.address, msg.sender, self, _amount)
+    balAfter: uint256 = self.underlying.balanceOf(self)
+    diff: uint256 = balAfter - balBefore
 
-#     assert diff > 0, "diff = 0"
+    assert diff > 0, "diff = 0"
 
-#     # s = shares to mint
-#     # T = total shares before mint
-#     # d = deposit amount
-#     # A = total assets in vault + strategy before deposit
-#     # s / (T + s) = d / (A + d)
-#     # s = d / A * T
+    # s = shares to mint
+    # T = total shares before mint
+    # d = deposit amount
+    # A = total assets in vault + strategy before deposit
+    # s / (T + s) = d / (A + d)
+    # s = d / A * T
 
-#     shares: uint256 = 0
-#     # Saves 2 SLOADs (~4000 gas)
-#     totalSupply: uint256 = self.totalSupply
-#     if totalSupply > 0:
-#         shares = PRECISION_MUL * diff * totalSupply / self._totalAssets() / PRECISION_MUL
-#     else:
-#         shares = diff
+    shares: uint256 = 0
+    totalSupply: uint256 = self.uToken.totalSupply()
+    if totalSupply > 0:
+        shares = PRECISION_MUL * diff * totalSupply / self._totalAssets() / PRECISION_MUL
+    else:
+        shares = diff
     
-#     assert shares >= minShares, "shares < min"
+    assert shares >= minShares, "shares < min"
     
-#     self._mint(msg.sender, shares)
-#     self.balanceInVault += diff
+    self.uToken.mint(msg.sender, shares)
+    self.balanceInVault += diff
 
-#     return shares
+    return shares
 
 # # @view
 # # @internal
