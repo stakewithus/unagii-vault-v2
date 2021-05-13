@@ -17,7 +17,7 @@ interface UnagiiToken:
 
 interface IStrategy:
     def vault() -> address: view
-    def token() -> address: view
+    def underlying() -> address: view
 
 event ApproveStrategy:
     strategy: indexed(address)
@@ -39,7 +39,6 @@ struct Strategy:
 PRECISION_MUL: constant(uint256) = 1
 
 admin: public(address)
-treasury: public(address)
 timeLock: public(address)
 guardian: public(address)
 underlying: public(ERC20)
@@ -54,11 +53,10 @@ withdrawalQueue: public(address[MAX_STRATEGIES])
 
 
 @external
-def __init__(underlying: address, uToken: address, treasury: address, timeLock: address, guardian: address):
+def __init__(underlying: address, uToken: address):
     self.admin = msg.sender
-    self.treasury = treasury
-    self.timeLock = timeLock
-    self.guardian = guardian
+    self.timeLock = msg.sender
+    self.guardian = msg.sender
     self.underlying = ERC20(underlying)
     self.uToken = UnagiiToken(uToken)
 
@@ -329,85 +327,85 @@ def totalAssets() -> uint256:
 #     return diff
 
 
-# @external
-# def approveStrategy(strategy: address):
-#     assert not self.paused, "paused"
-#     assert msg.sender == self.timeLock, "!time lock"
+@external
+def approveStrategy(strategy: address):
+    assert not self.paused, "paused"
+    assert msg.sender == self.timeLock, "!time lock"
 
-#     assert not self.strategies[strategy].approved, "approved"
-#     assert IStrategy(strategy).vault() == self, "strategy.vault != vault"
-#     assert IStrategy(strategy).token() == self.token.address, "strategy.token != token"
+    assert not self.strategies[strategy].approved, "approved"
+    assert IStrategy(strategy).vault() == self, "strategy.vault != vault"
+    assert IStrategy(strategy).underlying() == self.underlying.address, "strategy.underlying != underlying"
 
-#     self.strategies[strategy] = Strategy({
-#         approved: True,
-#         debt: 0
-#     })
-
-#     log ApproveStrategy(strategy)
-
-
-# @external
-# def revokeStrategy(strategy: address):
-#     assert msg.sender == self.admin, "!admin"
-#     assert self.strategies[strategy].approved, "!approved"
-#     assert strategy not in self.withdrawalQueue, "active"
-
-#     self.strategies[strategy].approved = False
-
-#     log RevokeStrategy(strategy)
+    self.strategies[strategy] = Strategy({
+        approved: True,
+        debt: 0
+    })
+    log ApproveStrategy(strategy)
 
 
-# @internal
-# def _pop():
-#     for i in range(MAX_STRATEGIES):
-#         j: uint256 = MAX_STRATEGIES - 1 - i
-#         strat: address = self.withdrawalQueue[j]
-#         if strat != ZERO_ADDRESS:
-#             self.withdrawalQueue[j] = ZERO_ADDRESS
-#             break
-#     raise "empty array"
+@external
+def revokeStrategy(strategy: address):
+    assert msg.sender == self.admin, "!admin"
+    assert self.strategies[strategy].approved, "!approved"
+    assert strategy not in self.withdrawalQueue, "active"
+
+    self.strategies[strategy].approved = False
+    log RevokeStrategy(strategy)
 
 
-# @internal
-# def _remove(i: uint256):
-#     # range(i, MAX_STRATEGIES) does not compile
-#     for j in range(MAX_STRATEGIES - 1):
-#         if j < i:
-#             continue
-#         self.withdrawalQueue[j] = self.withdrawalQueue[j + 1]
-#     self._pop()
-    
-
-# @external
-# def addStrategyToQueue(strategy: address):
-#     assert msg.sender == self.admin, "!admin"
-#     assert self.strategies[strategy].approved, "!approved"
-
-#     # Check strategy not in queue and append
-#     i: uint256 = 0
-#     for strat in self.withdrawalQueue:
-#         if strat == ZERO_ADDRESS:
-#             break
-#         assert strat != strategy, "active" 
-#         i += 1
-#     assert i < MAX_STRATEGIES, "active > max"
-
-#     self.withdrawalQueue[i] = strategy
-
-#     log AddStrategyToQueue(strategy)
+@internal
+def _pack():
+    arr: address[MAX_STRATEGIES] = empty(address[MAX_STRATEGIES])
+    i: uint256 = 0
+    for strat in self.withdrawalQueue:
+        if strat != ZERO_ADDRESS:
+            arr[i] = strat
+            i += 1
+    self.withdrawalQueue = arr
 
 
+@internal
+def _append(strategy: address):
+    assert self.withdrawalQueue[MAX_STRATEGIES - 1] == ZERO_ADDRESS, "active > max"
+    self.withdrawalQueue[MAX_STRATEGIES - 1] = strategy
+    self._pack()
 
-# @external
-# def removeStrategyFromQueue(strategy: address):
-#     assert msg.sender == self.admin, "!admin"
 
-#     for i in range(MAX_STRATEGIES):
-#         strat: address = self.withdrawalQueue[i]
-#         if strat == strategy:
-#             self._remove(i)
+@internal
+def _remove(i: uint256):
+    assert i < MAX_STRATEGIES, "i >= max"
+    self.withdrawalQueue[i] = ZERO_ADDRESS
+    self._pack()
 
-#     log RemoveStrategyFromQueue(strategy)
+
+@internal
+@view
+def _find(strategy: address) -> uint256:
+    for i in range(MAX_STRATEGIES):
+        if self.withdrawalQueue[i] == strategy:
+            return i
+    raise "strategy not found"
+
+
+@external
+def addStrategyToQueue(strategy: address):
+    assert msg.sender == self.admin, "!admin"
+    assert self.strategies[strategy].approved, "!approved"
+    assert strategy not in self.withdrawalQueue, "active"
+
+    self._append(strategy)
+    log AddStrategyToQueue(strategy)
+
+
+@external
+def removeStrategyFromQueue(strategy: address):
+    assert msg.sender == self.admin, "!admin"
+    assert strategy in self.withdrawalQueue, "!active"
+
+    i: uint256 = self._find(strategy)
+    self._remove(i)
+    log RemoveStrategyFromQueue(strategy)
+
 
 # migration
 
