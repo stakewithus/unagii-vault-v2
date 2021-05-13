@@ -25,6 +25,15 @@ event Approval:
     spender: indexed(address)
     value: uint256
 
+event SetAdmin:
+    admin: address
+
+event AcceptAdmin:
+    admin: address
+
+event SetMinter:
+    minter: address
+
 name: public(String[64])
 symbol: public(String[32])
 decimals: public(uint256)
@@ -32,15 +41,16 @@ balanceOf: public(HashMap[address, uint256])
 allowance: public(HashMap[address, HashMap[address, uint256]])
 totalSupply: public(uint256)
 
+admin: public(address)
+nextAdmin: public(address)
 minter: public(address)
-nextMinter: public(address)
 underlying: public(ERC20)
 
 lastBlock: public(HashMap[address, uint256])
 
 @external
 def __init__(underlying: address):
-    self.minter = msg.sender
+    self.admin = msg.sender
     self.underlying = ERC20(underlying)
 
     # TODO: name
@@ -50,25 +60,36 @@ def __init__(underlying: address):
 
 
 @external
-def setMinter(nextMinter: address):
+def setAdmin(nextAdmin: address):
     """
-    @notice Set next minter
-    @param nextMinter Address of next minter
+    @notice Set next admin
+    @param nextAdmin Address of next admin
     """
-    assert msg.sender == self.minter, "!minter"
-    # allow next minter = zero address
-    self.nextMinter = nextMinter
+    assert msg.sender == self.admin, "!admin"
+    assert nextAdmin != self.admin, "next admin = current"
+    # allow next admin = zero address (cancel next admin)
+    self.nextAdmin = nextAdmin
+    log SetAdmin(nextAdmin)
 
 
 @external
-def acceptMinter():
+def acceptAdmin():
     """
-    @notice Accept minter
-    @dev Only `nextMinter` can claim minter 
+    @notice Accept admin
+    @dev Only `nextAdmin` can claim admin 
     """
-    assert msg.sender == self.nextMinter, "!next minter"
-    self.minter = msg.sender
-    self.nextMinter = ZERO_ADDRESS
+    assert msg.sender == self.nextAdmin, "!next admin"
+    self.admin = msg.sender
+    self.nextAdmin = ZERO_ADDRESS
+    log AcceptAdmin(msg.sender)
+
+
+# TODO: comment
+@external
+def setMinter(minter: address):
+    assert minter != self.minter, "new minter = current"
+    self.minter = minter
+    log SetMinter(minter)
 
 
 @internal
