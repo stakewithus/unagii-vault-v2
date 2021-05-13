@@ -9,8 +9,13 @@
 
 from vyper.interfaces import ERC20
 
+interface DetailedERC20:
+    def decimals() -> uint256: view
+
+
 interface UnagiiToken:
     def token() -> address: view
+    def decimals() -> uint256: view
     def totalSupply() -> uint256: view
     def balanceOf(owner: address) -> uint256: view
     def mint(receiver: address, amount: uint256): nonpayable
@@ -22,6 +27,8 @@ interface IStrategy:
     def token() -> address: view
 
 
+# TODO: remove?
+# https://github.com/yearn/yearn-vaults/issues/333
 # Adjust for each token PRECISION_MUL = 10 ** (18 - token.decimals)
 PRECISION_MUL: constant(uint256) = 1
 
@@ -42,6 +49,12 @@ def __init__(token: address, uToken: address):
     self.guardian = msg.sender
     self.token = ERC20(token)
     self.uToken = UnagiiToken(uToken)
+
+    decimals: uint256 = DetailedERC20(self.token.address).decimals()
+    if decimals < 18:
+        assert PRECISION_MUL == 18 - decimals, "precision != 18 - decimals"
+    else:
+        assert PRECISION_MUL == 1, "precision != 1"
 
     assert self.uToken.token() == self.token.address, "uToken.token != token"
 
@@ -146,38 +159,60 @@ def deposit(amount: uint256, minShares: uint256) -> uint256:
 
     return shares
 
-# # @view
-# # @internal
-# # def _shareValue(shares: uint256) -> uint256:
-# #     # Returns price = 1:1 if vault is empty
-# #     if self.totalSupply == 0:
-# #         return shares
+DEGREDATION_COEFFICIENT: constant(uint256) = 10 ** 18
 
-# #     # Determines the current value of `shares`.
-# #         # NOTE: if sqrt(Vault.totalAssets()) >>> 1e39, this could potentially revert
-# #     lockedFundsRatio: uint256 = (block.timestamp - self.lastReport) * self.lockedProfitDegration
-# #     freeFunds: uint256 = self._totalAssets()
-# #     precisionFactor: uint256 = self.precisionFactor
-# #     if(lockedFundsRatio < DEGREDATION_COEFFICIENT):
-# #         freeFunds -= (
-# #             self.lockedProfit
-# #              - (
-# #                  precisionFactor
-# #                  * lockedFundsRatio
-# #                  * self.lockedProfit
-# #                  / DEGREDATION_COEFFICIENT
-# #                  / precisionFactor
-# #              )
-# #          )
-# #     # NOTE: using 1e3 for extra precision here, when decimals is low
-# #     return (
-# #         precisionFactor
-# #        * shares
-# #         * freeFunds
-# #         / self.totalSupply
-# #         / precisionFactor
-# #     )
+lastReport: public(uint256)  # block.timestamp of last report
+lockedProfit: public(uint256) # how much profit is locked and cant be withdrawn
+lockedProfitDegration: public(uint256) # rate per block of degration. DEGREDATION_COEFFICIENT is 100% per block
 
+
+@external
+def setLockedProfitDegration(degration: uint256):
+    """
+    @notice
+        Changes the locked profit degration.
+    @param degration The rate of degration in percent per second scaled to 1e18.
+    """
+    assert msg.sender == self.admin, "!admin"
+    assert degration <= DEGREDATION_COEFFICIENT, "degration > max"
+    self.lockedProfitDegration = degration
+
+
+@view
+@internal
+def _shareValue(shares: uint256) -> uint256:
+    # Returns price = 1:1 if vault is empty
+    totalSupply: uint256 = self.uToken.totalSupply()
+    if totalSupply == 0:
+        return shares
+
+    # Determines the current value of `shares`.
+        # NOTE: if sqrt(Vault.totalAssets()) >>> 1e39, this could potentially revert
+    lockedFundsRatio: uint256 = (block.timestamp - self.lastReport) * self.lockedProfitDegration
+    freeFunds: uint256 = self._totalAssets()
+    if lockedFundsRatio < DEGREDATION_COEFFICIENT:
+        freeFunds -= (
+            self.lockedProfit
+             - (
+                 PRECISION_MUL
+                 * lockedFundsRatio
+                 * self.lockedProfit
+                 / DEGREDATION_COEFFICIENT
+                 / PRECISION_MUL
+             )
+         )
+    return PRECISION_MUL * shares * freeFunds / totalSupply / PRECISION_MUL
+
+
+@view
+@external
+def pricePerShare() -> uint256:
+    """
+    @notice Gives the price for a single Vault share.
+    @dev See dev note on `withdraw`.
+    @return The value of a single share.
+    """
+    return self._shareValue(10 ** self.uToken.decimals())
 
 # # @view
 # # @internal
