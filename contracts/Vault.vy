@@ -25,6 +25,7 @@ interface UnagiiToken:
 interface IStrategy:
     def vault() -> address: view
     def token() -> address: view
+    def withdraw(amount: uint256) -> uint256: nonpayable
 
 event ApproveStrategy:
     strategy: indexed(address)
@@ -44,8 +45,8 @@ struct Strategy:
 
 # TODO: remove?
 # https://github.com/yearn/yearn-vaults/issues/333
-# Adjust for each token PRECISION_MUL = 10 ** (18 - token.decimals)
-PRECISION_MUL: constant(uint256) = 1
+# Adjust for each token PRECISION_FACTOR = 10 ** (18 - token.decimals)
+PRECISION_FACTOR: constant(uint256) = 1
 
 admin: public(address)
 timeLock: public(address)
@@ -72,9 +73,9 @@ def __init__(token: address, uToken: address):
 
     decimals: uint256 = DetailedERC20(self.token.address).decimals()
     if decimals < 18:
-        assert PRECISION_MUL == 18 - decimals, "precision != 18 - decimals"
+        assert PRECISION_FACTOR == 18 - decimals, "precision != 18 - decimals"
     else:
-        assert PRECISION_MUL == 1, "precision != 1"
+        assert PRECISION_FACTOR == 1, "precision != 1"
 
     assert self.uToken.token() == self.token.address, "uToken.token != token"
 
@@ -124,17 +125,87 @@ def totalAssets() -> uint256:
     return self._totalAssets()
 
 
-# TODO:
-# @view
-# @external
-# def pricePerShare() -> uint256:
-#     totalSupply: uint256 = self.uToken.totalSupply()
-#     totalAssets: uint256 = self._totalAssets()
+@view
+@internal
+def _getUnderlyingToShares(amount: uint256) -> uint256:
+    # mint
+    # s = shares to mint
+    # T = total shares before mint
+    # a = deposit amount
+    # P = total assets in vault + strategy before deposit
+    # s / (T + s) = a / (P + a)
+    # sP = aT
+    # T = P = 0 | T = 0, P > 0 | T > 0, P = 0 | T > 0, P > 0
+    # s = a     | s = 0        | a = 0        | s = a / P * T
 
-#     if totalSupply > 0:
-#         return 
-    
-#     return 10 ** ERC20Detail(self.token.address).decimals()
+    # burn
+    # s = shares to burn
+    # T = total shares before burn
+    # a = withdraw amount
+    # P = total assets in vault + strategy before withdraw
+    # s / (T - s) = a / (P - a), (T >= s, P >= a)
+    # sP = aT 
+    # T = P = 0 | T = 0, P > 0 | T > 0, P = 0 | T > 0, P > 0
+    # s = a = 0 | s = 0        | a = 0        | s = a / P * T
+
+    totalSupply: uint256 = self.uToken.totalSupply()
+    if totalSupply == 0:
+        return amount
+
+    totalAssets: uint256 = self._totalAssets()
+    if totalAssets > 0:
+        # NOTE: if sqrt(token.totalSupply()) > 1e37, this could potentially revert
+        return  PRECISION_FACTOR * amount * totalSupply / totalAssets / PRECISION_FACTOR
+    else:
+        return 0
+
+
+@external
+@view
+def getUnderlyingToShares(amount: uint256) -> uint256:
+    return self._getUnderlyingToShares(amount)
+
+
+
+@view
+@internal
+def _getSharesToUnderlying(shares: uint256) -> uint256:
+    # s = shares
+    # T = total supply of shares
+    # a = amount of token token to withdraw
+    # P = total amount of underlying token token in vault + strategy
+    # s / T = a / P
+    # a = s / T * P
+
+    # Returns price = 1:1 if vault is empty
+    totalSupply: uint256 = self.uToken.totalSupply()
+    if totalSupply == 0:
+        return shares
+
+    # Determines the current value of `shares`.
+        # NOTE: if sqrt(Vault.totalAssets()) >>> 1e39, this could potentially revert
+    lockedFundsRatio: uint256 = (block.timestamp - self.lastReport) * self.lockedProfitDegration
+    # TODO: what if totalAssets > total debt in strategies
+    freeFunds: uint256 = self._totalAssets()
+    if lockedFundsRatio < DEGREDATION_COEFFICIENT:
+        freeFunds -= (
+            self.lockedProfit
+             - (
+                 PRECISION_FACTOR
+                 * lockedFundsRatio
+                 * self.lockedProfit
+                 / DEGREDATION_COEFFICIENT
+                 / PRECISION_FACTOR
+             )
+         )
+
+    return PRECISION_FACTOR * shares * freeFunds / totalSupply / PRECISION_FACTOR
+
+
+@external
+@view
+def getSharesToUnderlying(shares: uint256) -> uint256:
+    return self._getSharesToUnderlying(shares)
 
 
 # TODO: deposit log
@@ -149,6 +220,7 @@ def deposit(amount: uint256, minShares: uint256) -> uint256:
         _amount = self.token.balanceOf(msg.sender)
     assert _amount > 0, "deposit = 0"
 
+    # TODO: if FOT 
     # Actual amount transferred may be less than `_amount`,
     # for example if token has fee on transfer
     balBefore: uint256 = self.token.balanceOf(self)
@@ -167,8 +239,9 @@ def deposit(amount: uint256, minShares: uint256) -> uint256:
 
     shares: uint256 = 0
     totalSupply: uint256 = self.uToken.totalSupply()
+    # TODO: if totalAssets == 0 ? use _getUnderlyingToShares?
     if totalSupply > 0:
-        shares = PRECISION_MUL * diff * totalSupply / self._totalAssets() / PRECISION_MUL
+        shares = PRECISION_FACTOR * diff * totalSupply / self._totalAssets() / PRECISION_FACTOR
     else:
         shares = diff
     
@@ -195,69 +268,6 @@ def setLockedProfitDegration(degration: uint256):
     assert msg.sender == self.admin, "!admin"
     assert degration <= DEGREDATION_COEFFICIENT, "degration > max"
     self.lockedProfitDegration = degration
-
-
-@view
-@internal
-def _shareValue(shares: uint256) -> uint256:
-    # Returns price = 1:1 if vault is empty
-    totalSupply: uint256 = self.uToken.totalSupply()
-    if totalSupply == 0:
-        return shares
-
-    # Determines the current value of `shares`.
-        # NOTE: if sqrt(Vault.totalAssets()) >>> 1e39, this could potentially revert
-    lockedFundsRatio: uint256 = (block.timestamp - self.lastReport) * self.lockedProfitDegration
-    freeFunds: uint256 = self._totalAssets()
-    if lockedFundsRatio < DEGREDATION_COEFFICIENT:
-        freeFunds -= (
-            self.lockedProfit
-             - (
-                 PRECISION_MUL
-                 * lockedFundsRatio
-                 * self.lockedProfit
-                 / DEGREDATION_COEFFICIENT
-                 / PRECISION_MUL
-             )
-         )
-
-    # s = shares
-    # T = total supply of shares
-    # w = amount of token token to withdraw
-    # U = total amount of redeemable token token in vault + strategy
-    # s / T = w / U
-    # w = s / T * U
-
-    return PRECISION_MUL * shares * freeFunds / totalSupply / PRECISION_MUL
-
-
-@view
-@external
-def pricePerShare() -> uint256:
-    """
-    @notice Gives the price for a single Vault share.
-    @dev See dev note on `withdraw`.
-    @return The value of a single share.
-    """
-    return self._shareValue(10 ** self.uToken.decimals())
-
-# # @view
-# # @internal
-# # def _sharesForAmount(amount: uint256) -> uint256:
-# #     # Determines how many shares `amount` of token would receive.
-# #     # See dev note on `deposit`.
-# #     if self._totalAssets() > 0:
-# #         # NOTE: if sqrt(token.totalSupply()) > 1e37, this could potentially revert
-# #         precisionFactor: uint256 = self.precisionFactor
-# #         return  (
-# #             precisionFactor
-# #             * amount
-# #             * self.totalSupply
-# #             / self._totalAssets()
-# #             / precisionFactor
-# #         )
-# #     else:
-# #         return 0
 
 
 # # @view
@@ -291,85 +301,69 @@ def pricePerShare() -> uint256:
 @external
 @nonreentrant("withdraw")
 def withdraw(shares: uint256, minAmount: uint256) -> uint256:
+    assert shares > 0, "shares = 0"
     _shares: uint256 = shares
-    _bal: uint256 = self.uToken.balanceOf(msg.sender)
-    if _shares > _bal:
-        _shares = _bal
-    assert _shares > 0, "shares = 0"
 
-    amount: uint256 = self._shareValue(_shares)
+    amount: uint256 = self._getSharesToUnderlying(_shares)
 
+    balanceInVault: uint256 = self.balanceInVault
     totalLoss: uint256 = 0
-    # if value > self.token.balanceOf(self):
-    #     # We need to go get some from our strategies in the withdrawal queue
-    #     # NOTE: This performs forced withdrawals from each Strategy. During
-    #     #       forced withdrawal, a Strategy may realize a loss. That loss
-    #     #       is reported back to the Vault, and the will affect the amount
-    #     #       of tokens that the withdrawer receives for their shares. They
-    #     #       can optionally specify the maximum acceptable loss (in BPS)
-    #     #       to prevent excessive losses on their withdrawals (which may
-    #     #       happen in certain edge cases where Strategies realize a loss)
-    #     for strategy in self.withdrawalQueue:
-    #         if strategy == ZERO_ADDRESS:
-    #             break  # We've exhausted the queue
+    if amount > balanceInVault:
+        for strategy in self.withdrawalQueue:
+            if strategy == ZERO_ADDRESS:
+                break
 
-    #         vault_balance: uint256 = self.token.balanceOf(self)
-    #         if value <= vault_balance:
-    #             break  # We're done withdrawing
+            if amount <= balanceInVault:
+                break
 
-    #         amountNeeded: uint256 = value - vault_balance
+            amountNeeded: uint256 = min(amount - balanceInVault, self.strategies[strategy].debt)
+            if amountNeeded == 0:
+                continue
 
-    #         # NOTE: Don't withdraw more than the debt so that Strategy can still
-    #         #       continue to work based on the profits it has
-    #         # NOTE: This means that user will lose out on any profits that each
-    #         #       Strategy in the queue would return on next harvest, benefiting others
-    #         amountNeeded = min(amountNeeded, self.strategies[strategy].totalDebt)
-    #         if amountNeeded == 0:
-    #             continue  # Nothing to withdraw from this Strategy, try the next one
+            balBefore: uint256 = self.token.balanceOf(self)
+            loss: uint256 = IStrategy(strategy).withdraw(amountNeeded)
+            balAfter: uint256 = self.token.balanceOf(self)
+            withdrawn: uint256 = balAfter - balBefore
 
-    #         # Force withdraw amount from each Strategy in the order set by governance
-    #         loss: uint256 = Strategy(strategy).withdraw(amountNeeded)
-    #         withdrawn: uint256 = self.token.balanceOf(self) - vault_balance
+            # NOTE: Withdrawer incurs any losses from liquidation
+            if loss > 0:
+                amount -= loss
+                totalLoss += loss
+                # TODO:
+                # self._reportLoss(strategy, loss)
 
-    #         # NOTE: Withdrawer incurs any losses from liquidation
-    #         if loss > 0:
-    #             value -= loss
-    #             totalLoss += loss
-    #             self._reportLoss(strategy, loss)
+            # Reduce the Strategy's debt by the amount withdrawn ("realized returns")
+            # NOTE: This doesn't add to returns as it's not earned by "normal means"
+            # TODO: underflow?
+            self.strategies[strategy].debt -= withdrawn
+            self.totalDebt -= withdrawn
+            balanceInVault += withdrawn
 
-    #         # Reduce the Strategy's debt by the amount withdrawn ("realized returns")
-    #         # NOTE: This doesn't add to returns as it's not earned by "normal means"
-    #         self.strategies[strategy].totalDebt -= withdrawn
-    #         self.totalDebt -= withdrawn
-
-    # NOTE: We have withdrawn everything possible out of the withdrawal queue
-    #       but we still don't have enough to fully pay them back, so adjust
-    #       to the total amount we've freed up through forced withdrawals
-    # vault_balance: uint256 = self.token.balanceOf(self)
-    # if value > vault_balance:
-    #     value = vault_balance
-    #     # NOTE: Burn # of shares that corresponds to what Vault has on-hand,
-    #     #       including the losses that were incurred above during withdrawals
-    #     shares = self._sharesForAmount(value + totalLoss)
+    # TODO: fail safe
+    bal: uint256 = self.token.balanceOf(self)
+    # assert balanceInVault >= bal, "balance in vault < bal"
+    # self.balanceInVault = balanceInVault
+    if amount > bal:
+        amount = bal
+        # NOTE: Burn # of shares that corresponds to what Vault has on-hand,
+        #       including the losses that were incurred above during withdrawals
+        _shares = self._sharesForAmount(amount + totalLoss)
 
     # NOTE: This loss protection is put in place to revert if losses from
     #       withdrawing are more than what is considered acceptable.
-    # precisionFactor: uint256 = self.precisionFactor
-    # assert totalLoss <= precisionFactor * maxLoss * (value + totalLoss) / MAX_BPS / precisionFactor
+    # assert totalLoss <= PRECISION_FACTOR * maxLoss * (amount + totalLoss) / MAX_BPS / PREPRECISION_FACTOR
 
-    # Burn shares (full value of what is being withdrawn)
     self.uToken.burn(msg.sender, _shares)
 
-    assert amount >= minAmount, "amount < min"
-
+    # TODO: FOT?
     balBefore: uint256 = self.token.balanceOf(self)
     self._safeTransfer(self.token.address, msg.sender, amount)
     balAfter: uint256 = self.token.balanceOf(self)
     diff: uint256 = balAfter - balBefore
 
-    self.balanceInVault -= diff
+    assert diff >= minAmount, "diff < min"
 
-    # self.safeTransfer(self.token.address, recipient, value)
+    self.balanceInVault -= diff
 
     return diff
 
