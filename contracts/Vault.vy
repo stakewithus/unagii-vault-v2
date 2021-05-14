@@ -165,7 +165,6 @@ lastReport: public(uint256)  # block.timestamp of last report
 lockedProfit: public(uint256) # how much profit is locked and cant be withdrawn
 lockedProfitDegration: public(uint256) # rate per block of degration. DEGREDATION_COEFFICIENT is 100% per block
 
-
 @external
 def setLockedProfitDegration(degration: uint256):
     """
@@ -201,6 +200,14 @@ def _shareValue(shares: uint256) -> uint256:
                  / PRECISION_MUL
              )
          )
+
+    # s = shares
+    # T = total supply of shares
+    # w = amount of token token to withdraw
+    # U = total amount of redeemable token token in vault + strategy
+    # s / T = w / U
+    # w = s / T * U
+
     return PRECISION_MUL * shares * freeFunds / totalSupply / PRECISION_MUL
 
 
@@ -270,18 +277,7 @@ def withdraw(shares: uint256, minAmount: uint256) -> uint256:
         _shares = _bal
     assert _shares > 0, "shares = 0"
 
-    # s = shares
-    # T = total supply of shares
-    # w = amount of token token to withdraw
-    # U = total amount of redeemable token token in vault + strategy
-    # s / T = w / U
-    # w = s / T * U
-
-    # TODO: degredation
-    amount: uint256 = 0
-    totalSupply: uint256 = self.uToken.totalSupply()
-    if totalSupply > 0:
-        amount = PRECISION_MUL * shares * self._totalAssets() / totalSupply / PRECISION_MUL
+    amount: uint256 = self._shareValue(_shares)
 
     totalLoss: uint256 = 0
     # if value > self.token.balanceOf(self):
