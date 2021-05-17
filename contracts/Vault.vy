@@ -187,6 +187,7 @@ def _calcWithdraw(shares: uint256, totalSupply: uint256, totalAssets: uint256) -
     # s > 0, T = 0, P > 0 | invalid state (s > T = 0)
     # s > 0, T > 0, P > 0 | a = s / T * P
 
+    # TODO: use freeFunds
     # # Determines the current value of `shares`.
     #     # NOTE: if sqrt(Vault.totalAssets()) >>> 1e39, this could potentially revert
     # lockedFundsRatio: uint256 = (block.timestamp - self.lastReport) * self.lockedProfitDegration
@@ -234,6 +235,7 @@ def deposit(amount: uint256, minShares: uint256) -> uint256:
     assert diff > 0, "diff = 0"
 
     totalSupply: uint256 = self.uToken.totalSupply()
+    # underlying is transferred but totalAssets is not yet updated
     totalAssets: uint256 = self._totalAssets()
     shares: uint256 = self._calcSharesToMint(diff, totalSupply, totalAssets)
     assert shares >= minShares, "shares < min"
@@ -292,10 +294,13 @@ def setLockedProfitDegration(degration: uint256):
 @external
 @nonreentrant("withdraw")
 def withdraw(shares: uint256, minAmount: uint256) -> uint256:
+    _shares: uint256 = min(shares, self.uToken.balanceOf(msg.sender))
     assert shares > 0, "shares = 0"
-    _shares: uint256 = shares
 
-    amount: uint256 = self._getSharesToUnderlying(_shares)
+    # TODO: no cache totalSupply and totalAssets?
+    totalSupply: uint256 = self.uToken.totalSupply()
+    totalAssets: uint256 = self._totalAssets()
+    amount: uint256 = self._calcWithdraw(_shares, totalSupply, totalAssets)
 
     balanceInVault: uint256 = self.balanceInVault
     totalLoss: uint256 = 0
@@ -331,14 +336,15 @@ def withdraw(shares: uint256, minAmount: uint256) -> uint256:
             balanceInVault += withdrawn
 
     # TODO: fail safe
-    bal: uint256 = self.token.balanceOf(self)
+    # bal: uint256 = self.token.balanceOf(self)
     # assert balanceInVault >= bal, "balance in vault < bal"
     # self.balanceInVault = balanceInVault
-    if amount > bal:
-        amount = bal
+    if amount > balanceInVault:
+        amount = balanceInVault
         # NOTE: Burn # of shares that corresponds to what Vault has on-hand,
         #       including the losses that were incurred above during withdrawals
-        _shares = self._sharesForAmount(amount + totalLoss)
+        # TODO: update totalAssets?
+        _shares = self._calcSharesToBurn(amount + totalLoss, totalSupply, totalAssets)
 
     # NOTE: This loss protection is put in place to revert if losses from
     #       withdrawing are more than what is considered acceptable.
@@ -353,7 +359,6 @@ def withdraw(shares: uint256, minAmount: uint256) -> uint256:
     diff: uint256 = balAfter - balBefore
 
     assert diff >= minAmount, "diff < min"
-
     self.balanceInVault -= diff
 
     return diff
