@@ -113,14 +113,14 @@ def _safeTransferFrom(token: address, sender: address, receiver: address, amount
         assert convert(res, bool), "transferFrom failed"
 
 
-@view
 @internal
+@view
 def _totalAssets() -> uint256:
     return self.balanceInVault + self.totalDebt
 
 
-@view
 @external
+@view
 def totalAssets() -> uint256:
     return self._totalAssets()
 
@@ -132,7 +132,7 @@ def _getSharesToMint(amount: uint256, totalSupply: uint256, totalAssets: uint256
     # s = shares to mint
     # T = total shares before mint
     # a = deposit amount
-    # P = total assets in vault + strategy before deposit
+    # P = total amount of underlying token in vault + strategy before deposit
     # s / (T + s) = a / (P + a)
     # sP = aT
     # a = 0               | mint s = 0
@@ -156,7 +156,7 @@ def _getSharesToBurn(amount: uint256, totalSupply: uint256, totalAssets: uint256
     # s = shares to burn
     # T = total shares before burn
     # a = withdraw amount
-    # P = total assets in vault + strategy before withdraw
+    # P = total amount of underlying token in vault + strategy before deposit
     # s / (T - s) = a / (P - a), (constraints T >= s, P >= a)
     # sP = aT
     # a = 0               | burn s = 0
@@ -172,45 +172,46 @@ def _getSharesToBurn(amount: uint256, totalSupply: uint256, totalAssets: uint256
     return amount * totalSupply / totalAssets
 
 
-@view
 @internal
-def _getSharesToUnderlying(shares: uint256) -> uint256:
+@view
+def _calcWithdraw(shares: uint256, totalSupply: uint256, totalAssets: uint256) -> uint256:
     # s = shares
     # T = total supply of shares
-    # a = amount of token token to withdraw
-    # P = total amount of underlying token token in vault + strategy
-    # s / T = a / P
-    # a = s / T * P
+    # a = amount to withdraw
+    # P = total amount of underlying token in vault + strategy
+    # s / T = a / P (constraints T >= s, P >= a)
+    # sP = aT
+    # s = 0 | a = 0
+    # s > 0, T = 0, P = 0 | invalid state (s > T = 0)
+    # s > 0, T > 0, P = 0 | a = 0
+    # s > 0, T = 0, P > 0 | invalid state (s > T = 0)
+    # s > 0, T > 0, P > 0 | a = s / T * P
 
-    # Returns price = 1:1 if vault is empty
-    totalSupply: uint256 = self.uToken.totalSupply()
-    if totalSupply == 0:
-        return shares
+    # # Determines the current value of `shares`.
+    #     # NOTE: if sqrt(Vault.totalAssets()) >>> 1e39, this could potentially revert
+    # lockedFundsRatio: uint256 = (block.timestamp - self.lastReport) * self.lockedProfitDegration
+    # # TODO: what if totalAssets > total debt in strategies (strategy was hacked)
+    # freeFunds: uint256 = self._totalAssets()
+    # if lockedFundsRatio < DEGREDATION_COEFFICIENT:
+    #     freeFunds -= (
+    #         self.lockedProfit
+    #          - (
+    #              PRECISION_FACTOR
+    #              * lockedFundsRatio
+    #              * self.lockedProfit
+    #              / DEGREDATION_COEFFICIENT
+    #              / PRECISION_FACTOR
+    #          )
+    #      )
 
-    # Determines the current value of `shares`.
-        # NOTE: if sqrt(Vault.totalAssets()) >>> 1e39, this could potentially revert
-    lockedFundsRatio: uint256 = (block.timestamp - self.lastReport) * self.lockedProfitDegration
-    # TODO: what if totalAssets > total debt in strategies
-    freeFunds: uint256 = self._totalAssets()
-    if lockedFundsRatio < DEGREDATION_COEFFICIENT:
-        freeFunds -= (
-            self.lockedProfit
-             - (
-                 PRECISION_FACTOR
-                 * lockedFundsRatio
-                 * self.lockedProfit
-                 / DEGREDATION_COEFFICIENT
-                 / PRECISION_FACTOR
-             )
-         )
+    # # TODO: PRECISION_FACTOR
+    # # return PRECISION_FACTOR * shares * freeFunds / totalSupply / PRECISION_FACTOR
+    # return shares * freeFunds / totalSupply
 
-    return PRECISION_FACTOR * shares * freeFunds / totalSupply / PRECISION_FACTOR
-
-
-@external
-@view
-def getSharesToUnderlying(shares: uint256) -> uint256:
-    return self._getSharesToUnderlying(shares)
+    if shares == 0:
+        return 0
+    # invalid if total supply = 0
+    return shares * totalAssets / totalSupply
 
 
 # TODO: deposit log
