@@ -126,8 +126,8 @@ def totalAssets() -> uint256:
 
 
 @internal
-@pure
-def _calcSharesToMint(amount: uint256, totalSupply: uint256, totalAssets: uint256) -> uint256:
+@view
+def _calcSharesToMint(amount: uint256) -> uint256:
     # mint
     # s = shares to mint
     # T = total shares before mint
@@ -140,6 +140,11 @@ def _calcSharesToMint(amount: uint256, totalSupply: uint256, totalAssets: uint25
     # a > 0, T > 0, P = 0 | invalid state (a = 0) 
     # a > 0, T = 0, P > 0 | s = 0, but mint s = a as if P = 0
     # a > 0, T > 0, P > 0 | mint s = a / P * T
+
+    totalSupply: uint256 = self.uToken.totalSupply()
+    # totalAssets is not updated until balanceInVault or totalDebt is updated
+    totalAssets: uint256 = self._totalAssets()
+
     if amount == 0:
         return 0
     if totalSupply == 0:
@@ -228,16 +233,12 @@ def deposit(amount: uint256, minShares: uint256) -> uint256:
     # TODO: if FOT 
     # Actual amount transferred may be less than `_amount`,
     # for example if token has fee on transfer
-    balBefore: uint256 = self.token.balanceOf(self)
+    diff: uint256 = self.token.balanceOf(self)
     self._safeTransferFrom(self.token.address, msg.sender, self, _amount)
-    balAfter: uint256 = self.token.balanceOf(self)
-    diff: uint256 = balAfter - balBefore
+    diff = self.token.balanceOf(self) - diff
     assert diff > 0, "diff = 0"
 
-    totalSupply: uint256 = self.uToken.totalSupply()
-    # underlying is transferred but totalAssets is not yet updated
-    totalAssets: uint256 = self._totalAssets()
-    shares: uint256 = self._calcSharesToMint(diff, totalSupply, totalAssets)
+    shares: uint256 = self._calcSharesToMint(diff)
     assert shares >= minShares, "shares < min"
     
     self.uToken.mint(msg.sender, shares)
@@ -316,10 +317,9 @@ def withdraw(shares: uint256, minAmount: uint256) -> uint256:
             if amountNeeded == 0:
                 continue
 
-            balBefore: uint256 = self.token.balanceOf(self)
+            diff: uint256 = self.token.balanceOf(self)
             loss: uint256 = IStrategy(strategy).withdraw(amountNeeded)
-            balAfter: uint256 = self.token.balanceOf(self)
-            withdrawn: uint256 = balAfter - balBefore
+            diff = self.token.balanceOf(self) - dff
 
             # NOTE: Withdrawer incurs any losses from liquidation
             if loss > 0:
@@ -331,9 +331,9 @@ def withdraw(shares: uint256, minAmount: uint256) -> uint256:
             # Reduce the Strategy's debt by the amount withdrawn ("realized returns")
             # NOTE: This doesn't add to returns as it's not earned by "normal means"
             # TODO: underflow?
-            self.strategies[strategy].debt -= withdrawn
-            self.totalDebt -= withdrawn
-            balanceInVault += withdrawn
+            self.strategies[strategy].debt -= diff
+            self.totalDebt -= diff
+            balanceInVault += diff
 
     # TODO: fail safe
     # bal: uint256 = self.token.balanceOf(self)
