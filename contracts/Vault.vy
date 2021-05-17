@@ -125,8 +125,8 @@ def totalAssets() -> uint256:
     return self._totalAssets()
 
 
-@view
 @internal
+@pure
 def _getSharesToMint(amount: uint256, totalSupply: uint256, totalAssets: uint256) -> uint256:
     # mint
     # s = shares to mint
@@ -135,36 +135,41 @@ def _getSharesToMint(amount: uint256, totalSupply: uint256, totalAssets: uint256
     # P = total assets in vault + strategy before deposit
     # s / (T + s) = a / (P + a)
     # sP = aT
-    # T = P = 0 | T = 0, P > 0 | T > 0, P = 0 | T > 0, P > 0
-    # s = a     | s = 0        | a = 0        | s = a / P * T
+    # a = 0               | mint s = 0
+    # a > 0, T = 0, P = 0 | mint s = a
+    # a > 0, T > 0, P = 0 | invalid state (a = 0) 
+    # a > 0, T = 0, P > 0 | s = 0, but mint s = a as if P = 0
+    # a > 0, T > 0, P > 0 | mint s = a / P * T
+    if amount == 0:
+        return 0
+    if totalSupply == 0:
+        return amount
+    # reverts if total assets = 0
+    # TODO: PRECISION_FACTOR
+    return amount * totalSupply / totalAssets 
 
+
+@internal
+@pure
+def _getSharesToBurn(amount: uint256, totalSupply: uint256, totalAssets: uint256) -> uint256:
     # burn
     # s = shares to burn
     # T = total shares before burn
     # a = withdraw amount
     # P = total assets in vault + strategy before withdraw
-    # s / (T - s) = a / (P - a), (T >= s, P >= a)
-    # sP = aT 
-    # T = P = 0 | T = 0, P > 0 | T > 0, P = 0 | T > 0, P > 0
-    # s = a = 0 | s = 0        | a = 0        | s = a / P * T
+    # s / (T - s) = a / (P - a), (constraints T >= s, P >= a)
+    # sP = aT
+    # a = 0               | burn s = 0
+    # a > 0, T = 0, P = 0 | invalid state (a > P = 0)
+    # a > 0, T > 0, P = 0 | invalid state (a > P = 0)
+    # a > 0, T = 0, P > 0 | burn s = 0 (T = 0 >= s) TODO: secure?
+    # a > 0, T > 0, P > 0 | burn s = a / P * T
 
-    totalSupply: uint256 = self.uToken.totalSupply()
-    if totalSupply == 0:
-        return amount
-
-    totalAssets: uint256 = self._totalAssets()
-    if totalAssets > 0:
-        # NOTE: if sqrt(token.totalSupply()) > 1e37, this could potentially revert
-        return  PRECISION_FACTOR * amount * totalSupply / totalAssets / PRECISION_FACTOR
-    else:
+    if amount == 0:
         return 0
-
-
-@external
-@view
-def getUnderlyingToShares(amount: uint256) -> uint256:
-    return self._getUnderlyingToShares(amount)
-
+    # reverts if total assets = 0
+    # TODO: PRECISION_FACTOR
+    return amount * totalSupply / totalAssets
 
 
 @view
