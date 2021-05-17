@@ -127,7 +127,7 @@ def totalAssets() -> uint256:
 
 @view
 @internal
-def _getUnderlyingToShares(amount: uint256) -> uint256:
+def _getSharesToMint(amount: uint256, totalSupply: uint256, totalAssets: uint256) -> uint256:
     # mint
     # s = shares to mint
     # T = total shares before mint
