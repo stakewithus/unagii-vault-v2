@@ -127,7 +127,7 @@ def totalAssets() -> uint256:
 
 @internal
 @pure
-def _getSharesToMint(amount: uint256, totalSupply: uint256, totalAssets: uint256) -> uint256:
+def _calcSharesToMint(amount: uint256, totalSupply: uint256, totalAssets: uint256) -> uint256:
     # mint
     # s = shares to mint
     # T = total shares before mint
@@ -151,7 +151,7 @@ def _getSharesToMint(amount: uint256, totalSupply: uint256, totalAssets: uint256
 
 @internal
 @pure
-def _getSharesToBurn(amount: uint256, totalSupply: uint256, totalAssets: uint256) -> uint256:
+def _calcSharesToBurn(amount: uint256, totalSupply: uint256, totalAssets: uint256) -> uint256:
     # burn
     # s = shares to burn
     # T = total shares before burn
@@ -221,9 +221,7 @@ def _calcWithdraw(shares: uint256, totalSupply: uint256, totalAssets: uint256) -
 def deposit(amount: uint256, minShares: uint256) -> uint256:
     assert not self.paused, "paused"
 
-    _amount: uint256 = amount
-    if _amount == MAX_UINT256:
-        _amount = self.token.balanceOf(msg.sender)
+    _amount: uint256 = min(amount, self.token.balanceOf(msg.sender))
     assert _amount > 0, "deposit = 0"
 
     # TODO: if FOT 
@@ -233,24 +231,11 @@ def deposit(amount: uint256, minShares: uint256) -> uint256:
     self._safeTransferFrom(self.token.address, msg.sender, self, _amount)
     balAfter: uint256 = self.token.balanceOf(self)
     diff: uint256 = balAfter - balBefore
-
     assert diff > 0, "diff = 0"
 
-    # s = shares to mint
-    # T = total shares before mint
-    # d = deposit amount
-    # A = total assets in vault + strategy before deposit
-    # s / (T + s) = d / (A + d)
-    # s = d / A * T
-
-    shares: uint256 = 0
     totalSupply: uint256 = self.uToken.totalSupply()
-    # TODO: if totalAssets == 0 ? use _getUnderlyingToShares?
-    if totalSupply > 0:
-        shares = PRECISION_FACTOR * diff * totalSupply / self._totalAssets() / PRECISION_FACTOR
-    else:
-        shares = diff
-    
+    totalAssets: uint256 = self._totalAssets()
+    shares: uint256 = self._calcSharesToMint(diff, totalSupply, totalAssets)
     assert shares >= minShares, "shares < min"
     
     self.uToken.mint(msg.sender, shares)
