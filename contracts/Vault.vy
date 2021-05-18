@@ -171,6 +171,46 @@ def _calcSharesToBurn(amount: uint256, totalSupply: uint256, totalAssets: uint25
     return amount * totalSupply / totalAssets
 
 
+DEGREDATION_COEFFICIENT: constant(uint256) = 10 ** 18
+
+lastReport: public(uint256)  # block.timestamp of last report
+lockedProfit: public(uint256) # how much profit is locked and cant be withdrawn
+lockedProfitDegration: public(uint256) # rate per block of degration. DEGREDATION_COEFFICIENT is 100% per block
+
+@external
+def setLockedProfitDegration(degration: uint256):
+    """
+    @notice
+        Changes the locked profit degration.
+    @param degration The rate of degration in percent per second scaled to 1e18.
+    """
+    assert msg.sender == self.admin, "!admin"
+    assert degration <= DEGREDATION_COEFFICIENT, "degration > max"
+    self.lockedProfitDegration = degration
+
+
+@internal
+@view
+def _calcFreeFunds(totalAssets: uint256) -> uint256:
+    # # Determines the current value of `shares`.
+    #     # NOTE: if sqrt(Vault.totalAssets()) >>> 1e39, this could potentially revert
+    lockedFundsRatio: uint256 = (block.timestamp - self.lastReport) * self.lockedProfitDegration
+    # TODO: what if totalAssets > total debt in strategies (strategy was hacked)
+    freeFunds: uint256 = totalAssets
+    if lockedFundsRatio < DEGREDATION_COEFFICIENT:
+        freeFunds -= (
+            self.lockedProfit
+             - (
+                 PRECISION_FACTOR
+                 * lockedFundsRatio
+                 * self.lockedProfit
+                 / DEGREDATION_COEFFICIENT
+                 / PRECISION_FACTOR
+             )
+         )
+    return freeFunds
+
+
 @internal
 @pure
 def _calcWithdraw(shares: uint256, totalSupply: uint256, totalAssets: uint256) -> uint256:
@@ -186,32 +226,22 @@ def _calcWithdraw(shares: uint256, totalSupply: uint256, totalAssets: uint256) -
     # s > 0, T = 0, P > 0 | invalid state (s > T = 0)
     # s > 0, T > 0, P > 0 | a = s / T * P
 
-    # TODO: use freeFunds
-    # # Determines the current value of `shares`.
-    #     # NOTE: if sqrt(Vault.totalAssets()) >>> 1e39, this could potentially revert
-    # lockedFundsRatio: uint256 = (block.timestamp - self.lastReport) * self.lockedProfitDegration
-    # # TODO: what if totalAssets > total debt in strategies (strategy was hacked)
-    # freeFunds: uint256 = self._totalAssets()
-    # if lockedFundsRatio < DEGREDATION_COEFFICIENT:
-    #     freeFunds -= (
-    #         self.lockedProfit
-    #          - (
-    #              PRECISION_FACTOR
-    #              * lockedFundsRatio
-    #              * self.lockedProfit
-    #              / DEGREDATION_COEFFICIENT
-    #              / PRECISION_FACTOR
-    #          )
-    #      )
-
     # # TODO: PRECISION_FACTOR
     # # return PRECISION_FACTOR * shares * freeFunds / totalSupply / PRECISION_FACTOR
     # return shares * freeFunds / totalSupply
-
     if shares == 0:
         return 0
     # invalid if total supply = 0
     return shares * totalAssets / totalSupply
+
+
+@external
+@view
+def calcWithdraw(shares: uint256) -> uint256:
+    totalSupply: uint256 = self.uToken.totalSupply()
+    totalAssets: uint256 = self._totalAssets()
+    freeFunds: uint256 = self._calcFreeFunds(totalAssets)
+    return self._calcWithdraw(shares, totalSupply, freeFunds)
 
 # TODO: deposit log
 # TODO: deposit / withdraw block
@@ -243,23 +273,6 @@ def deposit(amount: uint256, minShares: uint256) -> uint256:
     self.uToken.mint(msg.sender, shares)
 
     return shares
-
-DEGREDATION_COEFFICIENT: constant(uint256) = 10 ** 18
-
-lastReport: public(uint256)  # block.timestamp of last report
-lockedProfit: public(uint256) # how much profit is locked and cant be withdrawn
-lockedProfitDegration: public(uint256) # rate per block of degration. DEGREDATION_COEFFICIENT is 100% per block
-
-@external
-def setLockedProfitDegration(degration: uint256):
-    """
-    @notice
-        Changes the locked profit degration.
-    @param degration The rate of degration in percent per second scaled to 1e18.
-    """
-    assert msg.sender == self.admin, "!admin"
-    assert degration <= DEGREDATION_COEFFICIENT, "degration > max"
-    self.lockedProfitDegration = degration
 
 
 # # @view
@@ -300,7 +313,8 @@ def withdraw(shares: uint256, minAmount: uint256) -> uint256:
 
     totalSupply: uint256 = self.uToken.totalSupply()
     totalAssets: uint256 = self._totalAssets()
-    amount: uint256 = self._calcWithdraw(_shares, totalSupply, totalAssets)
+    freeFunds: uint256 = self._calcFreeFunds(totalAssets)
+    amount: uint256 = self._calcWithdraw(_shares, totalSupply, freeFunds)
 
     totalLoss: uint256 = 0
     if amount > self.balanceInVault:
@@ -355,13 +369,12 @@ def withdraw(shares: uint256, minAmount: uint256) -> uint256:
     # TODO: FOT?
     diff: uint256 = self.token.balanceOf(self)
     self._safeTransfer(self.token.address, msg.sender, amount)
-    diff = self.token.balanceOf(self) - diff
+    bal: uint256 = self.token.balanceOf(self)
+    diff = bal - diff
 
     assert diff >= minAmount, "diff < min"
     self.balanceInVault -= diff
 
-    # TODO: gas opt and migration in case bug, hack?
-    bal: uint256 = self.token.balanceOf(self)
     assert self.balanceInVault >= bal, "balance in vault < bal"
 
     return diff
