@@ -213,7 +213,6 @@ def _calcWithdraw(shares: uint256, totalSupply: uint256, totalAssets: uint256) -
     # invalid if total supply = 0
     return shares * totalAssets / totalSupply
 
-
 # TODO: deposit log
 # TODO: deposit / withdraw block
 @external
@@ -225,11 +224,11 @@ def deposit(amount: uint256, minShares: uint256) -> uint256:
     if _amount == MAX_UINT256:
         _amount = self.token.balanceOf(msg.sender)
     assert _amount > 0, "deposit = 0"
-    
+
     totalSupply: uint256 = self.uToken.totalSupply()
     totalAssets: uint256 = self._totalAssets()
 
-    # TODO: if FOT 
+    # TODO: safe gas if no FOT
     # Actual amount transferred may be less than `_amount`,
     # for example if token has fee on transfer
     diff: uint256 = self.token.balanceOf(self)
