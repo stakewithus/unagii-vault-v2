@@ -225,6 +225,9 @@ def deposit(amount: uint256, minShares: uint256) -> uint256:
     if _amount == MAX_UINT256:
         _amount = self.token.balanceOf(msg.sender)
     assert _amount > 0, "deposit = 0"
+    
+    totalSupply: uint256 = self.uToken.totalSupply()
+    totalAssets: uint256 = self._totalAssets()
 
     # TODO: if FOT 
     # Actual amount transferred may be less than `_amount`,
@@ -234,9 +237,6 @@ def deposit(amount: uint256, minShares: uint256) -> uint256:
     diff = self.token.balanceOf(self) - diff
     assert diff > 0, "diff = 0"
 
-    totalSupply: uint256 = self.uToken.totalSupply()
-    # totalAssets is not updated until balanceInVault or totalDebt is updated
-    totalAssets: uint256 = self._totalAssets()
     shares: uint256 = self._calcSharesToMint(diff, totalSupply, totalAssets)
     assert shares >= minShares, "shares < min"
     
