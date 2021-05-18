@@ -127,7 +127,7 @@ def totalAssets() -> uint256:
 
 @internal
 @view
-def _calcSharesToMint(amount: uint256) -> uint256:
+def _calcSharesToMint(amount: uint256, totalSupply: uint256, totalAssets: uint256) -> uint256:
     # mint
     # s = shares to mint
     # T = total shares before mint
@@ -140,10 +140,6 @@ def _calcSharesToMint(amount: uint256) -> uint256:
     # a > 0, T > 0, P = 0 | invalid state (a = 0) 
     # a > 0, T = 0, P > 0 | s = 0, but mint s = a as if P = 0
     # a > 0, T > 0, P > 0 | mint s = a / P * T
-
-    totalSupply: uint256 = self.uToken.totalSupply()
-    # totalAssets is not updated until balanceInVault or totalDebt is updated
-    totalAssets: uint256 = self._totalAssets()
 
     if amount == 0:
         return 0
@@ -238,7 +234,10 @@ def deposit(amount: uint256, minShares: uint256) -> uint256:
     diff = self.token.balanceOf(self) - diff
     assert diff > 0, "diff = 0"
 
-    shares: uint256 = self._calcSharesToMint(diff)
+    totalSupply: uint256 = self.uToken.totalSupply()
+    # totalAssets is not updated until balanceInVault or totalDebt is updated
+    totalAssets: uint256 = self._totalAssets()
+    shares: uint256 = self._calcSharesToMint(diff, totalSupply, totalAssets)
     assert shares >= minShares, "shares < min"
     
     self.uToken.mint(msg.sender, shares)
