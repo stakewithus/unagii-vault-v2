@@ -126,7 +126,7 @@ def totalAssets() -> uint256:
 
 
 @internal
-@view
+@pure
 def _calcSharesToMint(amount: uint256, totalSupply: uint256, totalAssets: uint256) -> uint256:
     # mint
     # s = shares to mint
@@ -140,7 +140,6 @@ def _calcSharesToMint(amount: uint256, totalSupply: uint256, totalAssets: uint25
     # a > 0, T > 0, P = 0 | invalid state (a = 0) 
     # a > 0, T = 0, P > 0 | s = 0, but mint s = a as if P = 0
     # a > 0, T > 0, P > 0 | mint s = a / P * T
-
     if amount == 0:
         return 0
     if totalSupply == 0:
@@ -165,7 +164,6 @@ def _calcSharesToBurn(amount: uint256, totalSupply: uint256, totalAssets: uint25
     # a > 0, T > 0, P = 0 | invalid state (a > P = 0)
     # a > 0, T = 0, P > 0 | burn s = 0 (T = 0 >= s) TODO: secure?
     # a > 0, T > 0, P > 0 | burn s = a / P * T
-
     if amount == 0:
         return 0
     # reverts if total assets = 0
@@ -174,7 +172,7 @@ def _calcSharesToBurn(amount: uint256, totalSupply: uint256, totalAssets: uint25
 
 
 @internal
-@view
+@pure
 def _calcWithdraw(shares: uint256, totalSupply: uint256, totalAssets: uint256) -> uint256:
     # s = shares
     # T = total supply of shares
@@ -223,7 +221,9 @@ def _calcWithdraw(shares: uint256, totalSupply: uint256, totalAssets: uint256) -
 def deposit(amount: uint256, minShares: uint256) -> uint256:
     assert not self.paused, "paused"
 
-    _amount: uint256 = min(amount, self.token.balanceOf(msg.sender))
+    _amount: uint256 = amount
+    if _amount == MAX_UINT256:
+        _amount = self.token.balanceOf(msg.sender)
     assert _amount > 0, "deposit = 0"
 
     # TODO: if FOT 
@@ -240,8 +240,8 @@ def deposit(amount: uint256, minShares: uint256) -> uint256:
     shares: uint256 = self._calcSharesToMint(diff, totalSupply, totalAssets)
     assert shares >= minShares, "shares < min"
     
-    self.uToken.mint(msg.sender, shares)
     self.balanceInVault += diff
+    self.uToken.mint(msg.sender, shares)
 
     return shares
 
@@ -294,31 +294,33 @@ def setLockedProfitDegration(degration: uint256):
 @external
 @nonreentrant("withdraw")
 def withdraw(shares: uint256, minAmount: uint256) -> uint256:
-    _shares: uint256 = min(shares, self.uToken.balanceOf(msg.sender))
+    _shares: uint256 = shares
+    if _shares == MAX_UINT256:
+        _shares = self.uToken.balanceOf(msg.sender)
     assert shares > 0, "shares = 0"
 
-    # TODO: no cache totalSupply and totalAssets?
     totalSupply: uint256 = self.uToken.totalSupply()
     totalAssets: uint256 = self._totalAssets()
     amount: uint256 = self._calcWithdraw(_shares, totalSupply, totalAssets)
 
-    balanceInVault: uint256 = self.balanceInVault
     totalLoss: uint256 = 0
-    if amount > balanceInVault:
+    if amount > self.balanceInVault:
+        remaining: uint256 = amount - self.balanceInVault
+        withdrawn: uint256 = 0
         for strategy in self.withdrawalQueue:
             if strategy == ZERO_ADDRESS:
                 break
 
-            if amount <= balanceInVault:
+            if remaining == 0:
                 break
 
-            amountNeeded: uint256 = min(amount - balanceInVault, self.strategies[strategy].debt)
+            amountNeeded: uint256 = min(remaining, self.strategies[strategy].debt)
             if amountNeeded == 0:
                 continue
 
             diff: uint256 = self.token.balanceOf(self)
             loss: uint256 = IStrategy(strategy).withdraw(amountNeeded)
-            diff = self.token.balanceOf(self) - dff
+            diff = self.token.balanceOf(self) - diff
 
             # NOTE: Withdrawer incurs any losses from liquidation
             if loss > 0:
@@ -331,19 +333,19 @@ def withdraw(shares: uint256, minAmount: uint256) -> uint256:
             # NOTE: This doesn't add to returns as it's not earned by "normal means"
             # TODO: underflow?
             self.strategies[strategy].debt -= diff
-            self.totalDebt -= diff
-            balanceInVault += diff
+            withdrawn += diff
+            remaining -= min(diff, remaining)
 
-    # TODO: fail safe
-    # bal: uint256 = self.token.balanceOf(self)
-    # assert balanceInVault >= bal, "balance in vault < bal"
-    # self.balanceInVault = balanceInVault
-    if amount > balanceInVault:
-        amount = balanceInVault
-        # NOTE: Burn # of shares that corresponds to what Vault has on-hand,
-        #       including the losses that were incurred above during withdrawals
-        # TODO: update totalAssets?
-        _shares = self._calcSharesToBurn(amount + totalLoss, totalSupply, totalAssets)
+        # update
+        self.balanceInVault += withdrawn
+        self.totalDebt -= withdrawn
+
+        if amount > self.balanceInVault:
+            amount = self.balanceInVault
+            # NOTE: Burn # of shares that corresponds to what Vault has on-hand,
+            #       including the losses that were incurred above during withdrawal
+            totalAssets = self._totalAssets()
+            _shares = self._calcSharesToBurn(amount + totalLoss, totalSupply, totalAssets)
 
     # NOTE: This loss protection is put in place to revert if losses from
     #       withdrawing are more than what is considered acceptable.
@@ -352,15 +354,19 @@ def withdraw(shares: uint256, minAmount: uint256) -> uint256:
     self.uToken.burn(msg.sender, _shares)
 
     # TODO: FOT?
-    balBefore: uint256 = self.token.balanceOf(self)
+    diff: uint256 = self.token.balanceOf(self)
     self._safeTransfer(self.token.address, msg.sender, amount)
-    balAfter: uint256 = self.token.balanceOf(self)
-    diff: uint256 = balAfter - balBefore
+    diff = self.token.balanceOf(self) - diff
 
     assert diff >= minAmount, "diff < min"
     self.balanceInVault -= diff
 
+    # TODO: gas opt and migration in case bug, hack?
+    bal: uint256 = self.token.balanceOf(self)
+    assert self.balanceInVault >= bal, "balance in vault < bal"
+
     return diff
+
 
 @external
 def approveStrategy(strategy: address):
