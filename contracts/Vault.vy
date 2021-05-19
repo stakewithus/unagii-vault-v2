@@ -316,9 +316,10 @@ def withdraw(shares: uint256, minAmount: uint256) -> uint256:
     freeFunds: uint256 = self._calcFreeFunds(totalAssets)
     amount: uint256 = self._calcWithdraw(_shares, totalSupply, freeFunds)
 
-    totalLoss: uint256 = 0
-    if amount > self.balanceInVault:
-        remaining: uint256 = amount - self.balanceInVault
+    balanceInVault: uint256 = self.balanceInVault
+    # totalLoss: uint256 = 0
+    if amount > balanceInVault:
+        remaining: uint256 = amount - balanceInVault
         withdrawn: uint256 = 0
         for strategy in self.withdrawalQueue:
             if strategy == ZERO_ADDRESS:
@@ -332,33 +333,37 @@ def withdraw(shares: uint256, minAmount: uint256) -> uint256:
                 continue
 
             diff: uint256 = self.token.balanceOf(self)
-            loss: uint256 = IStrategy(strategy).withdraw(amountNeeded)
+            IStrategy(strategy).withdraw(amountNeeded)
             diff = self.token.balanceOf(self) - diff
 
             # NOTE: Withdrawer incurs any losses from liquidation
-            if loss > 0:
-                amount -= loss
-                totalLoss += loss
-                # TODO:
-                # self._reportLoss(strategy, loss)
+            # if loss > 0:
+            #     # TODO: underflow?
+            #     remaining -= loss
+            #     totalLoss += loss
+            #     # TODO:
+            #     # self._reportLoss(strategy, loss)
 
             # Reduce the Strategy's debt by the amount withdrawn ("realized returns")
             # NOTE: This doesn't add to returns as it's not earned by "normal means"
             # TODO: underflow?
             self.strategies[strategy].debt -= diff
             withdrawn += diff
-            remaining -= min(diff, remaining)
+            # TODO: underflow?
+            remaining -= diff
 
         # update
         self.balanceInVault += withdrawn
         self.totalDebt -= withdrawn
+        # TODO: underflow?
+        # amount -= totalLoss
 
-        if amount > self.balanceInVault:
-            amount = self.balanceInVault
-            # NOTE: Burn # of shares that corresponds to what Vault has on-hand,
-            #       including the losses that were incurred above during withdrawal
-            totalAssets = self._totalAssets()
-            _shares = self._calcSharesToBurn(amount + totalLoss, totalSupply, totalAssets)
+        # if amount > self.balanceInVault:
+        #     amount = self.balanceInVault
+        #     # NOTE: Burn # of shares that corresponds to what Vault has on-hand,
+        #     #       including the losses that were incurred above during withdrawal
+        #     totalAssets = self._totalAssets()
+        #     _shares = self._calcSharesToBurn(amount + totalLoss, totalSupply, totalAssets)
 
     # NOTE: This loss protection is put in place to revert if losses from
     #       withdrawing are more than what is considered acceptable.
