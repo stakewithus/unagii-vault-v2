@@ -110,6 +110,8 @@ performanceFee: public(uint256)
 PRECISION_FACTOR: constant(uint256) = 1
 
 blockDelay: public(uint256)
+# Token has fee on transfer
+feeOnTransfer: public(bool)
 
 
 @external
@@ -208,6 +210,12 @@ def setBlockDelay(delay: uint256):
     assert msg.sender == self.admin, "!admin"
     assert delay >= 1, "delay = 0"
     self.blockDelay = delay
+
+
+@external
+def setFeeOnTransfer(feeOnTransfer: bool):
+    assert msg.sender == self.admin, "!admin"
+    self.feeOnTransfer = feeOnTransfer
 
 
 @internal
@@ -355,12 +363,11 @@ def calcWithdraw(shares: uint256) -> uint256:
 
 
 # TODO: deposit log
-# TODO: deposit / withdraw block
 @external
 @nonreentrant("lock")
 def deposit(amount: uint256, minShares: uint256) -> uint256:
     assert not self.paused, "paused"
-    assert block.number >= self.uToken.lastBlock(msg.sender) + self.blockDelay, "block <= delay" 
+    assert block.number >= self.uToken.lastBlock(msg.sender) + self.blockDelay, "block < delay" 
 
     _amount: uint256 = amount
     if _amount == MAX_UINT256:
@@ -370,12 +377,16 @@ def deposit(amount: uint256, minShares: uint256) -> uint256:
     totalSupply: uint256 = self.uToken.totalSupply()
     totalAssets: uint256 = self._totalAssets()
 
-    # TODO: safe gas if no FOT
-    # Actual amount transferred may be less than `_amount`,
-    # for example if token has fee on transfer
-    diff: uint256 = self.token.balanceOf(self)
-    self._safeTransferFrom(self.token.address, msg.sender, self, _amount)
-    diff = self.token.balanceOf(self) - diff
+    diff: uint256 = 0
+    if self.feeOnTransfer:
+        # Actual amount transferred may be less than `_amount`,
+        # for example if token has fee on transfer
+        diff = self.token.balanceOf(self)
+        self._safeTransferFrom(self.token.address, msg.sender, self, _amount)
+        diff = self.token.balanceOf(self) - diff
+    else:
+        self._safeTransferFrom(self.token.address, msg.sender, self, _amount)
+        diff = _amount
     assert diff > 0, "diff = 0"
 
     shares: uint256 = self._calcSharesToMint(diff, totalSupply, totalAssets)
