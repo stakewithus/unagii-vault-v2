@@ -20,6 +20,7 @@ interface UnagiiToken:
     def balanceOf(owner: address) -> uint256: view
     def mint(receiver: address, amount: uint256): nonpayable
     def burn(spender: address, amount: uint256): nonpayable
+    def lastBlock(owner: address) -> uint256: view
 
 
 interface IStrategy:
@@ -28,6 +29,8 @@ interface IStrategy:
     def totalAssets() -> uint256: view
     def withdraw(amount: uint256) -> uint256: nonpayable
 
+
+MAX_STRATEGIES: constant(uint256) = 20
 
 struct Strategy:
     approved: bool
@@ -71,7 +74,7 @@ event RemoveStrategyFromQueue:
     strategy: indexed(address)
 
 event UpdateWithdrawalQueue:
-    queue: address[MAXIMUM_STRATEGIES]
+    queue: address[MAX_STRATEGIES]
 
 
 token: public(ERC20)
@@ -83,8 +86,6 @@ guardian: public(address)
 keeper: public(address)
 
 strategies: public(HashMap[address, Strategy])
-MAX_STRATEGIES: constant(uint256) = 20
-DEGRADATION_COEFFICIENT: constant(uint256) = 10 ** 18
 withdrawalQueue: public(address[MAX_STRATEGIES])
 
 paused: public(bool)
@@ -95,6 +96,7 @@ totalDebtRatio: public(uint256)
 totalDebt: public(uint256)
 lastReport: public(uint256)
 lockedProfit: public(uint256)
+DEGRADATION_COEFFICIENT: constant(uint256) = 10 ** 18
 lockedProfitDegradation: public(uint256)
 balanceInVault: public(uint256)
 MAX_BPS: constant(uint256) = 10000
@@ -134,7 +136,7 @@ def __init__(
         assert PRECISION_FACTOR == 1, "precision != 1"
 
     self.paused = True
-    self.blockDelay = 1
+    self.blockDelay = 10
 
 
 @external
@@ -208,191 +210,181 @@ def setBlockDelay(delay: uint256):
     self.blockDelay = delay
 
 
-# @internal
-# def _safeTransfer(token: address, receiver: address, amount: uint256):
-#     res: Bytes[32] = raw_call(
-#         token,
-#         concat(
-#             method_id("transfer(address,uint256)"),
-#             convert(receiver, bytes32),
-#             convert(amount, bytes32),
-#         ),
-#         max_outsize=32,
-#     )
-#     if len(res) > 0:
-#         assert convert(res, bool), "transfer failed"
+@internal
+def _safeTransfer(token: address, receiver: address, amount: uint256):
+    res: Bytes[32] = raw_call(
+        token,
+        concat(
+            method_id("transfer(address,uint256)"),
+            convert(receiver, bytes32),
+            convert(amount, bytes32),
+        ),
+        max_outsize=32,
+    )
+    if len(res) > 0:
+        assert convert(res, bool), "transfer failed"
 
 
-# @internal
-# def _safeTransferFrom(token: address, sender: address, receiver: address, amount: uint256):
-#     res: Bytes[32] = raw_call(
-#         token,
-#         concat(
-#             method_id("transferFrom(address,address,uint256)"),
-#             convert(sender, bytes32),
-#             convert(receiver, bytes32),
-#             convert(amount, bytes32),
-#         ),
-#         max_outsize=32,
-#     )
-#     if len(res) > 0:
-#         assert convert(res, bool), "transferFrom failed"
+@internal
+def _safeTransferFrom(token: address, sender: address, receiver: address, amount: uint256):
+    res: Bytes[32] = raw_call(
+        token,
+        concat(
+            method_id("transferFrom(address,address,uint256)"),
+            convert(sender, bytes32),
+            convert(receiver, bytes32),
+            convert(amount, bytes32),
+        ),
+        max_outsize=32,
+    )
+    if len(res) > 0:
+        assert convert(res, bool), "transferFrom failed"
 
 
-# @internal
-# @view
-# def _totalAssets() -> uint256:
-#     return self.balanceInVault + self.totalDebt
+@internal
+@view
+def _totalAssets() -> uint256:
+    return self.balanceInVault + self.totalDebt
 
 
-# @external
-# @view
-# def totalAssets() -> uint256:
-#     return self._totalAssets()
+@external
+@view
+def totalAssets() -> uint256:
+    return self._totalAssets()
 
 
-# @internal
-# @pure
-# def _calcSharesToMint(amount: uint256, totalSupply: uint256, totalAssets: uint256) -> uint256:
-#     # mint
-#     # s = shares to mint
-#     # T = total shares before mint
-#     # a = deposit amount
-#     # P = total amount of underlying token in vault + strategy before deposit
-#     # s / (T + s) = a / (P + a)
-#     # sP = aT
-#     # a = 0               | mint s = 0
-#     # a > 0, T = 0, P = 0 | mint s = a
-#     # a > 0, T > 0, P = 0 | invalid state (a = 0) 
-#     # a > 0, T = 0, P > 0 | s = 0, but mint s = a as if P = 0
-#     # a > 0, T > 0, P > 0 | mint s = a / P * T
-#     if amount == 0:
-#         return 0
-#     if totalSupply == 0:
-#         return amount
-#     # reverts if total assets = 0
-#     # TODO: PRECISION_FACTOR
-#     return amount * totalSupply / totalAssets 
+@internal
+@pure
+def _calcSharesToMint(amount: uint256, totalSupply: uint256, totalAssets: uint256) -> uint256:
+    # mint
+    # s = shares to mint
+    # T = total shares before mint
+    # a = deposit amount
+    # P = total amount of underlying token in vault + strategy before deposit
+    # s / (T + s) = a / (P + a)
+    # sP = aT
+    # a = 0               | mint s = 0
+    # a > 0, T = 0, P = 0 | mint s = a
+    # a > 0, T > 0, P = 0 | invalid state (a = 0) 
+    # a > 0, T = 0, P > 0 | s = 0, but mint s = a as if P = 0
+    # a > 0, T > 0, P > 0 | mint s = a / P * T
+    if amount == 0:
+        return 0
+    if totalSupply == 0:
+        return amount
+    # reverts if total assets = 0
+    # TODO: PRECISION_FACTOR
+    return amount * totalSupply / totalAssets 
 
 
-# @internal
-# @pure
-# def _calcSharesToBurn(amount: uint256, totalSupply: uint256, totalAssets: uint256) -> uint256:
-#     # burn
-#     # s = shares to burn
-#     # T = total shares before burn
-#     # a = withdraw amount
-#     # P = total amount of underlying token in vault + strategy before deposit
-#     # s / (T - s) = a / (P - a), (constraints T >= s, P >= a)
-#     # sP = aT
-#     # a = 0               | burn s = 0
-#     # a > 0, T = 0, P = 0 | invalid state (a > P = 0)
-#     # a > 0, T > 0, P = 0 | invalid state (a > P = 0)
-#     # a > 0, T = 0, P > 0 | burn s = 0 (T = 0 >= s) TODO: secure?
-#     # a > 0, T > 0, P > 0 | burn s = a / P * T
-#     if amount == 0:
-#         return 0
-#     # reverts if total assets = 0
-#     # TODO: PRECISION_FACTOR
-#     return amount * totalSupply / totalAssets
+@internal
+@pure
+def _calcSharesToBurn(amount: uint256, totalSupply: uint256, totalAssets: uint256) -> uint256:
+    # burn
+    # s = shares to burn
+    # T = total shares before burn
+    # a = withdraw amount
+    # P = total amount of underlying token in vault + strategy before deposit
+    # s / (T - s) = a / (P - a), (constraints T >= s, P >= a)
+    # sP = aT
+    # a = 0               | burn s = 0
+    # a > 0, T = 0, P = 0 | invalid state (a > P = 0)
+    # a > 0, T > 0, P = 0 | invalid state (a > P = 0)
+    # a > 0, T = 0, P > 0 | burn s = 0 (T = 0 >= s) TODO: secure?
+    # a > 0, T > 0, P > 0 | burn s = a / P * T
+    if amount == 0:
+        return 0
+    # reverts if total assets = 0
+    # TODO: PRECISION_FACTOR
+    return amount * totalSupply / totalAssets
 
 
-# @external
-# def setLockedProfitDegration(degration: uint256):
-#     """
-#     @notice
-#         Changes the locked profit degration.
-#     @param degration The rate of degration in percent per second scaled to 1e18.
-#     """
-#     assert msg.sender == self.admin, "!admin"
-#     assert degration <= DEGREDATION_COEFFICIENT, "degration > max"
-#     self.lockedProfitDegration = degration
+@internal
+@view
+def _calcFreeFunds(totalAssets: uint256) -> uint256:
+    # # Determines the current value of `shares`.
+    #     # NOTE: if sqrt(Vault.totalAssets()) >>> 1e39, this could potentially revert
+    lockedFundsRatio: uint256 = (block.timestamp - self.lastReport) * self.lockedProfitDegradation
+    # TODO: what if totalAssets > total debt in strategies (strategy was hacked)
+    freeFunds: uint256 = totalAssets
+    if lockedFundsRatio < DEGRADATION_COEFFICIENT:
+        freeFunds -= (
+            self.lockedProfit
+             - (
+                 PRECISION_FACTOR
+                 * lockedFundsRatio
+                 * self.lockedProfit
+                 / DEGRADATION_COEFFICIENT
+                 / PRECISION_FACTOR
+             )
+         )
+    return freeFunds
 
 
-# @internal
-# @view
-# def _calcFreeFunds(totalAssets: uint256) -> uint256:
-#     # # Determines the current value of `shares`.
-#     #     # NOTE: if sqrt(Vault.totalAssets()) >>> 1e39, this could potentially revert
-#     lockedFundsRatio: uint256 = (block.timestamp - self.lastReport) * self.lockedProfitDegration
-#     # TODO: what if totalAssets > total debt in strategies (strategy was hacked)
-#     freeFunds: uint256 = totalAssets
-#     if lockedFundsRatio < DEGREDATION_COEFFICIENT:
-#         freeFunds -= (
-#             self.lockedProfit
-#              - (
-#                  PRECISION_FACTOR
-#                  * lockedFundsRatio
-#                  * self.lockedProfit
-#                  / DEGREDATION_COEFFICIENT
-#                  / PRECISION_FACTOR
-#              )
-#          )
-#     return freeFunds
+@internal
+@pure
+def _calcWithdraw(shares: uint256, totalSupply: uint256, totalAssets: uint256) -> uint256:
+    # s = shares
+    # T = total supply of shares
+    # a = amount to withdraw
+    # P = total amount of underlying token in vault + strategy
+    # s / T = a / P (constraints T >= s, P >= a)
+    # sP = aT
+    # s = 0 | a = 0
+    # s > 0, T = 0, P = 0 | invalid state (s > T = 0)
+    # s > 0, T > 0, P = 0 | a = 0
+    # s > 0, T = 0, P > 0 | invalid state (s > T = 0)
+    # s > 0, T > 0, P > 0 | a = s / T * P
+
+    # # TODO: PRECISION_FACTOR
+    # # return PRECISION_FACTOR * shares * freeFunds / totalSupply / PRECISION_FACTOR
+    # return shares * freeFunds / totalSupply
+    if shares == 0:
+        return 0
+    # invalid if total supply = 0
+    return shares * totalAssets / totalSupply
 
 
-# @internal
-# @pure
-# def _calcWithdraw(shares: uint256, totalSupply: uint256, totalAssets: uint256) -> uint256:
-#     # s = shares
-#     # T = total supply of shares
-#     # a = amount to withdraw
-#     # P = total amount of underlying token in vault + strategy
-#     # s / T = a / P (constraints T >= s, P >= a)
-#     # sP = aT
-#     # s = 0 | a = 0
-#     # s > 0, T = 0, P = 0 | invalid state (s > T = 0)
-#     # s > 0, T > 0, P = 0 | a = 0
-#     # s > 0, T = 0, P > 0 | invalid state (s > T = 0)
-#     # s > 0, T > 0, P > 0 | a = s / T * P
-
-#     # # TODO: PRECISION_FACTOR
-#     # # return PRECISION_FACTOR * shares * freeFunds / totalSupply / PRECISION_FACTOR
-#     # return shares * freeFunds / totalSupply
-#     if shares == 0:
-#         return 0
-#     # invalid if total supply = 0
-#     return shares * totalAssets / totalSupply
+@external
+@view
+def calcWithdraw(shares: uint256) -> uint256:
+    totalSupply: uint256 = self.uToken.totalSupply()
+    totalAssets: uint256 = self._totalAssets()
+    freeFunds: uint256 = self._calcFreeFunds(totalAssets)
+    return self._calcWithdraw(shares, totalSupply, freeFunds)
 
 
-# @external
-# @view
-# def calcWithdraw(shares: uint256) -> uint256:
-#     totalSupply: uint256 = self.uToken.totalSupply()
-#     totalAssets: uint256 = self._totalAssets()
-#     freeFunds: uint256 = self._calcFreeFunds(totalAssets)
-#     return self._calcWithdraw(shares, totalSupply, freeFunds)
+# TODO: deposit log
+# TODO: deposit / withdraw block
+@external
+@nonreentrant("lock")
+def deposit(amount: uint256, minShares: uint256) -> uint256:
+    assert not self.paused, "paused"
+    assert block.number >= self.uToken.lastBlock(msg.sender) + self.blockDelay, "block <= delay" 
 
-# # TODO: deposit log
-# # TODO: deposit / withdraw block
-# @external
-# @nonreentrant("lock")
-# def deposit(amount: uint256, minShares: uint256) -> uint256:
-#     assert not self.paused, "paused"
+    _amount: uint256 = amount
+    if _amount == MAX_UINT256:
+        _amount = self.token.balanceOf(msg.sender)
+    assert _amount > 0, "deposit = 0"
 
-#     _amount: uint256 = amount
-#     if _amount == MAX_UINT256:
-#         _amount = self.token.balanceOf(msg.sender)
-#     assert _amount > 0, "deposit = 0"
+    totalSupply: uint256 = self.uToken.totalSupply()
+    totalAssets: uint256 = self._totalAssets()
 
-#     totalSupply: uint256 = self.uToken.totalSupply()
-#     totalAssets: uint256 = self._totalAssets()
+    # TODO: safe gas if no FOT
+    # Actual amount transferred may be less than `_amount`,
+    # for example if token has fee on transfer
+    diff: uint256 = self.token.balanceOf(self)
+    self._safeTransferFrom(self.token.address, msg.sender, self, _amount)
+    diff = self.token.balanceOf(self) - diff
+    assert diff > 0, "diff = 0"
 
-#     # TODO: safe gas if no FOT
-#     # Actual amount transferred may be less than `_amount`,
-#     # for example if token has fee on transfer
-#     diff: uint256 = self.token.balanceOf(self)
-#     self._safeTransferFrom(self.token.address, msg.sender, self, _amount)
-#     diff = self.token.balanceOf(self) - diff
-#     assert diff > 0, "diff = 0"
-
-#     shares: uint256 = self._calcSharesToMint(diff, totalSupply, totalAssets)
-#     assert shares >= minShares, "shares < min"
+    shares: uint256 = self._calcSharesToMint(diff, totalSupply, totalAssets)
+    assert shares >= minShares, "shares < min"
     
-#     self.balanceInVault += diff
-#     self.uToken.mint(msg.sender, shares)
+    self.balanceInVault += diff
+    self.uToken.mint(msg.sender, shares)
 
-#     return shares
+    return shares
 
 
 # # # @view
