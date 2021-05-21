@@ -1,4 +1,3 @@
-
 # @version 0.2.12
 
 """
@@ -39,6 +38,8 @@ struct Strategy:
     debt: uint256
     gain: uint256
     loss: uint256
+    minDebtPerHarvest: uint256
+    maxDebtPerHarvest: uint256
 
 event UpdateAdmin:
     admin: address
@@ -601,21 +602,201 @@ def setWithdrawalQueue(queue: address[MAX_STRATEGIES]):
     log UpdateWithdrawalQueue(queue)
 
 
+@view
+@internal
+def _creditAvailable(strategy: address) -> uint256:
+    if self.paused:
+        return 0
 
-# @external
-# def borrow(amount: uint256):
-#     pass
+    totalAssets: uint256 = self._totalAssets()
+    totalDebtLimit: uint256 =  self.totalDebtRatio * totalAssets / MAX_BPS 
+    totalDebt: uint256 = self.totalDebt
+    debtLimit: uint256 = self.strategies[strategy].debtRatio * totalAssets / MAX_BPS
+    debt: uint256 = self.strategies[strategy].debt
+    minDebtPerHarvest: uint256 = self.strategies[strategy].minDebtPerHarvest
+    maxDebtPerHarvest: uint256 = self.strategies[strategy].maxDebtPerHarvest
+
+    if totalDebt >= totalDebtLimit or debt >= debtLimit:
+        return 0
+
+    available: uint256 = min(debtLimit - debt, totalDebtLimit - totalDebt)
+    # TODO: use self.balanceInVault?
+    available = min(available, self.token.balanceOf(self))
+
+    # TODO: what?
+    # Adjust by min and max borrow limits (per harvest)
+    # NOTE: min increase can be used to ensure that if a strategy has a minimum
+    #       amount of capital needed to purchase a position, it's not given capital
+    #       it can't make use of yet.
+    # NOTE: max increase is used to make sure each harvest isn't bigger than what
+    #       is authorized. This combined with adjusting min and max periods in
+    #       `BaseStrategy` can be used to effect a "rate limit" on capital increase.
+    if available < minDebtPerHarvest:
+        return 0
+    else:
+        return min(available, maxDebtPerHarvest)
 
 
-# @external
-# def repay(amount: uint256):
-#     pass
+@external
+@view
+def creditAvailable(strategy: address) -> uint256:
+    return self._creditAvailable(strategy)
 
 
-# @external
-# def sync():
-#     pass
+@external
+def borrow(amount: uint256):
+    assert self.strategies[msg.sender].active, "!active"
 
+    available: uint256 = self._creditAvailable(msg.sender)
+    _amount: uint256 = min(amount, available)
+    assert _amount > 0, "borrow = 0"
+
+    self._safeTransfer(self.token.address, msg.sender, _amount)
+
+    # include fee on trasfer to debt 
+    self.strategies[msg.sender].debt += amount
+    self.totalDebt += amount
+    self.balanceInVault -= amount
+
+    # TODO: remove?
+    # bal: uint256 = self.token.balanceOf(self)
+    # assert bal >= self.balanceInVault(self), "bal < balance in vault"
+
+
+@external
+def repay(amount: uint256):
+    assert self.strategies[msg.sender].active, "!active"
+    assert amount > 0, "repay = 0"
+
+    diff: uint256 = self.token.balanceOf(self)
+    self._safeTransferFrom(self.token.address, msg.sender, self, amount)
+    diff  = self.token.balanceOf(self) - diff
+
+    self.strategies[msg.sender].debt -= diff
+    self.totalDebt -= diff
+    self.balanceInVault += diff
+
+    # TODO: remove?
+    # bal: uint256 = self.token.balanceOf(self)
+    # assert bal >= self.balanceInVault(self), "bal < balance in vault"
+
+
+@view
+@internal
+def _debtOutstanding(strategy: address) -> uint256:
+    debt: uint256 = self.strategies[strategy].debt
+    if self.totalDebtRatio == 0:
+        return debt
+
+    debtLimit: uint256 = self.strategies[strategy].debtRatio * self.totalDebt / self.totalDebtRatio
+
+    if self.paused:
+        return debt
+    elif debt <= debtLimit:
+        return 0
+    else:
+        return debt - debtLimit
+
+
+@view
+@internal
+def _calculateLockedProfit() -> uint256:
+    lockedFundsRatio: uint256 = (block.timestamp - self.lastReport) * self.lockedProfitDegradation
+
+    if(lockedFundsRatio < DEGRADATION_COEFFICIENT):
+        lockedProfit: uint256 = self.lockedProfit
+        return lockedProfit - (
+                lockedFundsRatio
+                * lockedProfit
+                / DEGRADATION_COEFFICIENT
+            )
+    else:        
+        return 0
+
+
+@external
+def report(gain: uint256, loss: uint256, _debtPayment: uint256) -> uint256:
+    assert self.strategies[msg.sender].active, "!active"
+    assert self.token.balanceOf(msg.sender) >= gain + _debtPayment
+
+    # We have a loss to report, do it before the rest of the calculations
+    if loss > 0:
+        # TODO: report loss
+        # self._reportLoss(msg.sender, loss)
+        pass
+
+    # Assess both management fee and performance fee, and issue both as shares of the vault
+    totalFees: uint256 = gain * self.performanceFee / MAX_BPS
+
+    # Returns are always "realized gains"
+    self.strategies[msg.sender].gain += gain
+
+    # Compute the line of credit the Vault is able to offer the Strategy (if any)
+    credit: uint256 = self._creditAvailable(msg.sender)
+
+    # Outstanding debt the Strategy wants to take back from the Vault (if any)
+    # NOTE: debtOutstanding <= StrategyParams.totalDebt
+    debt: uint256 = self._debtOutstanding(msg.sender)
+    debtPayment: uint256 = min(_debtPayment, debt)
+
+    if debtPayment > 0:
+        self.strategies[msg.sender].debt -= debtPayment
+        self.totalDebt -= debtPayment
+        debt -= debtPayment
+        # NOTE: `debt` is being tracked for later
+
+    # Update the actual debt based on the full credit we are extending to the Strategy
+    # or the returns if we are taking funds back
+    # NOTE: credit + self.strategies[msg.sender].totalDebt is always < self.debtLimit
+    # NOTE: At least one of `credit` or `debt` is always 0 (both can be 0)
+    if credit > 0:
+        self.strategies[msg.sender].debt += credit
+        self.totalDebt += credit
+
+    # Give/take balance to Strategy, based on the difference between the reported gains
+    # (if any), the debt payment (if any), the credit increase we are offering (if any),
+    # and the debt needed to be paid off (if any)
+    # NOTE: This is just used to adjust the balance of tokens between the Strategy and
+    #       the Vault based on the Strategy's debt limit (as well as the Vault's).
+    totalAvail: uint256 = gain + debtPayment
+    if totalAvail < credit:  # credit surplus, give to Strategy
+        self._safeTransfer(self.token.address, msg.sender, credit - totalAvail)
+    elif totalAvail > credit:  # credit deficit, take from Strategy
+        self._safeTransferFrom(self.token.address, msg.sender, self, totalAvail - credit)
+    # else, don't do anything because it is balanced
+
+    # Profit is locked and gradually released per block
+    # NOTE: compute current locked profit and replace with sum of current and new
+    lockedProfitBeforeLoss :uint256 = self._calculateLockedProfit() + gain - totalFees 
+    if lockedProfitBeforeLoss > loss: 
+        self.lockedProfit = lockedProfitBeforeLoss - loss
+    else:
+       self.lockedProfit = 0 
+
+
+    # Update reporting time
+    # TODO: self.strategies[msg.sender].lastReport = block.timestamp
+    self.lastReport = block.timestamp
+
+    # log StrategyReported(
+    #     msg.sender,
+    #     gain,
+    #     loss,
+    #     debtPayment,
+    #     self.strategies[msg.sender].totalGain,
+    #     self.strategies[msg.sender].totalLoss,
+    #     self.strategies[msg.sender].totalDebt,
+    #     credit,
+    #     self.strategies[msg.sender].debtRatio,
+    # )
+
+    if self.strategies[msg.sender].debtRatio == 0 or self.paused:
+        # Take every last penny the Strategy has (Emergency Exit/revokeStrategy)
+        # NOTE: This is different than `debt` in order to extract *all* of the returns
+        return IStrategy(msg.sender).totalAssets()
+    else:
+        # Otherwise, just return what we have as debt outstanding
+        return debt
 
 
 # # migration
@@ -631,20 +812,15 @@ def setWithdrawalQueue(queue: address[MAX_STRATEGIES]):
 # # u.approve(v2, bal of v1, {from: v1})
 # # u.transferFrom(v1, v2, bal of v1, {from: v2})
 
-# @external
-# def skim():
-#     assert msg.sender == self.admin, "!admin"
-#     diff: uint256 = self.token.balanceOf(self) - self.balanceInVault
-#     self._safeTransfer(self.token.address, self.admin, diff)
-
-
-# @external
-# def sweep(token: address):
-#     assert msg.sender == self.admin, "!admin"
-#     assert token != self.token.address, "protected token"
-#     self._safeTransfer(token, self.admin, ERC20(token).balanceOf(self))
+@external
+def skim():
+    assert msg.sender == self.admin, "!admin"
+    diff: uint256 = self.token.balanceOf(self) - self.balanceInVault
+    self._safeTransfer(self.token.address, self.admin, diff)
 
 
 @external
-def foo():
-    pass
+def sweep(token: address):
+    assert msg.sender == self.admin, "!admin"
+    assert token != self.token.address, "protected token"
+    self._safeTransfer(token, self.admin, ERC20(token).balanceOf(self))
