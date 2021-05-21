@@ -1,4 +1,3 @@
-
 # @version 0.2.12
 
 """
@@ -20,46 +19,86 @@ interface UnagiiToken:
     def balanceOf(owner: address) -> uint256: view
     def mint(receiver: address, amount: uint256): nonpayable
     def burn(spender: address, amount: uint256): nonpayable
+    def lastBlock(owner: address) -> uint256: view
 
 
 interface IStrategy:
     def vault() -> address: view
     def token() -> address: view
+    def totalAssets() -> uint256: view
     def withdraw(amount: uint256) -> uint256: nonpayable
 
-event ApproveStrategy:
-    strategy: indexed(address)
 
-event RevokeStrategy:
-    strategy: indexed(address)
+event UpdateAdmin:
+    admin: address
 
-event SetStrategy:
-    strategy: indexed(address)
+event UpdateTimeLock:
+    timeLock: address
 
+event UpdateGuardian:
+    guardian: address
+
+event UpdateKeeper:
+    keeper: address
+
+event SetPause:
+    paused: bool
+
+event UpdateDepositLimit:
+    depositLimit: uint256
+
+event UpdatePerformanceFee:
+    performanceFee: uint256
+
+MAX_BPS: constant(uint256) = 10000
 # TODO: remove?
 # https://github.com/yearn/yearn-vaults/issues/333
 # Adjust for each token PRECISION_FACTOR = 10 ** (18 - token.decimals)
 PRECISION_FACTOR: constant(uint256) = 1
 
-admin: public(address)
-timeLock: public(address)
-guardian: public(address)
 token: public(ERC20)
 uToken: public(UnagiiToken)
+admin: public(address)
+nextAdmin: public(address)
+timeLock: public(address)
+guardian: public(address)
+keeper: public(address)
+
 paused: public(bool)
+
+depositLimit: public(uint256)
+totalDebtRatio: public(uint256)
+totalDebt: public(uint256)
+lastReport: public(uint256)
+lockedProfit: public(uint256)
+DEGRADATION_COEFFICIENT: constant(uint256) = 10 ** 18
+lockedProfitDegradation: public(uint256)
 balanceInVault: public(uint256)
-debtInStrategy: public(uint256)  # Amount of tokens that all strategies have borrowed
-strategy: public(IStrategy)
-strategies: public(HashMap[address, bool])
+# TODO: remove?
+PERFORMANCE_FEE_CAP: constant(uint256) = 2000
+performanceFee: public(uint256)
+
+blockDelay: public(uint256)
+# Token has fee on transfer
+feeOnTransfer: public(bool)
 
 
 @external
-def __init__(token: address, uToken: address):
+def __init__(
+    token: address,
+    uToken: address,
+    timeLock: address,
+    guardian: address,
+    keeper: address
+):
     self.admin = msg.sender
-    self.timeLock = msg.sender
-    self.guardian = msg.sender
+    self.timeLock = timeLock
+    self.guardian = guardian
+    self.keeper = keeper
     self.token = ERC20(token)
     self.uToken = UnagiiToken(uToken)
+
+    assert self.uToken.token() == self.token.address, "uToken.token != token"
 
     decimals: uint256 = DetailedERC20(self.token.address).decimals()
     if decimals < 18:
@@ -67,9 +106,85 @@ def __init__(token: address, uToken: address):
     else:
         assert PRECISION_FACTOR == 1, "precision != 1"
 
-    assert self.uToken.token() == self.token.address, "uToken.token != token"
-
     self.paused = True
+    self.blockDelay = 10
+
+
+@external
+def setNextAdmin(_nextAdmin: address):
+    assert msg.sender == self.admin, "!admin"
+    assert _nextAdmin != self.admin, "next admin = current"
+    self.nextAdmin = _nextAdmin
+
+
+@external
+def acceptAdmin():
+    assert msg.sender == self.nextAdmin, "!next admin"
+    self.admin = msg.sender
+    log UpdateAdmin(msg.sender)
+
+
+@external 
+def setTimeLock(timeLock: address):
+    assert msg.sender == self.admin, "!admin"
+    self.timeLock = timeLock
+    log UpdateTimeLock(timeLock)
+
+
+@external 
+def setGuardian(guardian: address):
+    assert msg.sender == self.admin, "!admin"
+    self.guardian = guardian
+    log UpdateGuardian(guardian)
+
+
+@external 
+def setKeeper(keeper: address):
+    assert msg.sender == self.admin, "!admin"
+    self.keeper = keeper
+    log UpdateKeeper(keeper)
+
+
+@external
+def setPause(paused: bool):
+    assert msg.sender in [self.admin, self.guardian], "!authorized"
+    self.paused = paused
+    log SetPause(paused)
+
+
+@external
+def setLockedProfitDegradation(degradation: uint256):
+    assert msg.sender == self.admin, "!admin"
+    assert degradation <= DEGRADATION_COEFFICIENT
+    self.lockedProfitDegradation = degradation
+
+
+@external
+def setDepositLimit(limit: uint256):
+    assert msg.sender == self.admin
+    self.depositLimit = limit
+    log UpdateDepositLimit(limit)
+
+
+@external
+def setPerformanceFee(fee: uint256):
+    assert msg.sender == self.admin, "!admin"
+    assert fee <= PERFORMANCE_FEE_CAP
+    self.performanceFee = fee
+    log UpdatePerformanceFee(fee)
+
+
+@external
+def setBlockDelay(delay: uint256):
+    assert msg.sender == self.admin, "!admin"
+    assert delay >= 1, "delay = 0"
+    self.blockDelay = delay
+
+
+@external
+def setFeeOnTransfer(feeOnTransfer: bool):
+    assert msg.sender == self.admin, "!admin"
+    self.feeOnTransfer = feeOnTransfer
 
 
 @internal
@@ -106,7 +221,7 @@ def _safeTransferFrom(token: address, sender: address, receiver: address, amount
 @internal
 @view
 def _totalAssets() -> uint256:
-    return self.balanceInVault + self.debtInStrategy
+    return self.balanceInVault + self.totalDebt
 
 
 @external
@@ -161,44 +276,21 @@ def _calcSharesToBurn(amount: uint256, totalSupply: uint256, totalAssets: uint25
     return amount * totalSupply / totalAssets
 
 
-DEGREDATION_COEFFICIENT: constant(uint256) = 10 ** 18
-
-lastReport: public(uint256)  # block.timestamp of last report
-lockedProfit: public(uint256) # how much profit is locked and cant be withdrawn
-lockedProfitDegration: public(uint256) # rate per block of degration. DEGREDATION_COEFFICIENT is 100% per block
-
-@external
-def setLockedProfitDegration(degration: uint256):
-    """
-    @notice
-        Changes the locked profit degration.
-    @param degration The rate of degration in percent per second scaled to 1e18.
-    """
-    assert msg.sender == self.admin, "!admin"
-    assert degration <= DEGREDATION_COEFFICIENT, "degration > max"
-    self.lockedProfitDegration = degration
-
-
-@internal
 @view
-def _calcFreeFunds(totalAssets: uint256) -> uint256:
-    # # Determines the current value of `shares`.
-    #     # NOTE: if sqrt(Vault.totalAssets()) >>> 1e39, this could potentially revert
-    lockedFundsRatio: uint256 = (block.timestamp - self.lastReport) * self.lockedProfitDegration
-    # TODO: what if totalAssets > total debt in strategies (strategy was hacked)
-    freeFunds: uint256 = totalAssets
-    if lockedFundsRatio < DEGREDATION_COEFFICIENT:
-        freeFunds -= (
-            self.lockedProfit
-             - (
-                 PRECISION_FACTOR
-                 * lockedFundsRatio
-                 * self.lockedProfit
-                 / DEGREDATION_COEFFICIENT
-                 / PRECISION_FACTOR
-             )
-         )
-    return freeFunds
+@internal
+def _calcLockedProfit() -> uint256:
+    # TODO: math
+    lockedFundsRatio: uint256 = (block.timestamp - self.lastReport) * self.lockedProfitDegradation
+
+    if(lockedFundsRatio < DEGRADATION_COEFFICIENT):
+        lockedProfit: uint256 = self.lockedProfit
+        return lockedProfit - (
+                lockedFundsRatio
+                * lockedProfit
+                / DEGRADATION_COEFFICIENT
+            )
+    else:        
+        return 0
 
 
 @internal
@@ -230,15 +322,16 @@ def _calcWithdraw(shares: uint256, totalSupply: uint256, totalAssets: uint256) -
 def calcWithdraw(shares: uint256) -> uint256:
     totalSupply: uint256 = self.uToken.totalSupply()
     totalAssets: uint256 = self._totalAssets()
-    freeFunds: uint256 = self._calcFreeFunds(totalAssets)
+    freeFunds: uint256 = totalAssets - self._calcLockedProfit()
     return self._calcWithdraw(shares, totalSupply, freeFunds)
 
+
 # TODO: deposit log
-# TODO: deposit / withdraw block
 @external
 @nonreentrant("lock")
 def deposit(amount: uint256, minShares: uint256) -> uint256:
     assert not self.paused, "paused"
+    assert block.number >= self.uToken.lastBlock(msg.sender) + self.blockDelay, "block < delay" 
 
     _amount: uint256 = amount
     if _amount == MAX_UINT256:
@@ -248,179 +341,118 @@ def deposit(amount: uint256, minShares: uint256) -> uint256:
     totalSupply: uint256 = self.uToken.totalSupply()
     totalAssets: uint256 = self._totalAssets()
 
-    # TODO: safe gas if no FOT
-    # Actual amount transferred may be less than `_amount`,
-    # for example if token has fee on transfer
-    diff: uint256 = self.token.balanceOf(self)
-    self._safeTransferFrom(self.token.address, msg.sender, self, _amount)
-    bal: uint256 = self.token.balanceOf(self)
-    diff = bal - diff
+    diff: uint256 = 0
+    if self.feeOnTransfer:
+        # Actual amount transferred may be less than `_amount`,
+        # for example if token has fee on transfer
+        diff = self.token.balanceOf(self)
+        self._safeTransferFrom(self.token.address, msg.sender, self, _amount)
+        diff = self.token.balanceOf(self) - diff
+    else:
+        self._safeTransferFrom(self.token.address, msg.sender, self, _amount)
+        diff = _amount
+
     assert diff > 0, "diff = 0"
 
     shares: uint256 = self._calcSharesToMint(diff, totalSupply, totalAssets)
     assert shares >= minShares, "shares < min"
-
-    self.uToken.mint(msg.sender, shares)
-
+    
     self.balanceInVault += diff
-    # TODO: remove?
-    assert bal >= self.balanceInVault, "bal < bal in vault"
+    self.uToken.mint(msg.sender, shares)
 
     return shares
 
 
-# # TODO: withdraw log
+# TODO: withdraw log
 @external
 @nonreentrant("withdraw")
 def withdraw(shares: uint256, minAmount: uint256) -> uint256:
-    _shares: uint256 = shares
-    if _shares == MAX_UINT256:
-        _shares = self.uToken.balanceOf(msg.sender)
-    assert shares > 0, "shares = 0"
+    # TODO: smart contract cannot transferFrom and then withdraw
+    assert block.number >= self.uToken.lastBlock(msg.sender) + self.blockDelay, "block < delay" 
+
+    _shares: uint256 = min(shares, self.uToken.balanceOf(msg.sender))
+    assert _shares > 0, "shares = 0"
 
     totalSupply: uint256 = self.uToken.totalSupply()
     totalAssets: uint256 = self._totalAssets()
-    freeFunds: uint256 = self._calcFreeFunds(totalAssets)
+    freeFunds: uint256 = totalAssets - self._calcLockedProfit()
     amount: uint256 = self._calcWithdraw(_shares, totalSupply, freeFunds)
 
+    totalLoss: uint256 = 0
     if amount > self.balanceInVault:
-        amountNeeded: uint256 = amount - self.balanceInVault
-
-        diff: uint256 = self.token.balanceOf(self)
-        self.strategy.withdraw(amountNeeded)
-        diff = self.token.balanceOf(self) - diff
-
-        self.balanceInVault += diff
-        self.debtInStrategy -= diff
-
-        if diff < amountNeeded:
-            amount -= amountNeeded - diff
+        # TODO:
+        pass
 
     self.uToken.burn(msg.sender, _shares)
 
-    # TODO: FOT?
-    diff: uint256 = self.token.balanceOf(self)
-    self._safeTransfer(self.token.address, msg.sender, amount)
-    bal: uint256 = self.token.balanceOf(self)
-    diff = bal - diff
+    diff: uint256 = 0
+    if self.feeOnTransfer:
+        diff = self.token.balanceOf(self)
+        self._safeTransfer(self.token.address, msg.sender, amount)
+        diff  = self.token.balanceOf(self) - diff
+    else:
+        self._safeTransfer(self.token.address, msg.sender, amount)
+        diff = amount
 
     assert diff >= minAmount, "diff < min"
     self.balanceInVault -= diff
 
     # TODO: remove?
-    assert bal >= self.balanceInVault, "bal < bal in vault"
+    # assert bal >= self.balanceInVault, "bal < balance in vault"
 
     return diff
 
 
 # @external
-# def approveStrategy(strategy: address):
-#     assert not self.paused, "paused"
-#     assert msg.sender == self.timeLock, "!time lock"
-
-#     assert not self.strategies[strategy].approved, "approved"
-#     assert IStrategy(strategy).vault() == self, "strategy.vault != vault"
-#     assert IStrategy(strategy).token() == self.token.address, "strategy.token != token"
-
-#     self.strategies[strategy] = Strategy({
-#         approved: True,
-#         debt: 0
-#     })
-#     log ApproveStrategy(strategy)
-
-
-# @external
-# def revokeStrategy(strategy: address):
-#     assert msg.sender == self.admin, "!admin"
-#     assert self.strategies[strategy].approved, "!approved"
-#     assert strategy not in self.withdrawalQueue, "active"
-
-#     self.strategies[strategy].approved = False
-#     log RevokeStrategy(strategy)
-
-
-# @internal
-# def _pack():
-#     arr: address[MAX_STRATEGIES] = empty(address[MAX_STRATEGIES])
-#     i: uint256 = 0
-#     for strat in self.withdrawalQueue:
-#         if strat != ZERO_ADDRESS:
-#             arr[i] = strat
-#             i += 1
-#     self.withdrawalQueue = arr
-
-
-# @internal
-# def _append(strategy: address):
-#     assert self.withdrawalQueue[MAX_STRATEGIES - 1] == ZERO_ADDRESS, "active > max"
-#     self.withdrawalQueue[MAX_STRATEGIES - 1] = strategy
-#     self._pack()
-
-
-# @internal
-# def _remove(i: uint256):
-#     assert i < MAX_STRATEGIES, "i >= max"
-#     self.withdrawalQueue[i] = ZERO_ADDRESS
-#     self._pack()
-
-
-# @internal
-# @view
-# def _find(strategy: address) -> uint256:
-#     for i in range(MAX_STRATEGIES):
-#         if self.withdrawalQueue[i] == strategy:
-#             return i
-#     raise "strategy not found"
-
-
-# @external
-# def addStrategyToQueue(strategy: address):
-#     assert msg.sender == self.admin, "!admin"
-#     assert self.strategies[strategy].approved, "!approved"
-#     assert strategy not in self.withdrawalQueue, "active"
-
-#     self._append(strategy)
-#     log AddStrategyToQueue(strategy)
-
-
-# @external
-# def removeStrategyFromQueue(strategy: address):
-#     assert msg.sender == self.admin, "!admin"
-#     assert strategy in self.withdrawalQueue, "!active"
-
-#     i: uint256 = self._find(strategy)
-#     self._remove(i)
-#     log RemoveStrategyFromQueue(strategy)
-
-
-# @external
 # def borrow(amount: uint256):
-#     pass
+#     assert self.strategies[msg.sender].active, "!active"
+
+#     available: uint256 = self._creditAvailable(msg.sender)
+#     _amount: uint256 = min(amount, available)
+#     assert _amount > 0, "borrow = 0"
+
+#     self._safeTransfer(self.token.address, msg.sender, _amount)
+
+#     # include fee on trasfer to debt 
+#     self.strategies[msg.sender].debt += amount
+#     self.totalDebt += amount
+#     self.balanceInVault -= amount
+
+#     # TODO: remove?
+#     # bal: uint256 = self.token.balanceOf(self)
+#     # assert bal >= self.balanceInVault(self), "bal < balance in vault"
 
 
 # @external
 # def repay(amount: uint256):
-#     pass
+#     assert self.strategies[msg.sender].active, "!active"
+#     assert amount > 0, "repay = 0"
+
+#     diff: uint256 = self.token.balanceOf(self)
+#     self._safeTransferFrom(self.token.address, msg.sender, self, amount)
+#     diff  = self.token.balanceOf(self) - diff
+
+#     self.strategies[msg.sender].debt -= diff
+#     self.totalDebt -= diff
+#     self.balanceInVault += diff
+
+    # TODO: remove?
+    # bal: uint256 = self.token.balanceOf(self)
+    # assert bal >= self.balanceInVault(self), "bal < balance in vault"
 
 
-# @external
-# def sync():
-#     pass
+# # migration
 
+# # u = token token
+# # ut = unagi token
+# # v1 = vault 1
+# # v2 = vault 2
 
-
-# migration
-
-# u = token token
-# ut = unagi token
-# v1 = vault 1
-# v2 = vault 2
-
-# v2.pause
-# v1.pause
-# ut.setMinter(v2)
-# u.approve(v2, bal of v1, {from: v1})
-# u.transferFrom(v1, v2, bal of v1, {from: v2})
+# # v2.pause
+# # v1.pause
+# # ut.setMinter(v2)
+# # u.approve(v2, bal of v1, {from: v1})
+# # u.transferFrom(v1, v2, bal of v1, {from: v2})
 
 @external
 def skim():
