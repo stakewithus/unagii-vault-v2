@@ -320,26 +320,21 @@ def _calcSharesToBurn(amount: uint256, totalSupply: uint256, totalAssets: uint25
     return amount * totalSupply / totalAssets
 
 
-@internal
 @view
-def _calcFreeFunds(totalAssets: uint256) -> uint256:
-    # # Determines the current value of `shares`.
-    #     # NOTE: if sqrt(Vault.totalAssets()) >>> 1e39, this could potentially revert
+@internal
+def _calcLockedProfit() -> uint256:
+    # TODO: math
     lockedFundsRatio: uint256 = (block.timestamp - self.lastReport) * self.lockedProfitDegradation
-    # TODO: what if totalAssets > total debt in strategies (strategy was hacked)
-    freeFunds: uint256 = totalAssets
-    if lockedFundsRatio < DEGRADATION_COEFFICIENT:
-        freeFunds -= (
-            self.lockedProfit
-             - (
-                 PRECISION_FACTOR
-                 * lockedFundsRatio
-                 * self.lockedProfit
-                 / DEGRADATION_COEFFICIENT
-                 / PRECISION_FACTOR
-             )
-         )
-    return freeFunds
+
+    if(lockedFundsRatio < DEGRADATION_COEFFICIENT):
+        lockedProfit: uint256 = self.lockedProfit
+        return lockedProfit - (
+                lockedFundsRatio
+                * lockedProfit
+                / DEGRADATION_COEFFICIENT
+            )
+    else:        
+        return 0
 
 
 @internal
@@ -371,7 +366,7 @@ def _calcWithdraw(shares: uint256, totalSupply: uint256, totalAssets: uint256) -
 def calcWithdraw(shares: uint256) -> uint256:
     totalSupply: uint256 = self.uToken.totalSupply()
     totalAssets: uint256 = self._totalAssets()
-    freeFunds: uint256 = self._calcFreeFunds(totalAssets)
+    freeFunds: uint256 = totalAssets - self._calcLockedProfit()
     return self._calcWithdraw(shares, totalSupply, freeFunds)
 
 
@@ -424,7 +419,7 @@ def withdraw(shares: uint256, minAmount: uint256) -> uint256:
 
     totalSupply: uint256 = self.uToken.totalSupply()
     totalAssets: uint256 = self._totalAssets()
-    freeFunds: uint256 = self._calcFreeFunds(totalAssets)
+    freeFunds: uint256 = totalAssets - self._calcLockedProfit()
     amount: uint256 = self._calcWithdraw(_shares, totalSupply, freeFunds)
 
     totalLoss: uint256 = 0
