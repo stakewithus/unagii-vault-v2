@@ -30,6 +30,8 @@ interface IStrategy:
 
 
 MAX_STRATEGIES: constant(uint256) = 20
+MAX_BPS: constant(uint256) = 10000
+MAX_PERFORMANCE_FEE: constant(uint256) = 2000 #TODO: max
 
 struct Strategy:
     approved: bool
@@ -38,6 +40,9 @@ struct Strategy:
     debt: uint256
     gain: uint256
     loss: uint256
+    lastReport: uint256
+    performanceFee: uint256
+    # TODO: remove?
     minDebtPerHarvest: uint256
     maxDebtPerHarvest: uint256
 
@@ -56,11 +61,12 @@ event UpdateKeeper:
 event SetPause:
     paused: bool
 
+event SetWhitelist:
+    addr: indexed(address)
+    approved: bool
+
 event UpdateDepositLimit:
     depositLimit: uint256
-
-event UpdatePerformanceFee:
-    performanceFee: uint256
 
 event ApproveStrategy:
     strategy: indexed(address)
@@ -77,12 +83,23 @@ event RemoveStrategyFromQueue:
 event UpdateWithdrawalQueue:
     queue: address[MAX_STRATEGIES]
 
-event SetWhitelist:
-    addr: indexed(address)
-    approved: bool
+event StrategyUpdateDebtRatio:
+    strategy: indexed(address)
+    debtRatio: uint256
+
+event StrategyUpdateMinDebtPerHarvest:
+    strategy: indexed(address)
+    minDebtPerHarvest: uint256
+
+event StrategyUpdateMaxDebtPerHarvest:
+    strategy: indexed(address)
+    maxDebtPerHarvest: uint256
+
+event StrategyUpdatePerformanceFee:
+    strategy: indexed(address)
+    performanceFee: uint256
 
 # TODO: min reserve
-
 token: public(ERC20)
 uToken: public(UnagiiToken)
 admin: public(address)
@@ -105,11 +122,6 @@ lockedProfit: public(uint256)
 DEGRADATION_COEFFICIENT: constant(uint256) = 10 ** 18
 lockedProfitDegradation: public(uint256)
 balanceInVault: public(uint256)
-MAX_BPS: constant(uint256) = 10000
-# TODO: remove?
-PERFORMANCE_FEE_CAP: constant(uint256) = 2000
-performanceFee: public(uint256)
-
 # TODO: remove?
 # https://github.com/yearn/yearn-vaults/issues/333
 # Adjust for each token PRECISION_FACTOR = 10 ** (18 - token.decimals)
@@ -202,14 +214,6 @@ def setDepositLimit(limit: uint256):
     assert msg.sender == self.admin
     self.depositLimit = limit
     log UpdateDepositLimit(limit)
-
-
-@external
-def setPerformanceFee(fee: uint256):
-    assert msg.sender == self.admin, "!admin"
-    assert fee <= PERFORMANCE_FEE_CAP
-    self.performanceFee = fee
-    log UpdatePerformanceFee(fee)
 
 
 @external
@@ -638,6 +642,44 @@ def setWithdrawalQueue(queue: address[MAX_STRATEGIES]):
         self.withdrawalQueue[i] = strat
 
     log UpdateWithdrawalQueue(queue)
+
+
+@external
+def updateStrategyDebtRatio(strategy: address, debtRatio: uint256):
+    assert msg.sender == self.admin, "!admin"
+    assert self.strategies[strategy].active, "!active"
+    self.totalDebtRatio -= self.strategies[strategy].debtRatio
+    self.strategies[strategy].debtRatio = debtRatio
+    self.totalDebtRatio += debtRatio
+    assert self.totalDebtRatio <= MAX_BPS, "total debt ratio > max"
+    log StrategyUpdateDebtRatio(strategy, debtRatio)
+
+
+@external
+def updateStrategyMinDebtPerHarvest(strategy: address, minDebtPerHarvest: uint256):
+    assert msg.sender == self.admin, "!admin"
+    assert self.strategies[strategy].approved, "!approved"
+    assert self.strategies[strategy].maxDebtPerHarvest >= minDebtPerHarvest
+    self.strategies[strategy].minDebtPerHarvest = minDebtPerHarvest
+    log StrategyUpdateMinDebtPerHarvest(strategy, minDebtPerHarvest)
+
+
+@external
+def updateStrategyMaxDebtPerHarvest(strategy: address, maxDebtPerHarvest: uint256):
+    assert msg.sender == self.admin, "!admin"
+    assert self.strategies[strategy].approved, "!approved"
+    assert self.strategies[strategy].minDebtPerHarvest <= maxDebtPerHarvest
+    self.strategies[strategy].maxDebtPerHarvest = maxDebtPerHarvest
+    log StrategyUpdateMaxDebtPerHarvest(strategy, maxDebtPerHarvest)
+
+
+@external
+def updateStrategyPerformanceFee(strategy: address, performanceFee: uint256):
+    assert msg.sender == self.admin, "!admin"
+    assert performanceFee <= MAX_PERFORMANCE_FEE, "performance fee > max"
+    assert self.strategies[strategy].approved, "!approved"
+    self.strategies[strategy].performanceFee = performanceFee
+    log StrategyUpdatePerformanceFee(strategy, performanceFee)
 
 
 @view
