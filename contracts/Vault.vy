@@ -374,31 +374,31 @@ def calcWithdraw(shares: uint256) -> uint256:
 # TODO: deposit limit
 @external
 @nonreentrant("lock")
-def deposit(amount: uint256, minShares: uint256) -> uint256:
+def deposit(_amount: uint256, minShares: uint256) -> uint256:
     assert not self.paused, "paused"
     assert (
         self.whitelist[msg.sender] or
         block.number >= self.uToken.lastBlock(msg.sender) + self.blockDelay
     ), "block < delay" 
 
-    _amount: uint256 = amount
-    if _amount == MAX_UINT256:
-        _amount = self.token.balanceOf(msg.sender)
-    assert _amount > 0, "deposit = 0"
+    amount: uint256 = _amount
+    if amount == MAX_UINT256:
+        amount = self.token.balanceOf(msg.sender)
+    assert amount > 0, "deposit = 0"
 
     totalSupply: uint256 = self.uToken.totalSupply()
     totalAssets: uint256 = self._totalAssets()
 
     diff: uint256 = 0
     if self.feeOnTransfer:
-        # Actual amount transferred may be less than `_amount`,
+        # Actual amount transferred may be less than `amount`,
         # for example if token has fee on transfer
         diff = self.token.balanceOf(self)
-        self._safeTransferFrom(self.token.address, msg.sender, self, _amount)
+        self._safeTransferFrom(self.token.address, msg.sender, self, amount)
         diff = self.token.balanceOf(self) - diff
     else:
-        self._safeTransferFrom(self.token.address, msg.sender, self, _amount)
-        diff = _amount
+        self._safeTransferFrom(self.token.address, msg.sender, self, amount)
+        diff = amount
 
     assert diff > 0, "diff = 0"
 
@@ -413,21 +413,21 @@ def deposit(amount: uint256, minShares: uint256) -> uint256:
 
 # TODO: withdraw log
 @external
-@nonreentrant("withdraw")
-def withdraw(shares: uint256, minAmount: uint256) -> uint256:
+@nonreentrant("lock")
+def withdraw(_shares: uint256, minAmount: uint256) -> uint256:
     # TODO: smart contract cannot transferFrom and then withdraw?
     assert (
         self.whitelist[msg.sender] or
         block.number >= self.uToken.lastBlock(msg.sender) + self.blockDelay
     ), "block < delay" 
 
-    _shares: uint256 = min(shares, self.uToken.balanceOf(msg.sender))
-    assert _shares > 0, "shares = 0"
+    shares: uint256 = min(_shares, self.uToken.balanceOf(msg.sender))
+    assert shares > 0, "shares = 0"
 
     totalSupply: uint256 = self.uToken.totalSupply()
     totalAssets: uint256 = self._totalAssets()
     freeFunds: uint256 = totalAssets - self._calcLockedProfit()
-    amount: uint256 = self._calcWithdraw(_shares, totalSupply, freeFunds)
+    amount: uint256 = self._calcWithdraw(shares, totalSupply, freeFunds)
 
     totalLoss: uint256 = 0
     if amount > self.balanceInVault:
@@ -477,13 +477,13 @@ def withdraw(shares: uint256, minAmount: uint256) -> uint256:
             # NOTE: Burn # of shares that corresponds to what Vault has on-hand,
             #       including the losses that were incurred above during withdrawal
             totalAssets = self._totalAssets()
-            _shares = self._calcSharesToBurn(amount + totalLoss, totalSupply, totalAssets)
+            shares = self._calcSharesToBurn(amount + totalLoss, totalSupply, totalAssets)
 
     # NOTE: This loss protection is put in place to revert if losses from
     #       withdrawing are more than what is considered acceptable.
     # assert totalLoss <= PRECISION_FACTOR * maxLoss * (amount + totalLoss) / MAX_BPS / PREPRECISION_FACTOR
 
-    self.uToken.burn(msg.sender, _shares)
+    self.uToken.burn(msg.sender, shares)
 
     diff: uint256 = 0
     if self.feeOnTransfer:
