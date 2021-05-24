@@ -755,45 +755,6 @@ def creditAvailable(strategy: address) -> uint256:
 
 
 @external
-def borrow(amount: uint256):
-    assert self.strategies[msg.sender].active, "!active"
-
-    available: uint256 = self._creditAvailable(msg.sender)
-    _amount: uint256 = min(amount, available)
-    assert _amount > 0, "borrow = 0"
-
-    self._safeTransfer(self.token.address, msg.sender, _amount)
-
-    # include fee on trasfer to debt 
-    self.strategies[msg.sender].debt += amount
-    self.totalDebt += amount
-    self.balanceInVault -= amount
-
-    # TODO: remove?
-    # bal: uint256 = self.token.balanceOf(self)
-    # assert bal >= self.balanceInVault(self), "bal < balance in vault"
-
-
-@external
-def repay(amount: uint256):
-    assert self.strategies[msg.sender].active, "!active"
-    assert amount > 0, "repay = 0"
-
-    diff: uint256 = self.token.balanceOf(self)
-    self._safeTransferFrom(self.token.address, msg.sender, self, amount)
-    diff  = self.token.balanceOf(self) - diff
-
-    self.strategies[msg.sender].debt -= diff
-    self.totalDebt -= diff
-    self.balanceInVault += diff
-
-    # TODO: remove?
-    # bal: uint256 = self.token.balanceOf(self)
-    # assert bal >= self.balanceInVault(self), "bal < balance in vault"
-
-
-
-@external
 def report(gain: uint256, loss: uint256, _debtPayment: uint256) -> uint256:
     assert self.strategies[msg.sender].active, "!active"
     assert self.token.balanceOf(msg.sender) >= gain + _debtPayment
@@ -876,6 +837,47 @@ def report(gain: uint256, loss: uint256, _debtPayment: uint256) -> uint256:
     else:
         # Otherwise, just return what we have as debt outstanding
         return debt
+
+
+# TODO: boorw
+# @external
+# def borrow(amount: uint256):
+#     assert self.strategies[msg.sender].active, "!active"
+
+#     available: uint256 = self._creditAvailable(msg.sender)
+#     _amount: uint256 = min(amount, available)
+#     assert _amount > 0, "borrow = 0"
+
+#     self._safeTransfer(self.token.address, msg.sender, _amount)
+
+#     # include fee on trasfer to debt 
+#     self.strategies[msg.sender].debt += amount
+#     self.totalDebt += amount
+#     self.balanceInVault -= amount
+
+#     # TODO: remove?
+#     # bal: uint256 = self.token.balanceOf(self)
+#     # assert bal >= self.balanceInVault(self), "bal < balance in vault"
+
+
+# TODO: repay
+# @external
+# def repay(amount: uint256):
+#     assert self.strategies[msg.sender].active, "!active"
+#     assert amount > 0, "repay = 0"
+
+#     diff: uint256 = self.token.balanceOf(self)
+#     self._safeTransferFrom(self.token.address, msg.sender, self, amount)
+#     diff  = self.token.balanceOf(self) - diff
+
+#     self.strategies[msg.sender].debt -= diff
+#     self.totalDebt -= diff
+#     self.balanceInVault += diff
+
+#     # TODO: remove?
+#     # bal: uint256 = self.token.balanceOf(self)
+#     # assert bal >= self.balanceInVault(self), "bal < balance in vault"
+
 
 
 # # migration
