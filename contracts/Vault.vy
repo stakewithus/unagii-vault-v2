@@ -715,22 +715,6 @@ def _debtOutstanding(strategy: address) -> uint256:
         return debt - debtLimit
 
 
-@view
-@internal
-def _calculateLockedProfit() -> uint256:
-    lockedFundsRatio: uint256 = (block.timestamp - self.lastReport) * self.lockedProfitDegradation
-
-    if(lockedFundsRatio < DEGRADATION_COEFFICIENT):
-        lockedProfit: uint256 = self.lockedProfit
-        return lockedProfit - (
-                lockedFundsRatio
-                * lockedProfit
-                / DEGRADATION_COEFFICIENT
-            )
-    else:        
-        return 0
-
-
 @external
 def report(gain: uint256, loss: uint256, _debtPayment: uint256) -> uint256:
     assert self.strategies[msg.sender].active, "!active"
@@ -784,7 +768,7 @@ def report(gain: uint256, loss: uint256, _debtPayment: uint256) -> uint256:
 
     # Profit is locked and gradually released per block
     # NOTE: compute current locked profit and replace with sum of current and new
-    lockedProfitBeforeLoss :uint256 = self._calculateLockedProfit() + gain - totalFees 
+    lockedProfitBeforeLoss :uint256 = self._calcLockedProfit() + gain - totalFees 
     if lockedProfitBeforeLoss > loss: 
         self.lockedProfit = lockedProfitBeforeLoss - loss
     else:
