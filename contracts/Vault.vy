@@ -148,6 +148,8 @@ def __init__(
     self.paused = True
     self.blockDelay = 10
     self.lastReport = block.timestamp
+    # 6 hours
+    self.lockedProfitDegradation = convert(DEGRADATION_COEFFICIENT / 21600 , uint256)
 
 
 @external
@@ -316,16 +318,11 @@ def _calcSharesToBurn(amount: uint256, totalSupply: uint256, totalAssets: uint25
 @view
 @internal
 def _calcLockedProfit() -> uint256:
-    # TODO: math
     lockedFundsRatio: uint256 = (block.timestamp - self.lastReport) * self.lockedProfitDegradation
 
     if(lockedFundsRatio < DEGRADATION_COEFFICIENT):
         lockedProfit: uint256 = self.lockedProfit
-        return lockedProfit - (
-                lockedFundsRatio
-                * lockedProfit
-                / DEGRADATION_COEFFICIENT
-            )
+        return lockedProfit - lockedFundsRatio * lockedProfit / DEGRADATION_COEFFICIENT
     else:        
         return 0
 
