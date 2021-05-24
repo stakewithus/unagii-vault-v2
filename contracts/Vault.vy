@@ -375,7 +375,10 @@ def calcWithdraw(shares: uint256) -> uint256:
 @nonreentrant("lock")
 def deposit(amount: uint256, minShares: uint256) -> uint256:
     assert not self.paused, "paused"
-    assert self.whitelist[msg.sender] or block.number >= self.uToken.lastBlock(msg.sender) + self.blockDelay, "block < delay" 
+    assert (
+        self.whitelist[msg.sender] or
+        block.number >= self.uToken.lastBlock(msg.sender) + self.blockDelay
+    ), "block < delay" 
 
     _amount: uint256 = amount
     if _amount == MAX_UINT256:
@@ -412,7 +415,10 @@ def deposit(amount: uint256, minShares: uint256) -> uint256:
 @nonreentrant("withdraw")
 def withdraw(shares: uint256, minAmount: uint256) -> uint256:
     # TODO: smart contract cannot transferFrom and then withdraw?
-    assert self.whitelist[msg.sender] or block.number >= self.uToken.lastBlock(msg.sender) + self.blockDelay, "block < delay" 
+    assert (
+        self.whitelist[msg.sender] or
+        block.number >= self.uToken.lastBlock(msg.sender) + self.blockDelay
+    ), "block < delay" 
 
     _shares: uint256 = min(shares, self.uToken.balanceOf(msg.sender))
     assert _shares > 0, "shares = 0"
