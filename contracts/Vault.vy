@@ -596,7 +596,7 @@ def approveStrategy(
 
 @external
 def revokeStrategy(strategy: address):
-    assert msg.sender == self.admin, "!admin"
+    assert msg.sender in [self.admin, self.guardian], "!auth"
     assert self.strategies[strategy].approved, "!approved"
     assert not self.strategies[strategy].active, "active"
 
@@ -607,26 +607,27 @@ def revokeStrategy(strategy: address):
 @external
 def addStrategyToQueue(strategy: address, debtRatio: uint256):
     assert not self.paused, "paused"
-    assert msg.sender == self.admin, "!admin"
+    assert msg.sender in [self.admin, self.keeper], "!auth"
     assert self.strategies[strategy].approved, "!approved"
     assert not self.strategies[strategy].active, "active"
-
-    self.totalDebtRatio += debtRatio
-    assert self.totalDebtRatio <= MAX_BPS, "total debt ratio > max"
+    assert self.totalDebtRatio + debtRatio <= MAX_BPS, "total debt ratio > max"
 
     self._append(strategy)
     self.strategies[strategy].active = True
     self.strategies[strategy].debtRatio = debtRatio
+    self.totalDebtRatio += debtRatio
     log AddStrategyToQueue(strategy)
 
 
 @external
 def removeStrategyFromQueue(strategy: address):
-    assert msg.sender == self.admin, "!admin"
+    assert msg.sender in [self.admin, self.keeper], "!auth"
     assert self.strategies[strategy].active, "!active"
 
     self._remove(self._find(strategy))
     self.strategies[strategy].active = False
+    self.totalDebtRatio -= self.strategies[strategy].debtRatio
+    self.strategies[strategy].debtRatio = 0
     log RemoveStrategyFromQueue(strategy)
 
 
@@ -704,6 +705,8 @@ def updateStrategyPerformanceFee(strategy: address, performanceFee: uint256):
     self.strategies[strategy].performanceFee = performanceFee
     log StrategyUpdatePerformanceFee(strategy, performanceFee)
 
+
+# TODO: migrate strategy
 
 @view
 @internal
