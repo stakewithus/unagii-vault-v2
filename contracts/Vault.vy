@@ -122,11 +122,6 @@ lockedProfit: public(uint256)
 DEGRADATION_COEFFICIENT: constant(uint256) = 10 ** 18
 lockedProfitDegradation: public(uint256)
 balanceInVault: public(uint256)
-# TODO: remove?
-# https://github.com/yearn/yearn-vaults/issues/333
-# Adjust for each token PRECISION_FACTOR = 10 ** (18 - token.decimals)
-PRECISION_FACTOR: constant(uint256) = 1
-
 blockDelay: public(uint256)
 # Token has fee on transfer
 feeOnTransfer: public(bool)
@@ -150,14 +145,9 @@ def __init__(
 
     assert self.uToken.token() == self.token.address, "uToken.token != token"
 
-    decimals: uint256 = DetailedERC20(self.token.address).decimals()
-    if decimals < 18:
-        assert PRECISION_FACTOR == 18 - decimals, "precision != 18 - decimals"
-    else:
-        assert PRECISION_FACTOR == 1, "precision != 1"
-
     self.paused = True
     self.blockDelay = 10
+    self.lastReport = block.timestamp
 
 
 @external
@@ -299,7 +289,6 @@ def _calcSharesToMint(amount: uint256, totalSupply: uint256, totalAssets: uint25
     if totalSupply == 0:
         return amount
     # reverts if total assets = 0
-    # TODO: PRECISION_FACTOR
     return amount * totalSupply / totalAssets 
 
 
@@ -321,7 +310,6 @@ def _calcSharesToBurn(amount: uint256, totalSupply: uint256, totalAssets: uint25
     if amount == 0:
         return 0
     # reverts if total assets = 0
-    # TODO: PRECISION_FACTOR
     return amount * totalSupply / totalAssets
 
 
@@ -363,9 +351,6 @@ def _calcWithdraw(shares: uint256, totalSupply: uint256, freeFunds: uint256) -> 
     # s > 0, T = 0, P > 0 | invalid state (s > T = 0)
     # s > 0, T > 0, P > 0 | a = s / T * P
 
-    # # TODO: PRECISION_FACTOR
-    # # return PRECISION_FACTOR * shares * freeFunds / totalSupply / PRECISION_FACTOR
-    # return shares * freeFunds / totalSupply
     if shares == 0:
         return 0
     # invalid if total supply = 0
