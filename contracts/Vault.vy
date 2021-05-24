@@ -77,6 +77,10 @@ event RemoveStrategyFromQueue:
 event UpdateWithdrawalQueue:
     queue: address[MAX_STRATEGIES]
 
+event SetWhitelist:
+    addr: indexed(address)
+    approved: bool
+
 
 token: public(ERC20)
 uToken: public(UnagiiToken)
@@ -113,6 +117,7 @@ PRECISION_FACTOR: constant(uint256) = 1
 blockDelay: public(uint256)
 # Token has fee on transfer
 feeOnTransfer: public(bool)
+whitelist: public(HashMap[address, bool])
 
 
 @external
@@ -217,6 +222,13 @@ def setBlockDelay(delay: uint256):
 def setFeeOnTransfer(feeOnTransfer: bool):
     assert msg.sender == self.admin, "!admin"
     self.feeOnTransfer = feeOnTransfer
+
+
+@external
+def setWhitelist(addr: address, approved: bool):
+    assert msg.sender == self.admin, "!admin"
+    self.whitelist[addr] = approved
+    log SetWhitelist(addr, approved)
 
 
 @internal
