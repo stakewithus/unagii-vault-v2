@@ -148,10 +148,10 @@ def __init__(
 
 
 @external
-def setNextAdmin(_nextAdmin: address):
+def setNextAdmin(nextAdmin: address):
     assert msg.sender == self.admin, "!admin"
-    assert _nextAdmin != self.admin, "next admin = current"
-    self.nextAdmin = _nextAdmin
+    assert nextAdmin != self.admin, "next admin = current"
+    self.nextAdmin = nextAdmin
 
 
 @external
