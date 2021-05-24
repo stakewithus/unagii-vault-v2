@@ -708,8 +708,31 @@ def updateStrategyPerformanceFee(strategy: address, performanceFee: uint256):
 
 # TODO: migrate strategy
 
-@view
 @internal
+@view
+def _calcOutstandingDebt(strategy: address) -> uint256:
+    if self.totalDebtRatio == 0:
+        return self.strategies[strategy].debt
+
+    limit: uint256 = self.strategies[strategy].debtRatio * self.totalDebt / self.totalDebtRatio
+    debt: uint256 = self.strategies[strategy].debt
+
+    if self.paused:
+        return debt
+    elif debt <= limit:
+        return 0
+    else:
+        return debt - limit
+
+
+@external
+@view
+def calcOutstandingDebt(strategy: address) -> uint256:
+    return self._calcOutstandingDebt(strategy)
+
+
+@internal
+@view
 def _creditAvailable(strategy: address) -> uint256:
     if self.paused:
         return 0
@@ -787,22 +810,6 @@ def repay(amount: uint256):
     # assert bal >= self.balanceInVault(self), "bal < balance in vault"
 
 
-@view
-@internal
-def _debtOutstanding(strategy: address) -> uint256:
-    debt: uint256 = self.strategies[strategy].debt
-    if self.totalDebtRatio == 0:
-        return debt
-
-    debtLimit: uint256 = self.strategies[strategy].debtRatio * self.totalDebt / self.totalDebtRatio
-
-    if self.paused:
-        return debt
-    elif debt <= debtLimit:
-        return 0
-    else:
-        return debt - debtLimit
-
 
 @external
 def report(gain: uint256, loss: uint256, _debtPayment: uint256) -> uint256:
@@ -826,7 +833,7 @@ def report(gain: uint256, loss: uint256, _debtPayment: uint256) -> uint256:
 
     # Outstanding debt the Strategy wants to take back from the Vault (if any)
     # NOTE: debtOutstanding <= StrategyParams.totalDebt
-    debt: uint256 = self._debtOutstanding(msg.sender)
+    debt: uint256 = self._calcOutstandingDebt(msg.sender)
     debtPayment: uint256 = min(_debtPayment, debt)
 
     if debtPayment > 0:
