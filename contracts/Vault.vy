@@ -31,7 +31,7 @@ interface IStrategy:
 
 MAX_STRATEGIES: constant(uint256) = 20
 MAX_BPS: constant(uint256) = 10000
-MAX_PERFORMANCE_FEE: constant(uint256) = 2000 #TODO: max
+MAX_PERFORMANCE_FEE: constant(uint256) = 5000
 
 struct Strategy:
     approved: bool
