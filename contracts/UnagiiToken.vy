@@ -25,13 +25,10 @@ event Approval:
     spender: indexed(address)
     value: uint256
 
-event SetAdmin:
-    admin: address
+event SetNextMinter:
+    minter: address
 
-event AcceptAdmin:
-    admin: address
-
-event SetMinter:
+event AcceptMinter:
     minter: address
 
 name: public(String[64])
@@ -40,17 +37,17 @@ decimals: public(uint256)
 balanceOf: public(HashMap[address, uint256])
 allowance: public(HashMap[address, HashMap[address, uint256]])
 totalSupply: public(uint256)
-
-admin: public(address)
-nextAdmin: public(address)
 minter: public(address)
+nextMinter: public(address)
 token: public(ERC20)
-
 lastBlock: public(HashMap[address, uint256])
+
+# TODO: comment
+# TODO: test
 
 @external
 def __init__(token: address):
-    self.admin = msg.sender
+    self.minter = msg.sender
     self.token = ERC20(token)
 
     # TODO: name
@@ -60,36 +57,28 @@ def __init__(token: address):
 
 
 @external
-def setAdmin(nextAdmin: address):
+def setNextMinter(nextMinter: address):
     """
-    @notice Set next admin
-    @param nextAdmin Address of next admin
+    @notice Set next minter
+    @param nextMinter Address of next minter
     """
-    assert msg.sender == self.admin, "!admin"
-    assert nextAdmin != self.admin, "next admin = current"
-    # allow next admin = zero address (cancel next admin)
-    self.nextAdmin = nextAdmin
-    log SetAdmin(nextAdmin)
+    assert msg.sender == self.minter, "!minter"
+    assert nextMinter != self.minter, "next minter = current"
+    # allow next minter = zero address (cancel next minter)
+    self.nextMinter = nextMinter
+    log SetNextMinter(nextMinter)
 
 
 @external
-def acceptAdmin():
+def acceptMinter():
     """
-    @notice Accept admin
-    @dev Only `nextAdmin` can claim admin 
+    @notice Accept minter
+    @dev Only `nextMinter` can claim minter 
     """
-    assert msg.sender == self.nextAdmin, "!next admin"
-    self.admin = msg.sender
-    self.nextAdmin = ZERO_ADDRESS
-    log AcceptAdmin(msg.sender)
-
-
-# TODO: comment
-@external
-def setMinter(minter: address):
-    assert minter != self.minter, "new minter = current"
-    self.minter = minter
-    log SetMinter(minter)
+    assert msg.sender == self.nextMinter, "!next minter"
+    self.minter = msg.sender
+    self.nextMinter = ZERO_ADDRESS
+    log AcceptMinter(msg.sender)
 
 
 @internal
