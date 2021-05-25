@@ -42,7 +42,6 @@ struct Strategy:
     totalLoss: uint256
     lastReport: uint256
     performanceFee: uint256
-    # TODO: remove?
     minDebtPerHarvest: uint256
     maxDebtPerHarvest: uint256
 
@@ -725,10 +724,9 @@ def calcOutstandingDebt(strategy: address) -> uint256:
     return self._calcOutstandingDebt(strategy)
 
 
-# TODO: understand
 @internal
 @view
-def _creditAvailable(strategy: address) -> uint256:
+def _calcAvailableCredit(strategy: address) -> uint256:
     if self.paused:
         return 0
 
@@ -744,17 +742,9 @@ def _creditAvailable(strategy: address) -> uint256:
         return 0
 
     available: uint256 = min(debtLimit - debt, totalDebtLimit - totalDebt)
-    # TODO: use self.balanceInVault?
-    available = min(available, self.token.balanceOf(self))
+    #TODO: use token.balanceOf(self)?
+    available = min(available, self.balanceInVault)
 
-    # TODO: what?
-    # Adjust by min and max borrow limits (per harvest)
-    # NOTE: min increase can be used to ensure that if a strategy has a minimum
-    #       amount of capital needed to purchase a position, it's not given capital
-    #       it can't make use of yet.
-    # NOTE: max increase is used to make sure each harvest isn't bigger than what
-    #       is authorized. This combined with adjusting min and max periods in
-    #       `BaseStrategy` can be used to effect a "rate limit" on capital increase.
     if available < minDebtPerHarvest:
         return 0
     else:
@@ -763,8 +753,8 @@ def _creditAvailable(strategy: address) -> uint256:
 
 @external
 @view
-def creditAvailable(strategy: address) -> uint256:
-    return self._creditAvailable(strategy)
+def calcAvailableCredit(strategy: address) -> uint256:
+    return self._calcAvailableCredit(strategy)
 
 
 @external
@@ -779,7 +769,7 @@ def report(gain: uint256, loss: uint256, _debtPayment: uint256) -> uint256:
 
     self.strategies[msg.sender].totalGain += gain
 
-    credit: uint256 = self._creditAvailable(msg.sender)
+    credit: uint256 = self._calcAvailableCredit(msg.sender)
 
     debt: uint256 = self._calcOutstandingDebt(msg.sender)
     debtPayment: uint256 = min(_debtPayment, debt)
@@ -847,7 +837,7 @@ def report(gain: uint256, loss: uint256, _debtPayment: uint256) -> uint256:
 # def borrow(amount: uint256):
 #     assert self.strategies[msg.sender].active, "!active"
 
-#     available: uint256 = self._creditAvailable(msg.sender)
+#     available: uint256 = self._calcAvailableCredit(msg.sender)
 #     _amount: uint256 = min(amount, available)
 #     assert _amount > 0, "borrow = 0"
 
@@ -883,7 +873,8 @@ def report(gain: uint256, loss: uint256, _debtPayment: uint256) -> uint256:
 
 
 
-# # migration
+# TODO: migrate strategy
+# TODO: migrate vault
 
 # # u = token token
 # # ut = unagi token
