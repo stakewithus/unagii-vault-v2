@@ -98,7 +98,7 @@ event StrategyUpdatePerformanceFee:
     strategy: indexed(address)
     performanceFee: uint256
 
-event StrategyReport:
+event Report:
     strategy: indexed(address)
     gain: uint256
     loss: uint256
@@ -108,6 +108,14 @@ event StrategyReport:
     debt: uint256
     debtAdded: uint256
     debtRatio: uint256
+
+event Borrow:
+    strategy: indexed(address)
+    amount: uint256
+
+event Repay:
+    strategy: indexed(address)
+    amount: uint256
 
 
 token: public(ERC20)
@@ -763,6 +771,7 @@ def report(gain: uint256, loss: uint256, _debtPayment: uint256) -> uint256:
 
     fee: uint256 = gain * self.strategies[msg.sender].performanceFee / MAX_BPS
 
+    # TODO: include fee on transfer
     self.strategies[msg.sender].totalGain += gain
 
     credit: uint256 = self._calcAvailableCredit(msg.sender)
@@ -807,7 +816,7 @@ def report(gain: uint256, loss: uint256, _debtPayment: uint256) -> uint256:
     self.strategies[msg.sender].lastReport = block.timestamp
     self.lastReport = block.timestamp
 
-    log StrategyReport(
+    log Report(
         msg.sender,
         gain,
         loss,
@@ -828,45 +837,50 @@ def report(gain: uint256, loss: uint256, _debtPayment: uint256) -> uint256:
         return debt
 
 
-# TODO: boorw
-# @external
-# def borrow(amount: uint256):
-#     assert self.strategies[msg.sender].active, "!active"
+@external
+def borrow(_amount: uint256) -> uint256:
+    assert not self.paused, "paused"
+    assert self.strategies[msg.sender].active, "!active"
 
-#     available: uint256 = self._calcAvailableCredit(msg.sender)
-#     _amount: uint256 = min(amount, available)
-#     assert _amount > 0, "borrow = 0"
+    available: uint256 = self._calcAvailableCredit(msg.sender)
+    amount: uint256 = min(_amount, available)
+    assert amount > 0, "borrow = 0"
 
-#     self._safeTransfer(self.token.address, msg.sender, _amount)
+    self._safeTransfer(self.token.address, msg.sender, amount)
 
-#     # include fee on trasfer to debt 
-#     self.strategies[msg.sender].debt += amount
-#     self.totalDebt += amount
-#     self.balanceInVault -= amount
+    # include fee on trasfer to debt 
+    self.strategies[msg.sender].debt += amount
+    self.totalDebt += amount
+    self.balanceInVault -= amount
 
-#     # TODO: remove?
-#     # bal: uint256 = self.token.balanceOf(self)
-#     # assert bal >= self.balanceInVault(self), "bal < balance in vault"
+    # TODO: remove?
+    assert self.token.balanceOf(self) >= self.balanceInVault, "bal < balance in vault"
+
+    log Borrow(msg.sender, amount)
+
+    return amount
 
 
-# TODO: repay
-# @external
-# def repay(amount: uint256):
-#     assert self.strategies[msg.sender].active, "!active"
-#     assert amount > 0, "repay = 0"
+@external
+def repay(amount: uint256) -> uint256:
+    assert self.strategies[msg.sender].active, "!active"
+    assert amount > 0, "repay = 0"
 
-#     diff: uint256 = self.token.balanceOf(self)
-#     self._safeTransferFrom(self.token.address, msg.sender, self, amount)
-#     diff  = self.token.balanceOf(self) - diff
+    diff: uint256 = self.token.balanceOf(self)
+    self._safeTransferFrom(self.token.address, msg.sender, self, amount)
+    diff  = self.token.balanceOf(self) - diff
 
-#     self.strategies[msg.sender].debt -= diff
-#     self.totalDebt -= diff
-#     self.balanceInVault += diff
+    # exclude fee on transfer from debt payment
+    self.strategies[msg.sender].debt -= diff
+    self.totalDebt -= diff
+    self.balanceInVault += diff
 
-#     # TODO: remove?
-#     # bal: uint256 = self.token.balanceOf(self)
-#     # assert bal >= self.balanceInVault(self), "bal < balance in vault"
+    # TODO: remove?
+    assert self.token.balanceOf(self) >= self.balanceInVault, "bal < balance in vault"
 
+    log Repay(msg.sender, diff)
+
+    return diff
 
 
 # TODO: migrate strategy
