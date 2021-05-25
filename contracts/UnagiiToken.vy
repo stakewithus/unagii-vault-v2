@@ -44,7 +44,6 @@ nextMinter: public(address)
 token: public(ERC20)
 lastBlock: public(HashMap[address, uint256])
 
-# TODO: comment
 # TODO: test
 
 @external
@@ -82,55 +81,31 @@ def acceptMinter():
 
 
 @internal
-def _transfer(sender: address, receiver: address, amount: uint256):
-    assert receiver not in [self, ZERO_ADDRESS], "invalid receiver"
+def _transfer(_from: address, _to: address, amount: uint256):
+    assert _to not in [self, ZERO_ADDRESS], "invalid receiver"
     
     # track lastest tx
-    self.lastBlock[sender] = block.number
-    self.lastBlock[receiver] = block.number
+    self.lastBlock[_from] = block.number
+    self.lastBlock[_to] = block.number
 
-    self.balanceOf[sender] -= amount
-    self.balanceOf[receiver] += amount
-    log Transfer(sender, receiver, amount)
-
-
-@external
-def mint(receiver: address, amount: uint256):
-    assert msg.sender == self.minter, "!minter"
-
-    # track lastest tx
-    self.lastBlock[receiver] = block.number
-
-    self.totalSupply += amount
-    self.balanceOf[receiver] += amount
-    log Transfer(ZERO_ADDRESS, receiver, amount)
+    self.balanceOf[_from] -= amount
+    self.balanceOf[_to] += amount
+    log Transfer(_from, _to, amount)
 
 
 @external
-def burn(spender: address, amount: uint256):
-    assert msg.sender == self.minter, "!minter"
-
-    # track lastest tx
-    self.lastBlock[spender] = block.number
-
-    self.totalSupply -= amount
-    self.balanceOf[spender] -= amount
-    log Transfer(spender, ZERO_ADDRESS, amount)
-
-
-@external
-def transfer(receiver: address, amount: uint256) -> bool:
-    self._transfer(msg.sender, receiver, amount)
+def transfer(_to: address, amount: uint256) -> bool:
+    self._transfer(msg.sender, _to, amount)
     return True
 
 
 @external
-def transferFrom(sender: address, receiver: address, amount: uint256) -> bool:
+def transferFrom(_from: address, _to: address, amount: uint256) -> bool:
     # Unlimited approval (saves an SSTORE)
-    if (self.allowance[sender][msg.sender] < MAX_UINT256):
-        self.allowance[sender][msg.sender] -= amount
-        log Approval(sender, msg.sender, self.allowance[sender][msg.sender])
-    self._transfer(sender, receiver, amount)
+    if (self.allowance[_from][msg.sender] < MAX_UINT256):
+        self.allowance[_from][msg.sender] -= amount
+        log Approval(_from, msg.sender, self.allowance[_from][msg.sender])
+    self._transfer(_from, _to, amount)
     return True
 
 
@@ -153,3 +128,29 @@ def decreaseAllowance(spender: address, amount: uint256) -> bool:
     self.allowance[msg.sender][spender] -= amount
     log Approval(msg.sender, spender, self.allowance[msg.sender][spender])
     return True
+
+
+@external
+def mint(_to: address, amount: uint256):
+    assert msg.sender == self.minter, "!minter"
+    assert _to != ZERO_ADDRESS, "receiver = 0 address"
+
+    # track lastest tx
+    self.lastBlock[_to] = block.number
+
+    self.totalSupply += amount
+    self.balanceOf[_to] += amount
+    log Transfer(ZERO_ADDRESS, _to, amount)
+
+
+@external
+def burn(_from: address, amount: uint256):
+    assert msg.sender == self.minter, "!minter"
+    assert _from != ZERO_ADDRESS, "sender = 0 address"
+
+    # track lastest tx
+    self.lastBlock[_from] = block.number
+
+    self.totalSupply -= amount
+    self.balanceOf[_from] -= amount
+    log Transfer(_from, ZERO_ADDRESS, amount)
