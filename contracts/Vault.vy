@@ -110,7 +110,6 @@ event StrategyReport:
     debtRatio: uint256
 
 
-# TODO: min reserve
 token: public(ERC20)
 uToken: public(UnagiiToken)
 admin: public(address)
@@ -118,12 +117,9 @@ nextAdmin: public(address)
 timeLock: public(address)
 guardian: public(address)
 keeper: public(address)
-
 strategies: public(HashMap[address, Strategy])
 withdrawalQueue: public(address[MAX_STRATEGIES])
-
 paused: public(bool)
-
 # TODO: remove?
 depositLimit: public(uint256)
 totalDebtRatio: public(uint256)
