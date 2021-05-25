@@ -13,6 +13,7 @@ implements: ERC20
 interface DetailedERC20:
     def name() -> String[42]: view
     def symbol() -> String[20]: view
+    # Vyper does not support uint8
     def decimals() -> uint256: view
 
 event Transfer:
@@ -33,7 +34,8 @@ event AcceptMinter:
 
 name: public(String[64])
 symbol: public(String[32])
-decimals: public(uint256)
+# Vyper does not support uint8
+decimals: public(uint256) 
 balanceOf: public(HashMap[address, uint256])
 allowance: public(HashMap[address, HashMap[address, uint256]])
 totalSupply: public(uint256)
@@ -49,10 +51,8 @@ lastBlock: public(HashMap[address, uint256])
 def __init__(token: address):
     self.minter = msg.sender
     self.token = ERC20(token)
-
-    # TODO: name
-    self.name = concat("unagii_v2_", DetailedERC20(token).symbol())
-    self.symbol = concat("u2_", DetailedERC20(token).symbol())
+    self.name = concat("unagii_v2_", DetailedERC20(token).name())
+    self.symbol = concat("u2", DetailedERC20(token).symbol())
     self.decimals = DetailedERC20(token).decimals()
 
 
