@@ -27,6 +27,7 @@ interface IStrategy:
     def token() -> address: view
     def totalAssets() -> uint256: view
     def withdraw(amount: uint256) -> uint256: nonpayable
+    def migrate(newVersion: address): nonpayable
 
 
 MAX_STRATEGIES: constant(uint256) = 20
@@ -36,11 +37,11 @@ MAX_PERFORMANCE_FEE: constant(uint256) = 5000
 struct Strategy:
     approved: bool
     active: bool
+    activated: bool
     debtRatio: uint256
     debt: uint256
     totalGain: uint256
     totalLoss: uint256
-    lastReport: uint256
     performanceFee: uint256
     minDebtPerHarvest: uint256
     maxDebtPerHarvest: uint256
@@ -116,6 +117,10 @@ event Borrow:
 event Repay:
     strategy: indexed(address)
     amount: uint256
+
+event MigrateStrategy:
+    oldVersion: indexed(address)
+    newVersion: indexed(address)
 
 
 token: public(ERC20)
@@ -579,11 +584,11 @@ def approveStrategy(
     self.strategies[strategy] = Strategy({
         approved: True,
         active: False,
+        activated: False,
         debtRatio: 0,
         debt: 0,
         totalGain: 0,
         totalLoss: 0,
-        lastReport: 0,
         minDebtPerHarvest: minDebtPerHarvest,
         maxDebtPerHarvest: maxDebtPerHarvest,
         performanceFee: performanceFee
@@ -611,6 +616,7 @@ def addStrategyToQueue(strategy: address, debtRatio: uint256):
 
     self._append(strategy)
     self.strategies[strategy].active = True
+    self.strategies[strategy].activated = True
     self.strategies[strategy].debtRatio = debtRatio
     self.totalDebtRatio += debtRatio
     log AddStrategyToQueue(strategy)
@@ -813,7 +819,6 @@ def report(gain: uint256, loss: uint256, _debtPayment: uint256) -> uint256:
        self.lockedProfit = 0 
 
     # Update reporting time
-    self.strategies[msg.sender].lastReport = block.timestamp
     self.lastReport = block.timestamp
 
     log Report(
@@ -883,7 +888,40 @@ def repay(amount: uint256) -> uint256:
     return diff
 
 
-# TODO: migrate strategy
+@external
+def migrateStrategy(oldVersion: address, newVersion: address):
+    assert msg.sender == self.admin, "!admin"
+    assert self.strategies[oldVersion].active, "old !active"
+    assert self.strategies[newVersion].approved, "new !approved"
+    assert not self.strategies[newVersion].activated, "activated"
+
+    strategy: Strategy = self.strategies[oldVersion]
+
+    self.strategies[newVersion] = Strategy({
+        approved: True,
+        active: True,
+        activated: True,
+        performanceFee: strategy.performanceFee,
+        debtRatio: strategy.debtRatio,
+        minDebtPerHarvest: strategy.minDebtPerHarvest,
+        maxDebtPerHarvest: strategy.maxDebtPerHarvest,
+        debt: strategy.debt,
+        totalGain: 0,
+        totalLoss: 0,
+    })
+
+    self.strategies[oldVersion].active = False
+    self.strategies[oldVersion].debtRatio = 0
+    self.strategies[oldVersion].debt = 0
+    log RevokeStrategy(oldVersion)
+
+    i: uint256 = self._find(oldVersion)
+    self.withdrawalQueue[i] = newVersion
+
+    IStrategy(oldVersion).migrate(newVersion)
+    log MigrateStrategy(oldVersion, newVersion)
+
+
 # TODO: migrate vault
 
 # # u = token token
