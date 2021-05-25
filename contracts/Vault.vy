@@ -38,8 +38,8 @@ struct Strategy:
     active: bool
     debtRatio: uint256
     debt: uint256
-    gain: uint256
-    loss: uint256
+    totalGain: uint256
+    totalLoss: uint256
     lastReport: uint256
     performanceFee: uint256
     # TODO: remove?
@@ -98,6 +98,18 @@ event StrategyUpdateMaxDebtPerHarvest:
 event StrategyUpdatePerformanceFee:
     strategy: indexed(address)
     performanceFee: uint256
+
+event StrategyReport:
+    strategy: indexed(address)
+    gain: uint256
+    loss: uint256
+    debtPaid: uint256
+    totalGain: uint256
+    totalLoss: uint256
+    debt: uint256
+    debtAdded: uint256
+    debtRatio: uint256
+
 
 # TODO: min reserve
 token: public(ERC20)
@@ -417,7 +429,7 @@ def _reportLoss(strategy: address, loss: uint256):
             loss * self.totalDebtRatio / self.totalDebt,
             self.strategies[strategy].debtRatio,
         )
-    self.strategies[strategy].loss += loss
+    self.strategies[strategy].totalLoss += loss
     self.strategies[strategy].debt -= loss
     self.totalDebt -= loss
     self.strategies[strategy].debtRatio -= dr
@@ -566,8 +578,8 @@ def approveStrategy(
         active: False,
         debtRatio: 0,
         debt: 0,
-        gain: 0,
-        loss: 0,
+        totalGain: 0,
+        totalLoss: 0,
         lastReport: 0,
         minDebtPerHarvest: minDebtPerHarvest,
         maxDebtPerHarvest: maxDebtPerHarvest,
@@ -713,6 +725,7 @@ def calcOutstandingDebt(strategy: address) -> uint256:
     return self._calcOutstandingDebt(strategy)
 
 
+# TODO: understand
 @internal
 @view
 def _creditAvailable(strategy: address) -> uint256:
@@ -759,23 +772,15 @@ def report(gain: uint256, loss: uint256, _debtPayment: uint256) -> uint256:
     assert self.strategies[msg.sender].active, "!active"
     assert self.token.balanceOf(msg.sender) >= gain + _debtPayment
 
-    # We have a loss to report, do it before the rest of the calculations
     if loss > 0:
-        # TODO: report loss
-        # self._reportLoss(msg.sender, loss)
-        pass
+        self._reportLoss(msg.sender, loss)
 
-    # Assess both management fee and performance fee, and issue both as shares of the vault
-    totalFees: uint256 = gain * self.performanceFee / MAX_BPS
+    fee: uint256 = gain * self.strategies[msg.sender].performanceFee / MAX_BPS
 
-    # Returns are always "realized gains"
-    self.strategies[msg.sender].gain += gain
+    self.strategies[msg.sender].totalGain += gain
 
-    # Compute the line of credit the Vault is able to offer the Strategy (if any)
     credit: uint256 = self._creditAvailable(msg.sender)
 
-    # Outstanding debt the Strategy wants to take back from the Vault (if any)
-    # NOTE: debtOutstanding <= StrategyParams.totalDebt
     debt: uint256 = self._calcOutstandingDebt(msg.sender)
     debtPayment: uint256 = min(_debtPayment, debt)
 
@@ -783,7 +788,6 @@ def report(gain: uint256, loss: uint256, _debtPayment: uint256) -> uint256:
         self.strategies[msg.sender].debt -= debtPayment
         self.totalDebt -= debtPayment
         debt -= debtPayment
-        # NOTE: `debt` is being tracked for later
 
     # Update the actual debt based on the full credit we are extending to the Strategy
     # or the returns if we are taking funds back
@@ -807,28 +811,27 @@ def report(gain: uint256, loss: uint256, _debtPayment: uint256) -> uint256:
 
     # Profit is locked and gradually released per block
     # NOTE: compute current locked profit and replace with sum of current and new
-    lockedProfitBeforeLoss :uint256 = self._calcLockedProfit() + gain - totalFees 
+    lockedProfitBeforeLoss :uint256 = self._calcLockedProfit() + gain - fee 
     if lockedProfitBeforeLoss > loss: 
         self.lockedProfit = lockedProfitBeforeLoss - loss
     else:
        self.lockedProfit = 0 
 
-
     # Update reporting time
-    # TODO: self.strategies[msg.sender].lastReport = block.timestamp
+    self.strategies[msg.sender].lastReport = block.timestamp
     self.lastReport = block.timestamp
 
-    # log StrategyReported(
-    #     msg.sender,
-    #     gain,
-    #     loss,
-    #     debtPayment,
-    #     self.strategies[msg.sender].totalGain,
-    #     self.strategies[msg.sender].totalLoss,
-    #     self.strategies[msg.sender].totalDebt,
-    #     credit,
-    #     self.strategies[msg.sender].debtRatio,
-    # )
+    log StrategyReport(
+        msg.sender,
+        gain,
+        loss,
+        debtPayment,
+        self.strategies[msg.sender].totalGain,
+        self.strategies[msg.sender].totalLoss,
+        self.strategies[msg.sender].debt,
+        credit,
+        self.strategies[msg.sender].debtRatio,
+    )
 
     if self.strategies[msg.sender].debtRatio == 0 or self.paused:
         # Take every last penny the Strategy has (Emergency Exit/revokeStrategy)
