@@ -133,7 +133,7 @@ def decreaseAllowance(spender: address, amount: uint256) -> bool:
 @external
 def mint(_to: address, amount: uint256):
     assert msg.sender == self.minter, "!minter"
-    assert _to != ZERO_ADDRESS, "receiver = 0 address"
+    assert _to != ZERO_ADDRESS, "to = 0 address"
 
     # track lastest tx
     self.lastBlock[_to] = block.number
@@ -146,7 +146,7 @@ def mint(_to: address, amount: uint256):
 @external
 def burn(_from: address, amount: uint256):
     assert msg.sender == self.minter, "!minter"
-    assert _from != ZERO_ADDRESS, "sender = 0 address"
+    assert _from != ZERO_ADDRESS, "from = 0 address"
 
     # track lastest tx
     self.lastBlock[_from] = block.number
