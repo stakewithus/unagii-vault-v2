@@ -50,8 +50,8 @@ lastBlock: public(HashMap[address, uint256])
 def __init__(token: address):
     self.minter = msg.sender
     self.token = ERC20(token)
-    self.name = concat("unagii_v2_", DetailedERC20(token).name())
-    self.symbol = concat("u2", DetailedERC20(token).symbol())
+    self.name = concat("unagii_", DetailedERC20(token).name(), "_v2")
+    self.symbol = concat("u", DetailedERC20(token).symbol(), "v2")
     self.decimals = DetailedERC20(token).decimals()
 
 
