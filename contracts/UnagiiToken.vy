@@ -129,6 +129,9 @@ def decreaseAllowance(spender: address, amount: uint256) -> bool:
     log Approval(msg.sender, spender, self.allowance[msg.sender][spender])
     return True
 
+# TODO: setName?
+# TODO: setSymbol?
+# TODO: permit?
 
 @external
 def mint(_to: address, amount: uint256):
