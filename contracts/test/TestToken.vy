@@ -17,6 +17,8 @@ decimals: public(uint256)
 balanceOf: public(HashMap[address, uint256])
 allowances: HashMap[address, HashMap[address, uint256]]
 totalSupply: public(uint256)
+# test helpers
+fee: public(uint256)
 
 
 @external
@@ -32,18 +34,23 @@ def allowance(owner : address, spender : address) -> uint256:
     return self.allowances[owner][spender]
 
 
+@internal
+def _transfer(_from: address, _to: address, amount: uint256):
+    self.balanceOf[_from] -= amount
+    self.balanceOf[_to] += amount - self.fee
+    self.balanceOf[self] += self.fee
+    log Transfer(_from, _to, amount)
+
+
 @external
 def transfer(_to : address, amount : uint256) -> bool:
-    self.balanceOf[msg.sender] -= amount
-    self.balanceOf[_to] += amount
-    log Transfer(msg.sender, _to, amount)
+    self._transfer(msg.sender, _to, amount)
     return True
 
 
 @external
 def transferFrom(_from : address, _to : address, amount : uint256) -> bool:
-    self.balanceOf[_from] -= amount
-    self.balanceOf[_to] += amount
+    self._transfer(_from, _to, amount)
     self.allowances[_from][msg.sender] -= amount
     log Transfer(_from, _to, amount)
     return True
@@ -68,3 +75,8 @@ def _burn_(_from: address, amount: uint256):
     self.totalSupply -= amount
     self.balanceOf[_from] -= amount
     log Transfer(_from, ZERO_ADDRESS, amount)
+
+
+@external
+def _setFeeOnTransfer_(fee: uint256):
+    self.fee = fee
