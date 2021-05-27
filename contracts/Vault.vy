@@ -130,18 +130,20 @@ nextAdmin: public(address)
 timeLock: public(address)
 guardian: public(address)
 keeper: public(address)
-strategies: public(HashMap[address, Strategy])
-withdrawalQueue: public(address[MAX_STRATEGIES])
+
 paused: public(bool)
-# TODO: remove?
 depositLimit: public(uint256)
-totalDebtRatio: public(uint256)
 totalDebt: public(uint256)
+totalDebtRatio: public(uint256)
+balanceInVault: public(uint256)
 lastReport: public(uint256)
 lockedProfit: public(uint256)
 DEGRADATION_COEFFICIENT: constant(uint256) = 10 ** 18
 lockedProfitDegradation: public(uint256)
-balanceInVault: public(uint256)
+
+strategies: public(HashMap[address, Strategy])
+withdrawalQueue: public(address[MAX_STRATEGIES])
+
 blockDelay: public(uint256)
 # Token has fee on transfer
 feeOnTransfer: public(bool)
@@ -183,12 +185,14 @@ def setNextAdmin(nextAdmin: address):
 def acceptAdmin():
     assert msg.sender == self.nextAdmin, "!next admin"
     self.admin = msg.sender
+    self.nextAdmin = ZERO_ADDRESS
     log UpdateAdmin(msg.sender)
 
 
 @external 
 def setTimeLock(timeLock: address):
-    assert msg.sender == self.admin, "!admin"
+    assert msg.sender == self.timeLock, "!time lock"
+    assert timeLock != self.timeLock, "new time lock = current"
     self.timeLock = timeLock
     log UpdateTimeLock(timeLock)
 
@@ -196,6 +200,7 @@ def setTimeLock(timeLock: address):
 @external 
 def setGuardian(guardian: address):
     assert msg.sender == self.admin, "!admin"
+    assert guardian != self.guardian, "new guardian = current"
     self.guardian = guardian
     log UpdateGuardian(guardian)
 
@@ -203,6 +208,7 @@ def setGuardian(guardian: address):
 @external 
 def setKeeper(keeper: address):
     assert msg.sender == self.admin, "!admin"
+    assert keeper != self.keeper, "new keeper = current"
     self.keeper = keeper
     log UpdateKeeper(keeper)
 
@@ -210,6 +216,7 @@ def setKeeper(keeper: address):
 @external
 def setPause(paused: bool):
     assert msg.sender in [self.admin, self.guardian], "!authorized"
+    assert paused != self.paused, "paused = current"
     self.paused = paused
     log SetPause(paused)
 
@@ -217,13 +224,13 @@ def setPause(paused: bool):
 @external
 def setLockedProfitDegradation(degradation: uint256):
     assert msg.sender == self.admin, "!admin"
-    assert degradation <= DEGRADATION_COEFFICIENT
+    assert degradation <= DEGRADATION_COEFFICIENT, "degradation > max"
     self.lockedProfitDegradation = degradation
 
 
 @external
 def setDepositLimit(limit: uint256):
-    assert msg.sender == self.admin
+    assert msg.sender == self.admin, "!admin"
     self.depositLimit = limit
     log UpdateDepositLimit(limit)
 
@@ -264,12 +271,12 @@ def _safeTransfer(token: address, receiver: address, amount: uint256):
 
 
 @internal
-def _safeTransferFrom(token: address, sender: address, receiver: address, amount: uint256):
+def _safeTransferFrom(token: address, owner: address, receiver: address, amount: uint256):
     res: Bytes[32] = raw_call(
         token,
         concat(
             method_id("transferFrom(address,address,uint256)"),
-            convert(sender, bytes32),
+            convert(owner, bytes32),
             convert(receiver, bytes32),
             convert(amount, bytes32),
         ),
