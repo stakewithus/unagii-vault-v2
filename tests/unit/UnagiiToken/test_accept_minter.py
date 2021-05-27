@@ -18,4 +18,3 @@ def test_accept_minter(accounts, uToken, minter):
 
     uToken.acceptMinter({"from": accounts[1]})
     assert uToken.minter() == accounts[1]
-    assert uToken.nextMinter() == ZERO_ADDRESS

@@ -26,6 +26,12 @@ event Approval:
     spender: indexed(address)
     value: uint256
 
+event SetNextAdmin:
+    admin: address
+
+event AcceptAdmin:
+    admin: address
+
 event SetNextMinter:
     minter: address
 
@@ -39,20 +45,59 @@ decimals: public(uint256)
 balanceOf: public(HashMap[address, uint256])
 allowance: public(HashMap[address, HashMap[address, uint256]])
 totalSupply: public(uint256)
+admin: public(address)
+nextAdmin: public(address)
 minter: public(address)
 nextMinter: public(address)
 token: public(ERC20)
 lastBlock: public(HashMap[address, uint256])
 
-# TODO: test
+# TODO: comment
 
 @external
 def __init__(token: address):
+    self.admin = msg.sender
     self.minter = msg.sender
     self.token = ERC20(token)
     self.name = concat("unagii_", DetailedERC20(token).name(), "_v2")
     self.symbol = concat("u", DetailedERC20(token).symbol(), "v2")
     self.decimals = DetailedERC20(token).decimals()
+
+
+@external
+def setName(name: String[42]):
+    assert msg.sender == self.admin, "!admin"
+    self.name = name
+
+
+@external
+def setSymbol(symbol: String[20]):
+    assert msg.sender == self.admin, "!admin"
+    self.symbol = symbol
+
+
+@external
+def setNextAdmin(nextAdmin: address):
+    """
+    @notice Set next admin
+    @param nextAdmin Address of next admin
+    """
+    assert msg.sender == self.admin, "!admin"
+    assert nextAdmin != self.admin, "next admin = current"
+    # allow next admin = zero address (cancel next admin)
+    self.nextAdmin = nextAdmin
+    log SetNextAdmin(nextAdmin)
+
+
+@external
+def acceptAdmin():
+    """
+    @notice Accept admin
+    @dev Only `nextAdmin` can claim admin 
+    """
+    assert msg.sender == self.nextAdmin, "!next admin"
+    self.admin = msg.sender
+    log AcceptAdmin(msg.sender)
 
 
 @external
@@ -76,7 +121,6 @@ def acceptMinter():
     """
     assert msg.sender == self.nextMinter, "!next minter"
     self.minter = msg.sender
-    self.nextMinter = ZERO_ADDRESS
     log AcceptMinter(msg.sender)
 
 
@@ -129,8 +173,6 @@ def decreaseAllowance(spender: address, amount: uint256) -> bool:
     log Approval(msg.sender, spender, self.allowance[msg.sender][spender])
     return True
 
-# TODO: setName?
-# TODO: setSymbol?
 # TODO: permit?
 
 @external
