@@ -218,7 +218,6 @@ def setKeeper(keeper: address):
 @external
 def setPause(paused: bool):
     assert msg.sender in [self.admin, self.guardian], "!authorized"
-    assert paused != self.paused, "paused = current"
     self.paused = paused
     log SetPause(paused)
 
@@ -394,6 +393,7 @@ def calcWithdraw(shares: uint256) -> uint256:
 
 # TODO: deposit log
 # TODO: deposit limit
+# TODO: test deposit / withdraw flash attack
 @external
 @nonreentrant("lock")
 def deposit(_amount: uint256, minShares: uint256) -> uint256:
@@ -406,10 +406,12 @@ def deposit(_amount: uint256, minShares: uint256) -> uint256:
     amount: uint256 = _amount
     if amount == MAX_UINT256:
         amount = self.token.balanceOf(msg.sender)
+
+    assert self._totalAssets() + amount <= self.depositLimit, "deposit limit"
     assert amount > 0, "deposit = 0"
 
     totalSupply: uint256 = self.uToken.totalSupply()
-    totalAssets: uint256 = self._totalAssets()
+    freeFunds: uint256 = self._calcFreeFunds()
 
     diff: uint256 = 0
     if self.feeOnTransfer:
@@ -424,9 +426,10 @@ def deposit(_amount: uint256, minShares: uint256) -> uint256:
 
     assert diff > 0, "diff = 0"
 
-    shares: uint256 = self._calcSharesToMint(diff, totalSupply, totalAssets)
+    shares: uint256 = self._calcSharesToMint(diff, totalSupply, freeFunds)
     assert shares >= minShares, "shares < min"
     
+    # TODO: test balanceInVault <= ERC20.balanceOf(self)
     self.balanceInVault += diff
     self.uToken.mint(msg.sender, shares)
 

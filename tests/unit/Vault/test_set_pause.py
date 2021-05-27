@@ -12,10 +12,6 @@ def test_set_pause(accounts, vault, admin, guardian):
     with brownie.reverts("!authorized"):
         vault.setPause(True, {"from": accounts[1]})
 
-    # new keeper is current keeper
-    with brownie.reverts("paused = current"):
-        vault.setPause(vault.paused(), {"from": admin})
-
     # guadian can pause
     vault.setPause(False, {"from": guardian})
     assert not vault.paused()
