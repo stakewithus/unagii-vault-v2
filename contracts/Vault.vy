@@ -8,6 +8,8 @@
 
 from vyper.interfaces import ERC20
 
+# TODO: comment
+
 interface DetailedERC20:
     def decimals() -> uint256: view
 
@@ -301,7 +303,6 @@ def totalAssets() -> uint256:
 @internal
 @pure
 def _calcSharesToMint(amount: uint256, totalSupply: uint256, totalAssets: uint256) -> uint256:
-    # mint
     # s = shares to mint
     # T = total shares before mint
     # a = deposit amount
