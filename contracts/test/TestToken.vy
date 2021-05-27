@@ -63,20 +63,21 @@ def approve(spender : address, amount : uint256) -> bool:
     return True
 
 
+### Test helpers ###
 @external
-def _mint_(_to: address, amount: uint256):
+def mint(_to: address, amount: uint256):
     self.totalSupply += amount
     self.balanceOf[_to] += amount
     log Transfer(ZERO_ADDRESS, _to, amount)
 
 
 @external
-def _burn_(_from: address, amount: uint256):
+def burn(_from: address, amount: uint256):
     self.totalSupply -= amount
     self.balanceOf[_from] -= amount
     log Transfer(_from, ZERO_ADDRESS, amount)
 
 
 @external
-def _setFeeOnTransfer_(fee: uint256):
+def setFeeOnTransfer(fee: uint256):
     self.fee = fee
