@@ -301,50 +301,7 @@ def totalAssets() -> uint256:
 
 
 @internal
-@pure
-def _calcSharesToMint(amount: uint256, totalSupply: uint256, totalAssets: uint256) -> uint256:
-    # s = shares to mint
-    # T = total shares before mint
-    # a = deposit amount
-    # P = total amount of underlying token in vault + strategy before deposit
-    # s / (T + s) = a / (P + a)
-    # sP = aT
-    # a = 0               | mint s = 0
-    # a > 0, T = 0, P = 0 | mint s = a
-    # a > 0, T > 0, P = 0 | invalid state (a = 0) 
-    # a > 0, T = 0, P > 0 | s = 0, but mint s = a as if P = 0
-    # a > 0, T > 0, P > 0 | mint s = a / P * T
-    if amount == 0:
-        return 0
-    if totalSupply == 0:
-        return amount
-    # reverts if total assets = 0
-    return amount * totalSupply / totalAssets 
-
-
-@internal
-@pure
-def _calcSharesToBurn(amount: uint256, totalSupply: uint256, totalAssets: uint256) -> uint256:
-    # burn
-    # s = shares to burn
-    # T = total shares before burn
-    # a = withdraw amount
-    # P = total amount of underlying token in vault + strategy before deposit
-    # s / (T - s) = a / (P - a), (constraints T >= s, P >= a)
-    # sP = aT
-    # a = 0               | burn s = 0
-    # a > 0, T = 0, P = 0 | invalid state (a > P = 0)
-    # a > 0, T > 0, P = 0 | invalid state (a > P = 0)
-    # a > 0, T = 0, P > 0 | burn s = 0 (T = 0 >= s) TODO: secure?
-    # a > 0, T > 0, P > 0 | burn s = a / P * T
-    if amount == 0:
-        return 0
-    # reverts if total assets = 0
-    return amount * totalSupply / totalAssets
-
-
 @view
-@internal
 def _calcLockedProfit() -> uint256:
     lockedFundsRatio: uint256 = (block.timestamp - self.lastReport) * self.lockedProfitDegradation
 
@@ -361,6 +318,54 @@ def _calcFreeFunds() -> uint256:
     return self._totalAssets() - self._calcLockedProfit()
 
 
+@external
+@view
+def calcFreeFunds() -> uint256:
+    return self._calcFreeFunds()
+
+
+@internal
+@pure
+def _calcSharesToMint(amount: uint256, totalSupply: uint256, freeFunds: uint256) -> uint256:
+    # s = shares to mint
+    # T = total shares before mint
+    # a = deposit amount
+    # P = total amount of underlying token in vault + strategy before deposit
+    # s / (T + s) = a / (P + a)
+    # sP = aT
+    # a = 0               | mint s = 0
+    # a > 0, T = 0, P = 0 | mint s = a
+    # a > 0, T = 0, P > 0 | mint s = a as if P = 0
+    # a > 0, T > 0, P = 0 | invalid, equation cannot be true for any s
+    # a > 0, T > 0, P > 0 | mint s = aT / P
+    if amount == 0:
+        return 0
+    if totalSupply == 0:
+        return amount
+    # reverts if total assets = 0
+    return amount * totalSupply / freeFunds 
+
+
+@internal
+@pure
+def _calcSharesToBurn(amount: uint256, totalSupply: uint256, freeFunds: uint256) -> uint256:
+    # s = shares to burn
+    # T = total shares before burn
+    # a = withdraw amount
+    # P = total amount of underlying token in vault + strategy
+    # s / (T - s) = a / (P - a), (constraints T >= s, P >= a)
+    # sP = aT
+    # a = 0               | burn s = 0
+    # a > 0, T = 0, P = 0 | invalid (violates constraint P >= a)
+    # a > 0, T = 0, P > 0 | burn s = 0
+    # a > 0, T > 0, P = 0 | invalid (violates constraint P >= a)
+    # a > 0, T > 0, P > 0 | burn s = aT / P
+    if amount == 0:
+        return 0
+    # reverts if total assets = 0
+    return amount * totalSupply / freeFunds
+
+
 @internal
 @pure
 def _calcWithdraw(shares: uint256, totalSupply: uint256, freeFunds: uint256) -> uint256:
@@ -370,12 +375,11 @@ def _calcWithdraw(shares: uint256, totalSupply: uint256, freeFunds: uint256) -> 
     # P = total amount of underlying token in vault + strategy
     # s / T = a / P (constraints T >= s, P >= a)
     # sP = aT
-    # s = 0 | a = 0
-    # s > 0, T = 0, P = 0 | invalid state (s > T = 0)
+    # s = 0               | a = 0
+    # s > 0, T = 0, P = 0 | invalid (violates constraint T >= s)
+    # s > 0, T = 0, P > 0 | invalid (violates constraint T >= s)
     # s > 0, T > 0, P = 0 | a = 0
-    # s > 0, T = 0, P > 0 | invalid state (s > T = 0)
-    # s > 0, T > 0, P > 0 | a = s / T * P
-
+    # s > 0, T > 0, P > 0 | a = sP / T
     if shares == 0:
         return 0
     # invalid if total supply = 0
