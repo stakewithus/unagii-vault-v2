@@ -33,7 +33,7 @@ interface IStrategy:
     def migrate(newVersion: address): nonpayable
 
 
-MAX_STRATEGIES: constant(uint256) = 20
+MAX_QUEUE: constant(uint256) = 20
 MAX_BPS: constant(uint256) = 10000
 MAX_PERFORMANCE_FEE: constant(uint256) = 5000
 
@@ -83,8 +83,8 @@ event AddStrategyToQueue:
 event RemoveStrategyFromQueue:
     strategy: indexed(address)
 
-event UpdateWithdrawalQueue:
-    queue: address[MAX_STRATEGIES]
+event UpdateQueue:
+    queue: address[MAX_QUEUE]
 
 event StrategyUpdateDebtRatio:
     strategy: indexed(address)
@@ -146,7 +146,7 @@ DEGRADATION_COEFFICIENT: constant(uint256) = 10 ** 18
 lockedProfitDegradation: public(uint256)
 
 strategies: public(HashMap[address, Strategy])
-withdrawalQueue: public(address[MAX_STRATEGIES])
+queue: public(address[MAX_QUEUE])
 
 blockDelay: public(uint256)
 # Token has fee on transfer
@@ -186,6 +186,7 @@ def initialize():
     self.initialized = True
     self.uToken.acceptMinter()
 
+# TODO: migrate to new vault
 
 @external
 def setNextAdmin(nextAdmin: address):
@@ -333,7 +334,7 @@ def _calcFreeFunds() -> uint256:
 def calcFreeFunds() -> uint256:
     return self._calcFreeFunds()
 
-
+# TODO: test
 @internal
 @pure
 def _calcSharesToMint(amount: uint256, totalSupply: uint256, freeFunds: uint256) -> uint256:
@@ -356,6 +357,7 @@ def _calcSharesToMint(amount: uint256, totalSupply: uint256, freeFunds: uint256)
     return amount * totalSupply / freeFunds 
 
 
+# TODO: test
 @internal
 @pure
 def _calcSharesToBurn(amount: uint256, totalSupply: uint256, freeFunds: uint256) -> uint256:
@@ -376,6 +378,7 @@ def _calcSharesToBurn(amount: uint256, totalSupply: uint256, freeFunds: uint256)
     return amount * totalSupply / freeFunds
 
 
+# TODO: test
 @internal
 @pure
 def _calcWithdraw(shares: uint256, totalSupply: uint256, freeFunds: uint256) -> uint256:
@@ -476,7 +479,7 @@ def _reportLoss(strategy: address, loss: uint256):
 def _withdrawFromStrategies(_amount: uint256) -> uint256:
     amount: uint256 = _amount
     totalLoss: uint256 = 0
-    for strategy in self.withdrawalQueue:
+    for strategy in self.queue:
         if strategy == ZERO_ADDRESS:
             break
 
@@ -557,39 +560,40 @@ def withdraw(_shares: uint256, minAmount: uint256) -> uint256:
 
     return diff
 
-
+# array functions tested in test/Array.vy 
 @internal
 def _pack():
-    arr: address[MAX_STRATEGIES] = empty(address[MAX_STRATEGIES])
+    arr: address[MAX_QUEUE] = empty(address[MAX_QUEUE])
     i: uint256 = 0
-    for strat in self.withdrawalQueue:
+    for strat in self.queue:
         if strat != ZERO_ADDRESS:
             arr[i] = strat
             i += 1
-    self.withdrawalQueue = arr
+    self.queue = arr
 
 
 @internal
 def _append(strategy: address):
-    assert self.withdrawalQueue[MAX_STRATEGIES - 1] == ZERO_ADDRESS, "active > max"
-    self.withdrawalQueue[MAX_STRATEGIES - 1] = strategy
+    assert self.queue[MAX_QUEUE - 1] == ZERO_ADDRESS, "queue > max"
+    self.queue[MAX_QUEUE - 1] = strategy
     self._pack()
 
 
 @internal
 def _remove(i: uint256):
-    assert i < MAX_STRATEGIES, "i >= max"
-    self.withdrawalQueue[i] = ZERO_ADDRESS
+    assert i < MAX_QUEUE, "i >= max"
+    assert self.queue[i] != ZERO_ADDRESS, "!zero address"
+    self.queue[i] = ZERO_ADDRESS
     self._pack()
 
 
 @internal
 @view
 def _find(strategy: address) -> uint256:
-    for i in range(MAX_STRATEGIES):
-        if self.withdrawalQueue[i] == strategy:
+    for i in range(MAX_QUEUE):
+        if self.queue[i] == strategy:
             return i
-    raise "strategy not found"
+    raise "not found"
 
 
 @external
@@ -663,13 +667,13 @@ def removeStrategyFromQueue(strategy: address):
 
 
 @external
-def setWithdrawalQueue(queue: address[MAX_STRATEGIES]):
+def setQueue(queue: address[MAX_QUEUE]):
     assert msg.sender == self.admin, "!admin"
 
     # Check old and new queue lengths of non zero strategies are equal
     zeroFound: bool = False
-    for i in range(MAX_STRATEGIES):
-        oldStrat: address = self.withdrawalQueue[i]
+    for i in range(MAX_QUEUE):
+        oldStrat: address = self.queue[i]
         newStrat: address = queue[i]
 
         if oldStrat != ZERO_ADDRESS:
@@ -682,21 +686,21 @@ def setWithdrawalQueue(queue: address[MAX_STRATEGIES]):
             assert newStrat == ZERO_ADDRESS, "new strat != 0 address"
 
     # Check strategy is active and no duplicate
-    for i in range(MAX_STRATEGIES):
+    for i in range(MAX_QUEUE):
         strat: address = queue[i]
         if strat == ZERO_ADDRESS:
             break
         assert self.strategies[strat].active, "!active"
         self.strategies[strat].active = False
 
-    for i in range(MAX_STRATEGIES):
+    for i in range(MAX_QUEUE):
         strat: address = queue[i]
         if strat == ZERO_ADDRESS:
             break
         self.strategies[strat].active = True
-        self.withdrawalQueue[i] = strat
+        self.queue[i] = strat
 
-    log UpdateWithdrawalQueue(queue)
+    log UpdateQueue(queue)
 
 
 @external
@@ -944,7 +948,7 @@ def migrateStrategy(oldVersion: address, newVersion: address):
     log RevokeStrategy(oldVersion)
 
     i: uint256 = self._find(oldVersion)
-    self.withdrawalQueue[i] = newVersion
+    self.queue[i] = newVersion
 
     IStrategy(oldVersion).migrate(newVersion)
     log MigrateStrategy(oldVersion, newVersion)
