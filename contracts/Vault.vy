@@ -40,7 +40,7 @@ MAX_PERF_FEE: constant(uint256) = 5000
 struct Strategy:
     approved: bool
     active: bool
-    activated: bool
+    activatedAt: uint256
     debtRatio: uint256
     debt: uint256
     totalGain: uint256
@@ -607,8 +607,8 @@ def approveStrategy(
     assert msg.sender == self.timeLock, "!time lock"
 
     assert not self.strategies[strategy].approved, "approved"
-    assert IStrategy(strategy).vault() == self, "strategy.vault != vault"
-    assert IStrategy(strategy).token() == self.token.address, "strategy.token != token"
+    assert IStrategy(strategy).vault() == self, "!vault"
+    assert IStrategy(strategy).token() == self.token.address, "!token"
 
     assert minDebtPerHarvest <= maxDebtPerHarvest, "min > max"
     assert perfFee <= MAX_PERF_FEE, "perf fee > max"
@@ -616,7 +616,7 @@ def approveStrategy(
     self.strategies[strategy] = Strategy({
         approved: True,
         active: False,
-        activated: False,
+        activatedAt: 0,
         debtRatio: 0,
         debt: 0,
         totalGain: 0,
@@ -648,7 +648,7 @@ def addStrategyToQueue(strategy: address, debtRatio: uint256):
 
     self._append(strategy)
     self.strategies[strategy].active = True
-    self.strategies[strategy].activated = True
+    self.strategies[strategy].activatedAt = block.timestamp
     self.strategies[strategy].debtRatio = debtRatio
     self.totalDebtRatio += debtRatio
     log AddStrategyToQueue(strategy)
@@ -925,14 +925,14 @@ def migrateStrategy(oldVersion: address, newVersion: address):
     assert msg.sender == self.admin, "!admin"
     assert self.strategies[oldVersion].active, "old !active"
     assert self.strategies[newVersion].approved, "new !approved"
-    assert not self.strategies[newVersion].activated, "activated"
+    assert self.strategies[newVersion].activatedAt == 0, "activated"
 
     strategy: Strategy = self.strategies[oldVersion]
 
     self.strategies[newVersion] = Strategy({
         approved: True,
         active: True,
-        activated: True,
+        activatedAt: 0, # TODO: activated at
         perfFee: strategy.perfFee,
         debtRatio: strategy.debtRatio,
         minDebtPerHarvest: strategy.minDebtPerHarvest,

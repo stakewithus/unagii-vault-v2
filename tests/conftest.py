@@ -1,5 +1,5 @@
 import pytest
-from brownie import accounts, Vault, UnagiiToken, TestToken
+from brownie import accounts, Vault, UnagiiToken, TestToken, TestStrategy
 
 
 @pytest.fixture(scope="session")
@@ -53,3 +53,8 @@ def vault(Vault, token, uToken, minter, admin, timeLock, guardian, keeper):
     uToken.setNextMinter(vault, {"from": minter})
     vault.initialize()
     yield vault
+
+
+@pytest.fixture(scope="module")
+def strategy(TestStrategy, vault, token, admin):
+    yield TestStrategy.deploy(vault, token, {"from": admin})
