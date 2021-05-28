@@ -1,7 +1,9 @@
 import brownie
 
 
-def test_init(vault, token, uToken, admin, timeLock, guardian, keeper):
+def test_init(Vault, token, uToken, admin, timeLock, guardian, keeper):
+    vault = Vault.deploy(token, uToken, timeLock, guardian, keeper, {"from": admin})
+
     assert vault.admin() == admin
     assert vault.timeLock() == timeLock
     assert vault.guardian() == guardian
