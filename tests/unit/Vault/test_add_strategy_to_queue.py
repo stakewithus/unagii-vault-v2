@@ -4,7 +4,7 @@ import pytest
 ZERO_ADDRESS = "0x0000000000000000000000000000000000000000"
 
 
-def test_add_strategy_to_queue(vault, token, admin, timeLock, keeper, strategy, user):
+def test_add_strategy_to_queue(vault, admin, timeLock, keeper, strategy, user):
     # revert if paused
     vault.setPause(True, {"from": admin})
     with brownie.reverts("paused"):
