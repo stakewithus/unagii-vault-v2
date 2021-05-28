@@ -634,6 +634,7 @@ def revokeStrategy(strategy: address):
     assert self.strategies[strategy].approved, "!approved"
     assert not self.strategies[strategy].active, "active"
 
+    # TODO: if strategy.debt > 0?
     self.strategies[strategy].approved = False
     log RevokeStrategy(strategy)
 

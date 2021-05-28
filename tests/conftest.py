@@ -52,6 +52,7 @@ def vault(Vault, token, uToken, minter, admin, timeLock, guardian, keeper):
     vault = Vault.deploy(token, uToken, timeLock, guardian, keeper, {"from": admin})
     uToken.setNextMinter(vault, {"from": minter})
     vault.initialize()
+    vault.setPause(False)
     yield vault
 
 
