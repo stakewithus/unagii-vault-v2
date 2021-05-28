@@ -32,6 +32,11 @@ def attacker(accounts):
     yield accounts[5]
 
 
+@pytest.fixture(scope="session")
+def user(accounts):
+    yield accounts[-1]
+
+
 @pytest.fixture(scope="module")
 def token(TestToken, admin):
     yield TestToken.deploy("test", "TEST", 18, {"from": admin})
@@ -43,5 +48,8 @@ def uToken(UnagiiToken, token, minter):
 
 
 @pytest.fixture(scope="module")
-def vault(Vault, token, uToken, admin, timeLock, guardian, keeper):
-    yield Vault.deploy(token, uToken, timeLock, guardian, keeper, {"from": admin})
+def vault(Vault, token, uToken, minter, admin, timeLock, guardian, keeper):
+    vault = Vault.deploy(token, uToken, timeLock, guardian, keeper, {"from": admin})
+    uToken.setNextMinter(vault, {"from": minter})
+    vault.initialize()
+    yield vault

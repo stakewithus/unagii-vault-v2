@@ -15,6 +15,7 @@ interface DetailedERC20:
 
 
 interface UnagiiToken:
+    def acceptMinter(): nonpayable
     def token() -> address: view
     def decimals() -> uint256: view
     def totalSupply() -> uint256: view
@@ -124,6 +125,7 @@ event MigrateStrategy:
     oldVersion: indexed(address)
     newVersion: indexed(address)
 
+initialized: public(bool)
 
 token: public(ERC20)
 uToken: public(UnagiiToken)
@@ -170,10 +172,19 @@ def __init__(
     assert self.uToken.token() == self.token.address, "uToken.token != token"
 
     self.paused = True
-    self.blockDelay = 10
+    self.blockDelay = 1
     self.lastReport = block.timestamp
     # 6 hours
     self.lockedProfitDegradation = convert(DEGRADATION_COEFFICIENT / 21600 , uint256)
+
+
+@external
+def initialize():
+    assert msg.sender == self.admin, "!admin"
+    assert not self.initialized, "initialized"
+
+    self.initialized = True
+    self.uToken.acceptMinter()
 
 
 @external
@@ -392,12 +403,13 @@ def calcWithdraw(shares: uint256) -> uint256:
 
 
 # TODO: deposit log
-# TODO: deposit limit
-# TODO: test deposit / withdraw flash attack
 @external
 @nonreentrant("lock")
 def deposit(_amount: uint256, minShares: uint256) -> uint256:
     assert not self.paused, "paused"
+    # TODO: test deposit / withdraw flash attack
+    # TODO: test block delay
+    # TODO: test whitelist
     assert (
         self.whitelist[msg.sender] or
         block.number >= self.uToken.lastBlock(msg.sender) + self.blockDelay
@@ -411,6 +423,7 @@ def deposit(_amount: uint256, minShares: uint256) -> uint256:
     assert amount > 0, "deposit = 0"
 
     totalSupply: uint256 = self.uToken.totalSupply()
+    # TODO: test free funds
     freeFunds: uint256 = self._calcFreeFunds()
 
     diff: uint256 = 0
