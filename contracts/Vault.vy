@@ -645,7 +645,7 @@ def addStrategyToQueue(strategy: address, debtRatio: uint256):
     assert msg.sender in [self.admin, self.keeper], "!auth"
     assert self.strategies[strategy].approved, "!approved"
     assert not self.strategies[strategy].active, "active"
-    assert self.totalDebtRatio + debtRatio <= MAX_BPS, "total debt ratio > max"
+    assert self.totalDebtRatio + debtRatio <= MAX_BPS, "ratio > max"
 
     self._append(strategy)
     self.strategies[strategy].active = True
