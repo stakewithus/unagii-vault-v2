@@ -977,5 +977,5 @@ def skim():
 @external
 def sweep(token: address):
     assert msg.sender == self.admin, "!admin"
-    assert token != self.token.address, "protected token"
+    assert token != self.token.address, "protected"
     self._safeTransfer(token, self.admin, ERC20(token).balanceOf(self))
