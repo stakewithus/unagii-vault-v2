@@ -35,7 +35,7 @@ interface IStrategy:
 
 MAX_QUEUE: constant(uint256) = 20
 MAX_BPS: constant(uint256) = 10000
-MAX_PERFORMANCE_FEE: constant(uint256) = 5000
+MAX_PERF_FEE: constant(uint256) = 5000
 
 struct Strategy:
     approved: bool
@@ -45,7 +45,7 @@ struct Strategy:
     debt: uint256
     totalGain: uint256
     totalLoss: uint256
-    performanceFee: uint256
+    perfFee: uint256
     minDebtPerHarvest: uint256
     maxDebtPerHarvest: uint256
 
@@ -100,7 +100,7 @@ event StrategyUpdateMaxDebtPerHarvest:
 
 event StrategyUpdatePerformanceFee:
     strategy: indexed(address)
-    performanceFee: uint256
+    perfFee: uint256
 
 event Report:
     strategy: indexed(address)
@@ -595,13 +595,13 @@ def _find(strategy: address) -> uint256:
             return i
     raise "not found"
 
-
+# TODO: integration test approve, revoke, add, remove
 @external
 def approveStrategy(
     strategy: address,
     minDebtPerHarvest: uint256,
     maxDebtPerHarvest: uint256,
-    performanceFee: uint256
+    perfFee: uint256
 ):
     assert not self.paused, "paused"
     assert msg.sender == self.timeLock, "!time lock"
@@ -611,7 +611,7 @@ def approveStrategy(
     assert IStrategy(strategy).token() == self.token.address, "strategy.token != token"
 
     assert minDebtPerHarvest <= maxDebtPerHarvest, "min > max"
-    assert performanceFee <= MAX_PERFORMANCE_FEE, "performance fee > max"
+    assert perfFee <= MAX_PERF_FEE, "perf fee > max"
 
     self.strategies[strategy] = Strategy({
         approved: True,
@@ -623,7 +623,7 @@ def approveStrategy(
         totalLoss: 0,
         minDebtPerHarvest: minDebtPerHarvest,
         maxDebtPerHarvest: maxDebtPerHarvest,
-        performanceFee: performanceFee
+        perfFee: perfFee
     })
     log ApproveStrategy(strategy)
 
@@ -733,12 +733,12 @@ def updateStrategyMaxDebtPerHarvest(strategy: address, maxDebtPerHarvest: uint25
 
 
 @external
-def updateStrategyPerformanceFee(strategy: address, performanceFee: uint256):
+def updateStrategyPerformanceFee(strategy: address, perfFee: uint256):
     assert msg.sender == self.admin, "!admin"
-    assert performanceFee <= MAX_PERFORMANCE_FEE, "performance fee > max"
+    assert perfFee <= MAX_PERF_FEE, "perf fee > max"
     assert self.strategies[strategy].approved, "!approved"
-    self.strategies[strategy].performanceFee = performanceFee
-    log StrategyUpdatePerformanceFee(strategy, performanceFee)
+    self.strategies[strategy].perfFee = perfFee
+    log StrategyUpdatePerformanceFee(strategy, perfFee)
 
 
 # TODO: migrate strategy
@@ -807,7 +807,7 @@ def report(gain: uint256, loss: uint256, _debtPayment: uint256) -> uint256:
     if loss > 0:
         self._reportLoss(msg.sender, loss)
 
-    fee: uint256 = gain * self.strategies[msg.sender].performanceFee / MAX_BPS
+    fee: uint256 = gain * self.strategies[msg.sender].perfFee / MAX_BPS
 
     # TODO: include fee on transfer
     self.strategies[msg.sender].totalGain += gain
@@ -933,7 +933,7 @@ def migrateStrategy(oldVersion: address, newVersion: address):
         approved: True,
         active: True,
         activated: True,
-        performanceFee: strategy.performanceFee,
+        perfFee: strategy.perfFee,
         debtRatio: strategy.debtRatio,
         minDebtPerHarvest: strategy.minDebtPerHarvest,
         maxDebtPerHarvest: strategy.maxDebtPerHarvest,
