@@ -595,7 +595,7 @@ def _find(strategy: address) -> uint256:
             return i
     raise "not found"
 
-# TODO: integration test approve, revoke, add, remove
+
 @external
 def approveStrategy(
     strategy: address,
