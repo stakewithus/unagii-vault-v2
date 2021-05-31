@@ -1,11 +1,10 @@
 import brownie
-from brownie.convert.datatypes import _address_compare
 from brownie.test import strategy
 from brownie import TestStrategy
 
 
 ZERO_ADDRESS = "0x0000000000000000000000000000000000000000"
-N = 3
+N = 5
 
 
 class StateMachine:

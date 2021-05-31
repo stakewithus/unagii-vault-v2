@@ -671,29 +671,35 @@ def removeStrategyFromQueue(strategy: address):
 def setQueue(queue: address[MAX_QUEUE]):
     assert msg.sender == self.admin, "!admin"
 
-    # Check old and new queue lengths of non zero strategies are equal
-    zeroFound: bool = False
+    # check no gaps in new queue
+    zero: bool = False
+    for i in range(MAX_QUEUE):
+        strat: address = queue[i]
+        if strat == ZERO_ADDRESS:
+            if not zero:
+                zero = True
+        else:
+            assert not zero, "gap"
+
+    # Check old and new queue counts of non zero strategies are equal
     for i in range(MAX_QUEUE):
         oldStrat: address = self.queue[i]
         newStrat: address = queue[i]
-
-        if oldStrat != ZERO_ADDRESS:
-            # Check no gaps
-            assert not zeroFound, "zero address found"
-            assert newStrat != ZERO_ADDRESS, "new strat == 0 address"
+        if oldStrat == ZERO_ADDRESS:
+            assert newStrat == ZERO_ADDRESS, "new != 0"
         else:
-            if not zeroFound:
-                zeroFound = True
-            assert newStrat == ZERO_ADDRESS, "new strat != 0 address"
+            assert newStrat != ZERO_ADDRESS, "new = 0"
 
-    # Check strategy is active and no duplicate
+    # Check new strategy is active and no duplicate
     for i in range(MAX_QUEUE):
         strat: address = queue[i]
         if strat == ZERO_ADDRESS:
             break
+        # code below will fail if duplicate strategy in new queue
         assert self.strategies[strat].active, "!active"
         self.strategies[strat].active = False
 
+    # update queue
     for i in range(MAX_QUEUE):
         strat: address = queue[i]
         if strat == ZERO_ADDRESS:
