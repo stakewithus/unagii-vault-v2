@@ -83,22 +83,22 @@ event AddStrategyToQueue:
 event RemoveStrategyFromQueue:
     strategy: indexed(address)
 
-event UpdateQueue:
+event SetQueue:
     queue: address[MAX_QUEUE]
 
-event StrategyUpdateDebtRatio:
+event UpdateStrategyDebtRatio:
     strategy: indexed(address)
     debtRatio: uint256
 
-event StrategyUpdateMinDebtPerHarvest:
+event UpdateStrategyMinDebtPerHarvest:
     strategy: indexed(address)
     minDebtPerHarvest: uint256
 
-event StrategyUpdateMaxDebtPerHarvest:
+event UpdateStrategyMaxDebtPerHarvest:
     strategy: indexed(address)
     maxDebtPerHarvest: uint256
 
-event StrategyUpdatePerformanceFee:
+event UpdateStrategyPerformanceFee:
     strategy: indexed(address)
     perfFee: uint256
 
@@ -707,7 +707,7 @@ def setQueue(queue: address[MAX_QUEUE]):
         self.strategies[strat].active = True
         self.queue[i] = strat
 
-    log UpdateQueue(queue)
+    log SetQueue(queue)
 
 
 @external
@@ -717,35 +717,35 @@ def updateStrategyDebtRatio(strategy: address, debtRatio: uint256):
     self.totalDebtRatio -= self.strategies[strategy].debtRatio
     self.strategies[strategy].debtRatio = debtRatio
     self.totalDebtRatio += debtRatio
-    assert self.totalDebtRatio <= MAX_BPS, "total debt ratio > max"
-    log StrategyUpdateDebtRatio(strategy, debtRatio)
+    assert self.totalDebtRatio <= MAX_BPS, "total > max"
+    log UpdateStrategyDebtRatio(strategy, debtRatio)
 
 
 @external
 def updateStrategyMinDebtPerHarvest(strategy: address, minDebtPerHarvest: uint256):
     assert msg.sender in [self.admin, self.keeper], "!auth"
     assert self.strategies[strategy].approved, "!approved"
-    assert self.strategies[strategy].maxDebtPerHarvest >= minDebtPerHarvest
+    assert self.strategies[strategy].maxDebtPerHarvest >= minDebtPerHarvest, "min > max"
     self.strategies[strategy].minDebtPerHarvest = minDebtPerHarvest
-    log StrategyUpdateMinDebtPerHarvest(strategy, minDebtPerHarvest)
+    log UpdateStrategyMinDebtPerHarvest(strategy, minDebtPerHarvest)
 
 
 @external
 def updateStrategyMaxDebtPerHarvest(strategy: address, maxDebtPerHarvest: uint256):
     assert msg.sender in [self.admin, self.keeper], "!auth"
     assert self.strategies[strategy].approved, "!approved"
-    assert self.strategies[strategy].minDebtPerHarvest <= maxDebtPerHarvest
+    assert self.strategies[strategy].minDebtPerHarvest <= maxDebtPerHarvest, "max < min"
     self.strategies[strategy].maxDebtPerHarvest = maxDebtPerHarvest
-    log StrategyUpdateMaxDebtPerHarvest(strategy, maxDebtPerHarvest)
+    log UpdateStrategyMaxDebtPerHarvest(strategy, maxDebtPerHarvest)
 
 
 @external
 def updateStrategyPerformanceFee(strategy: address, perfFee: uint256):
     assert msg.sender == self.admin, "!admin"
-    assert perfFee <= MAX_PERF_FEE, "perf fee > max"
     assert self.strategies[strategy].approved, "!approved"
+    assert perfFee <= MAX_PERF_FEE, "perf fee > max"
     self.strategies[strategy].perfFee = perfFee
-    log StrategyUpdatePerformanceFee(strategy, perfFee)
+    log UpdateStrategyPerformanceFee(strategy, perfFee)
 
 
 # TODO: migrate strategy
