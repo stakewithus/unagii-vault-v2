@@ -12,11 +12,11 @@ def test_skim(accounts, vault, token, admin, user):
             },
         }
 
-    token.mint(vault, 123)
-
     # not admin
     with brownie.reverts("!admin"):
         vault.skim({"from": user})
+
+    token.mint(vault, 123)
 
     diff = token.balanceOf(vault) - vault.balanceInVault()
 

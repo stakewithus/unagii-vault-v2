@@ -125,6 +125,9 @@ event MigrateStrategy:
     oldVersion: indexed(address)
     newVersion: indexed(address)
 
+event Sync:
+    balanceInVault: uint256
+
 initialized: public(bool)
 
 token: public(ERC20)
@@ -973,6 +976,16 @@ def migrateStrategy(oldVersion: address, newVersion: address):
 # # ut.setMinter(v2)
 # # u.approve(v2, bal of v1, {from: v1})
 # # u.transferFrom(v1, v2, bal of v1, {from: v2})
+
+@external
+def sync():
+    assert msg.sender == self.admin, "!admin"
+    bal: uint256 = self.token.balanceOf(self)
+    assert bal < self.balanceInVault, "bal >= vault"
+    self.balanceInVault = bal
+
+    log Sync(bal)
+
 
 @external
 def skim():
