@@ -332,10 +332,12 @@ def _calcFreeFunds() -> uint256:
     return self._totalAssets() - self._calcLockedProfit()
 
 
+# TODO: test
 @external
 @view
 def calcFreeFunds() -> uint256:
     return self._calcFreeFunds()
+
 
 # TODO: test
 @internal
@@ -402,6 +404,7 @@ def _calcWithdraw(shares: uint256, totalSupply: uint256, freeFunds: uint256) -> 
     return shares * freeFunds / totalSupply
 
 
+# TODO: test
 @external
 @view
 def calcWithdraw(shares: uint256) -> uint256:
@@ -528,6 +531,8 @@ def _withdrawFromStrategies(_amount: uint256) -> uint256:
 @nonreentrant("lock")
 def withdraw(_shares: uint256, minAmount: uint256) -> uint256:
     # TODO: smart contract cannot transferFrom and then withdraw?
+    # TODO: test flash deposit / withdraw
+    # TODO: test whitelist
     assert (
         self.whitelist[msg.sender] or
         block.number >= self.uToken.lastBlock(msg.sender) + self.blockDelay
