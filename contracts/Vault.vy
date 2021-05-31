@@ -452,6 +452,9 @@ def deposit(_amount: uint256, minShares: uint256) -> uint256:
     self.balanceInVault += diff
     self.uToken.mint(msg.sender, shares)
 
+    bal: uint256 = self.token.balanceOf(self)
+    assert bal >= self.balanceInVault, "bal < vault"
+
     return shares
 
 
@@ -558,8 +561,8 @@ def withdraw(_shares: uint256, minAmount: uint256) -> uint256:
     assert diff >= minAmount, "diff < min"
     self.balanceInVault -= diff
 
-    # TODO: remove?
-    # assert bal >= self.balanceInVault, "bal < balance in vault"
+    bal: uint256 = self.token.balanceOf(self)
+    assert bal >= self.balanceInVault, "bal < vault"
 
     return diff
 
