@@ -525,7 +525,7 @@ def borrow(_amount: uint256) -> uint256:
 
 # TODO: test
 @external
-def repay():
+def repay(amount: uint256) -> uint256:
     assert msg.sender == self.fundManager.address, "!fund manager"
     assert amount > 0, "repay = 0"
 
