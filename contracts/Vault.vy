@@ -417,7 +417,7 @@ def deposit(_amount: uint256, minShares: uint256) -> uint256:
 # TODO: withdraw log
 @external
 @nonreentrant("lock")
-def withdraw(_shares: uint256, _min: uint256) -> uint256:
+def withdraw(_maxShares: uint256, _min: uint256) -> uint256:
     # TODO: smart contract cannot transferFrom and then withdraw?
     # TODO: test flash deposit / withdraw
     # TODO: test whitelist
@@ -426,12 +426,11 @@ def withdraw(_shares: uint256, _min: uint256) -> uint256:
         block.number >= self.uToken.lastBlock(msg.sender) + self.blockDelay
     ), "block < delay" 
 
-    shares: uint256 = min(_shares, self.uToken.balanceOf(msg.sender))
+    shares: uint256 = min(_maxShares, self.uToken.balanceOf(msg.sender))
     assert shares > 0, "shares = 0"
 
     totalSupply: uint256 = self.uToken.totalSupply()
-    freeFunds: uint256 = self._calcFreeFunds()
-    amount: uint256 = self._calcWithdraw(shares, totalSupply, freeFunds)
+    amount: uint256 = self._calcWithdraw(shares, totalSupply, self._calcFreeFunds())
 
     if amount > self.balanceInVault:
         diff: uint256 = self.token.balanceOf(self)
@@ -440,13 +439,15 @@ def withdraw(_shares: uint256, _min: uint256) -> uint256:
 
         if loss > 0:
             amount -= loss
-            self.debt -= (diff + loss)
+            self.debt -= loss
             self.loss += loss
 
-        amount -= loss
+        self.debt -= diff
+        self.balanceInVault += diff
+
         if amount > self.balanceInVault:
             amount = self.balanceInVault
-            shares = self._calcSharesToBurn(amount + loss, totalSupply, self._totalAssets())
+            shares = self._calcSharesToBurn(amount + loss, totalSupply, self._calcFreeFunds())
 
     self.uToken.burn(msg.sender, shares)
 
