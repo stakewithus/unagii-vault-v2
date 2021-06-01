@@ -47,10 +47,6 @@ event SetTimeLock:
 event SetGuardian:
     guardian: address
 
-# TODO: remove?
-event SetKeeper:
-    keeper: address
-
 event SetFundManager:
     fundManager: address
 
@@ -76,7 +72,6 @@ admin: public(address)
 nextAdmin: public(address)
 timeLock: public(address)
 guardian: public(address)
-keeper: public(address)
 
 paused: public(bool)
 depositLimit: public(uint256)
@@ -104,12 +99,10 @@ def __init__(
     uToken: address,
     timeLock: address,
     guardian: address,
-    keeper: address
 ):
     self.admin = msg.sender
     self.timeLock = timeLock
     self.guardian = guardian
-    self.keeper = keeper
     self.token = ERC20(token)
     self.uToken = UnagiiToken(uToken)
 
@@ -174,14 +167,6 @@ def setGuardian(guardian: address):
     assert guardian != self.guardian, "new guardian = current"
     self.guardian = guardian
     log SetGuardian(guardian)
-
-
-@external 
-def setKeeper(keeper: address):
-    assert msg.sender == self.admin, "!admin"
-    assert keeper != self.keeper, "new keeper = current"
-    self.keeper = keeper
-    log SetKeeper(keeper)
 
 
 # TODO: test
@@ -504,7 +489,6 @@ def sync():
     bal: uint256 = self.token.balanceOf(self)
     assert bal < self.balanceInVault, "bal >= vault"
     self.balanceInVault = bal
-
     log Sync(bal)
 
 
