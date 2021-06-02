@@ -10,62 +10,97 @@ from vyper.interfaces import ERC20
 
 # TODO: comment
 
+
 interface DetailedERC20:
-    def decimals() -> uint256: view
+    def decimals() -> uint256:
+        view
 
 
 interface UnagiiToken:
-    def acceptMinter(): nonpayable
-    def token() -> address: view
-    def decimals() -> uint256: view
-    def totalSupply() -> uint256: view
-    def balanceOf(owner: address) -> uint256: view
-    def mint(receiver: address, amount: uint256): nonpayable
-    def burn(spender: address, amount: uint256): nonpayable
-    def lastBlock(owner: address) -> uint256: view
+    def acceptMinter():
+        nonpayable
+
+    def token() -> address:
+        view
+
+    def decimals() -> uint256:
+        view
+
+    def totalSupply() -> uint256:
+        view
+
+    def balanceOf(owner: address) -> uint256:
+        view
+
+    def mint(receiver: address, amount: uint256):
+        nonpayable
+
+    def burn(spender: address, amount: uint256):
+        nonpayable
+
+    def lastBlock(owner: address) -> uint256:
+        view
 
 
 interface FundManager:
-    def vault() -> address: view
-    def token() -> address: view
-    def totalAssets() -> uint256: view
-    def withdraw(amount: uint256) -> uint256: nonpayable
+    def vault() -> address:
+        view
+
+    def token() -> address:
+        view
+
+    def totalAssets() -> uint256:
+        view
+
+    def withdraw(amount: uint256) -> uint256:
+        nonpayable
 
 
 MAX_MIN_RESERVE: constant(uint256) = 10000
 
+
 event SetNextAdmin:
     nextAdmin: address
+
 
 event AcceptAdmin:
     admin: address
 
+
 event SetTimeLock:
     timeLock: address
+
 
 event SetGuardian:
     guardian: address
 
+
 event SetFundManager:
     fundManager: address
 
+
 event SetPause:
     paused: bool
+
 
 event SetWhitelist:
     addr: indexed(address)
     approved: bool
 
+
 event Borrow:
     fundManager: indexed(address)
     amount: uint256
+
 
 event Repay:
     fundManager: indexed(address)
     amount: uint256
 
+
 event Sync:
     balanceInVault: uint256
+
 
 initialized: public(bool)
 
@@ -80,10 +115,7 @@ guardian: public(address)
 paused: public(bool)
 depositLimit: public(uint256)
 balanceInVault: public(uint256)
-debt: public(uint256) # debt to users (amount borrowed by fund manager)
-# TODO: track gain and loss?
-gain: public(uint256)
-loss: public(uint256)
+debt: public(uint256)  # debt to users (amount borrowed by fund manager)
 minReserve: public(uint256)
 lastReport: public(uint256)
 lockedProfit: public(uint256)
@@ -115,7 +147,7 @@ def __init__(
     self.blockDelay = 1
     self.lastReport = block.timestamp
     # 6 hours
-    self.lockedProfitDegradation = convert(DEGRADATION_COEFFICIENT / 21600 , uint256)
+    self.lockedProfitDegradation = convert(DEGRADATION_COEFFICIENT / 21600, uint256)
 
 
 @external
@@ -125,6 +157,7 @@ def initialize():
 
     self.initialized = True
     self.uToken.acceptMinter()
+
 
 # TODO: migrate to new vault
 
@@ -156,7 +189,7 @@ def acceptAdmin():
     log AcceptAdmin(msg.sender)
 
 
-@external 
+@external
 def setTimeLock(timeLock: address):
     assert msg.sender == self.timeLock, "!time lock"
     assert timeLock != self.timeLock, "new time lock = current"
@@ -164,7 +197,7 @@ def setTimeLock(timeLock: address):
     log SetTimeLock(timeLock)
 
 
-@external 
+@external
 def setGuardian(guardian: address):
     assert msg.sender == self.admin, "!admin"
     assert guardian != self.guardian, "new guardian = current"
@@ -180,7 +213,9 @@ def setFundManager(fundManager: address):
     assert fundManager != self.fundManager.address, "new fund manager = current"
 
     assert FundManager(fundManager).vault() == self, "fund manager vault != vault"
-    assert FundManager(fundManager).token() == self.token.address, "fund manager token != token"
+    assert (
+        FundManager(fundManager).token() == self.token.address
+    ), "fund manager token != token"
 
     self.fundManager = FundManager(fundManager)
     log SetFundManager(fundManager)
@@ -250,7 +285,9 @@ def _safeTransfer(token: address, receiver: address, amount: uint256):
 
 
 @internal
-def _safeTransferFrom(token: address, owner: address, receiver: address, amount: uint256):
+def _safeTransferFrom(
+    token: address, owner: address, receiver: address, amount: uint256
+):
     res: Bytes[32] = raw_call(
         token,
         concat(
@@ -280,12 +317,14 @@ def totalAssets() -> uint256:
 @internal
 @view
 def _calcLockedProfit() -> uint256:
-    lockedFundsRatio: uint256 = (block.timestamp - self.lastReport) * self.lockedProfitDegradation
+    lockedFundsRatio: uint256 = (
+        block.timestamp - self.lastReport
+    ) * self.lockedProfitDegradation
 
-    if(lockedFundsRatio < DEGRADATION_COEFFICIENT):
+    if lockedFundsRatio < DEGRADATION_COEFFICIENT:
         lockedProfit: uint256 = self.lockedProfit
         return lockedProfit - lockedFundsRatio * lockedProfit / DEGRADATION_COEFFICIENT
-    else:        
+    else:
         return 0
 
 
@@ -302,33 +341,12 @@ def calcFreeFunds() -> uint256:
     return self._calcFreeFunds()
 
 
-@internal
-@view
-def _calcAvailableToInvest() -> uint256:
-    if self.paused:
-        return 0
-
-    if self.fundManager.address == ZERO_ADDRESS:
-        return 0
-    
-    freeFunds: uint256 = self._calcFreeFunds()
-    minReserve: uint256 = freeFunds * self.minReserve / MAX_MIN_RESERVE
-
-    if self.balanceInVault > minReserve:
-        return self.balanceInVault - minReserve
-    return 0
-
-
-# TODO: test
-@external
-def calcAvailableToInvest() -> uint256:
-    return self._calcAvailableToInvest()
-
-
 # TODO: test
 @internal
 @pure
-def _calcSharesToMint(amount: uint256, totalSupply: uint256, freeFunds: uint256) -> uint256:
+def _calcSharesToMint(
+    amount: uint256, totalSupply: uint256, freeFunds: uint256
+) -> uint256:
     # s = shares to mint
     # T = total shares before mint
     # a = deposit amount
@@ -345,13 +363,15 @@ def _calcSharesToMint(amount: uint256, totalSupply: uint256, freeFunds: uint256)
     if totalSupply == 0:
         return amount
     # reverts if total assets = 0
-    return amount * totalSupply / freeFunds 
+    return amount * totalSupply / freeFunds
 
 
 # TODO: test
 @internal
 @pure
-def _calcSharesToBurn(amount: uint256, totalSupply: uint256, freeFunds: uint256) -> uint256:
+def _calcSharesToBurn(
+    amount: uint256, totalSupply: uint256, freeFunds: uint256
+) -> uint256:
     # s = shares to burn
     # T = total shares before burn
     # a = withdraw amount
@@ -406,9 +426,9 @@ def deposit(_amount: uint256, minShares: uint256) -> uint256:
     # TODO: test block delay
     # TODO: test whitelist
     assert (
-        self.whitelist[msg.sender] or
-        block.number >= self.uToken.lastBlock(msg.sender) + self.blockDelay
-    ), "block < delay" 
+        self.whitelist[msg.sender]
+        or block.number >= self.uToken.lastBlock(msg.sender) + self.blockDelay
+    ), "block < delay"
 
     amount: uint256 = _amount
     if amount == MAX_UINT256:
@@ -436,7 +456,7 @@ def deposit(_amount: uint256, minShares: uint256) -> uint256:
 
     shares: uint256 = self._calcSharesToMint(diff, totalSupply, freeFunds)
     assert shares >= minShares, "shares < min"
-    
+
     # TODO: test balanceInVault <= ERC20.balanceOf(self)
     self.balanceInVault += diff
     self.uToken.mint(msg.sender, shares)
@@ -454,9 +474,9 @@ def withdraw(_maxShares: uint256, _min: uint256) -> uint256:
     # TODO: test flash deposit / withdraw
     # TODO: test whitelist
     assert (
-        self.whitelist[msg.sender] or
-        block.number >= self.uToken.lastBlock(msg.sender) + self.blockDelay
-    ), "block < delay" 
+        self.whitelist[msg.sender]
+        or block.number >= self.uToken.lastBlock(msg.sender) + self.blockDelay
+    ), "block < delay"
 
     shares: uint256 = min(_maxShares, self.uToken.balanceOf(msg.sender))
     assert shares > 0, "shares = 0"
@@ -472,14 +492,15 @@ def withdraw(_maxShares: uint256, _min: uint256) -> uint256:
         if loss > 0:
             amount -= loss
             self.debt -= loss
-            self.loss += loss
 
         self.debt -= diff
         self.balanceInVault += diff
 
         if amount > self.balanceInVault:
             amount = self.balanceInVault
-            shares = self._calcSharesToBurn(amount + loss, totalSupply, self._calcFreeFunds())
+            shares = self._calcSharesToBurn(
+                amount + loss, totalSupply, self._calcFreeFunds()
+            )
 
     self.uToken.burn(msg.sender, shares)
 
@@ -487,7 +508,7 @@ def withdraw(_maxShares: uint256, _min: uint256) -> uint256:
     if self.feeOnTransfer:
         diff = self.token.balanceOf(self)
         self._safeTransfer(self.token.address, msg.sender, amount)
-        diff  = self.token.balanceOf(self) - diff
+        diff = self.token.balanceOf(self) - diff
     else:
         self._safeTransfer(self.token.address, msg.sender, amount)
         diff = amount
@@ -500,48 +521,27 @@ def withdraw(_maxShares: uint256, _min: uint256) -> uint256:
     return diff
 
 
-# TODO: test
-@external
-def borrow(_amount: uint256) -> uint256:
-    assert not self.paused, "paused"
-    assert msg.sender == self.fundManager.address, "!fund manager"
+@internal
+@view
+def _calcAvailableToInvest() -> uint256:
+    if self.paused:
+        return 0
 
-    available: uint256 = self._calcAvailableToInvest()
-    amount: uint256 = min(_amount, available)
-    assert amount > 0, "borrow = 0"
+    if self.fundManager.address == ZERO_ADDRESS:
+        return 0
 
-    self._safeTransfer(self.token.address, msg.sender, amount)
+    freeFunds: uint256 = self._calcFreeFunds()
+    minReserve: uint256 = freeFunds * self.minReserve / MAX_MIN_RESERVE
 
-    # include fee on trasfer to debt 
-    self.debt += amount
-    self.balanceInVault -= amount
-
-    assert self.token.balanceOf(self) >= self.balanceInVault, "bal < vault"
-
-    log Borrow(msg.sender, amount)
-
-    return amount
+    if self.balanceInVault > minReserve:
+        return self.balanceInVault - minReserve
+    return 0
 
 
 # TODO: test
 @external
-def repay(amount: uint256) -> uint256:
-    assert msg.sender == self.fundManager.address, "!fund manager"
-    assert amount > 0, "repay = 0"
-
-    diff: uint256 = self.token.balanceOf(self)
-    self._safeTransferFrom(self.token.address, msg.sender, self, amount)
-    diff  = self.token.balanceOf(self) - diff
-
-    # exclude fee on transfer from debt payment
-    self.debt -= diff
-    self.balanceInVault += diff
-
-    assert self.token.balanceOf(self) >= self.balanceInVault, "bal < vault"
-
-    log Repay(msg.sender, diff)
-
-    return diff
+def calcAvailableToInvest() -> uint256:
+    return self._calcAvailableToInvest()
 
 
 @internal
@@ -559,67 +559,97 @@ def _calcOutstandingDebt() -> uint256:
     return 0
 
 
+# TODO: test
 @external
-def report(gain: uint256, loss: uint256):
+def borrow(_amount: uint256) -> uint256:
+    assert not self.paused, "paused"
     assert msg.sender == self.fundManager.address, "!fund manager"
-    bal: uint256 = self.token.balanceOf(msg.sender)
-    assert bal >= gain, "bal < gain"
+
+    available: uint256 = self._calcAvailableToInvest()
+    amount: uint256 = min(_amount, available)
+    assert amount > 0, "borrow = 0"
+
+    self._safeTransfer(self.token.address, msg.sender, amount)
+
+    self.balanceInVault -= amount
+    # include fee on trasfer to debt
+    self.debt += amount
+
+    assert self.token.balanceOf(self) >= self.balanceInVault, "bal < vault"
+
+    log Borrow(msg.sender, amount)
+
+    return amount
+
+
+# TODO: test
+@external
+def repay(amount: uint256) -> uint256:
+    assert msg.sender == self.fundManager.address, "!fund manager"
+    assert amount > 0, "repay = 0"
+
+    diff: uint256 = self.token.balanceOf(self)
+    self._safeTransferFrom(self.token.address, msg.sender, self, amount)
+    diff = self.token.balanceOf(self) - diff
+
+    self.balanceInVault += diff
+    # exclude fee on transfer from debt payment
+    self.debt -= diff
+
+    assert self.token.balanceOf(self) >= self.balanceInVault, "bal < vault"
+
+    log Repay(msg.sender, diff)
+
+    return diff
+
+
+@external
+def report(gain: uint256, loss: uint256, _debtPayment: uint256) -> uint256:
+    assert msg.sender == self.fundManager.address, "!fund manager"
+    assert (
+        self.token.balanceOf(msg.sender) >= gain + _debtPayment
+    ), "bal < gain + debt payment"
 
     if loss > 0:
-        self.loss += loss
         self.debt -= loss
 
-    available: uint256
-    debt: uint256
+    amountIn: uint256 = 0  # debt payment + gain
+    amountOut: uint256 = 0  # availabe
 
-
-
-
-
-
-    vault -> fund manager
-    vault <- fund manager
-
-
-
-
-
-    
-    # TODO: cache free funds
-    available: uint256 = self._calcAvailableToInvest()
+    # TODO: use cache freeFunds
     debt: uint256 = self._calcOutstandingDebt()
+    debtPayment: uint256 = min(_debtPayment, debt)
+    available: uint256 = self._calcAvailableToInvest()
 
-    if available > 0:
-        self.debt
+    amountIn += debtPayment + gain
+    amountOut += available
 
-    if debt > 0:
+    if amountIn > amountOut:
+        amount: uint256 = amountIn - amountOut
+        diff: uint256 = self.token.balanceOf(self)
+        self._safeTransferFrom(self.token.address, msg.sender, self, amount)
+        diff = self.token.balanceOf(self) - diff
+
+        self.balanceInVault += diff
+        self.debt -= diff
+    elif amountIn < amountOut:
+        amount: uint256 = amountOut - amountIn
+        self._safeTransfer(self.token.address, msg.sender, amount)
+        self.balanceInVault -= amount
+        # include any fee on transfer as part of debt
+        self.debt += amount
+
+    lockedProfit: uint256 = self._calcLockedProfit() + gain
+    if lockedProfit > loss:
+        self.lockedProfit = lockedProfit - loss
     else:
-        diff: uint256 = 0
-
-        diff -= self.token.balanceOf(self)
-
-
-        self.gain += gain
-
-    # if gain < available:
-    #     self._safeTransfer(self.token.address, msg.sedner, available)
-    
-
-    diff: uint256 = 0
-
-    self.balanceInVault += diff
-    self.debt -= loss
-    self.loss += loss
-
-    self.balanceInVault += diff
-    self.debt -= diff
-    self.gain += diff
+        self.lockedProfit = 0
 
     self.lastReport = block.timestamp
 
+    assert self.token.balanceOf(self) >= self.balanceInVault, "bal < vault"
 
-
-
+    return 0
 
 
 @external

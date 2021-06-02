@@ -10,38 +10,51 @@ from vyper.interfaces import ERC20
 
 implements: ERC20
 
+
 interface DetailedERC20:
-    def name() -> String[42]: view
-    def symbol() -> String[20]: view
+    def name() -> String[42]:
+        view
+
+    def symbol() -> String[20]:
+        view
+
     # Vyper does not support uint8
-    def decimals() -> uint256: view
+    def decimals() -> uint256:
+        view
+
 
 event Transfer:
     sender: indexed(address)
     receiver: indexed(address)
     value: uint256
 
+
 event Approval:
     owner: indexed(address)
     spender: indexed(address)
     value: uint256
 
+
 event SetNextAdmin:
     admin: address
+
 
 event AcceptAdmin:
     admin: address
 
+
 event SetNextMinter:
     minter: address
+
 
 event AcceptMinter:
     minter: address
 
+
 name: public(String[64])
 symbol: public(String[32])
 # Vyper does not support uint8
-decimals: public(uint256) 
+decimals: public(uint256)
 balanceOf: public(HashMap[address, uint256])
 allowance: public(HashMap[address, HashMap[address, uint256]])
 totalSupply: public(uint256)
@@ -53,6 +66,7 @@ token: public(ERC20)
 lastBlock: public(HashMap[address, uint256])
 
 # TODO: comment
+
 
 @external
 def __init__(token: address):
@@ -93,7 +107,7 @@ def setNextAdmin(nextAdmin: address):
 def acceptAdmin():
     """
     @notice Accept admin
-    @dev Only `nextAdmin` can claim admin 
+    @dev Only `nextAdmin` can claim admin
     """
     assert msg.sender == self.nextAdmin, "!next admin"
     self.admin = msg.sender
@@ -117,7 +131,7 @@ def setNextMinter(nextMinter: address):
 def acceptMinter():
     """
     @notice Accept minter
-    @dev Only `nextMinter` can claim minter 
+    @dev Only `nextMinter` can claim minter
     """
     assert msg.sender == self.nextMinter, "!next minter"
     self.minter = msg.sender
@@ -127,7 +141,7 @@ def acceptMinter():
 @internal
 def _transfer(_from: address, _to: address, amount: uint256):
     assert _to not in [self, ZERO_ADDRESS], "invalid receiver"
-    
+
     # track lastest tx
     self.lastBlock[_from] = block.number
     self.lastBlock[_to] = block.number
@@ -146,7 +160,7 @@ def transfer(_to: address, amount: uint256) -> bool:
 @external
 def transferFrom(_from: address, _to: address, amount: uint256) -> bool:
     # Unlimited approval (saves an SSTORE)
-    if (self.allowance[_from][msg.sender] < MAX_UINT256):
+    if self.allowance[_from][msg.sender] < MAX_UINT256:
         self.allowance[_from][msg.sender] -= amount
         log Approval(_from, msg.sender, self.allowance[_from][msg.sender])
     self._transfer(_from, _to, amount)
@@ -173,7 +187,9 @@ def decreaseAllowance(spender: address, amount: uint256) -> bool:
     log Approval(msg.sender, spender, self.allowance[msg.sender][spender])
     return True
 
+
 # TODO: permit?
+
 
 @external
 def mint(_to: address, amount: uint256):

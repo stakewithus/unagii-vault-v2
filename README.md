@@ -12,6 +12,7 @@ source venv/bin/activate
 pip install vyper==0.2.12
 pip install eth-brownie
 pip install black
+pip install blackadder
 
 cp .env.sample .env
 ```
@@ -19,4 +20,6 @@ cp .env.sample .env
 ```shell
 # black format python
 black --check --include "(tests|scripts)" .
+# format vyper
+blackadder --fast --include '\.vy$' contracts
 ```

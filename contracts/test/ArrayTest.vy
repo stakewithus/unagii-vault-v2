@@ -1,7 +1,8 @@
 # @version 0.2.12
 
-N: constant(uint256) = 5 
-arr: public(address[N]) 
+N: constant(uint256) = 5
+arr: public(address[N])
+
 
 @internal
 def _pack():
