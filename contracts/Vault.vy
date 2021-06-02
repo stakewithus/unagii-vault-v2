@@ -551,6 +551,7 @@ def _calcOutstandingDebt() -> uint256:
         return self.debt
 
     freeFunds: uint256 = self._calcFreeFunds()
+
     limit: uint256 = (MAX_MIN_RESERVE - self.minReserve) * freeFunds / MAX_MIN_RESERVE
     debt: uint256 = self.debt
 
@@ -604,52 +605,35 @@ def repay(amount: uint256) -> uint256:
 
 
 @external
-def report(gain: uint256, loss: uint256, _debtPayment: uint256) -> uint256:
+def report():
     assert msg.sender == self.fundManager.address, "!fund manager"
-    assert (
-        self.token.balanceOf(msg.sender) >= gain + _debtPayment
-    ), "bal < gain + debt payment"
+    total: uint256 = self.fundManager.totalAssets()
+    debt: uint256 = self.debt
+    gain: uint256 = 0
+    loss: uint256 = 0
+    lockedProfit: uint256 = self._calcLockedProfit()
 
-    if loss > 0:
-        self.debt -= loss
-
-    amountIn: uint256 = 0  # debt payment + gain
-    amountOut: uint256 = 0  # availabe
-
-    # TODO: use cache freeFunds
-    debt: uint256 = self._calcOutstandingDebt()
-    debtPayment: uint256 = min(_debtPayment, debt)
-    available: uint256 = self._calcAvailableToInvest()
-
-    amountIn += debtPayment + gain
-    amountOut += available
-
-    if amountIn > amountOut:
-        amount: uint256 = amountIn - amountOut
-        diff: uint256 = self.token.balanceOf(self)
-        self._safeTransferFrom(self.token.address, msg.sender, self, amount)
-        diff = self.token.balanceOf(self) - diff
-
-        self.balanceInVault += diff
-        self.debt -= diff
-    elif amountIn < amountOut:
-        amount: uint256 = amountOut - amountIn
-        self._safeTransfer(self.token.address, msg.sender, amount)
-        self.balanceInVault -= amount
-        # include any fee on transfer as part of debt
-        self.debt += amount
-
-    lockedProfit: uint256 = self._calcLockedProfit() + gain
-    if lockedProfit > loss:
-        self.lockedProfit = lockedProfit - loss
+    if total > debt:
+        gain = total - debt
     else:
-        self.lockedProfit = 0
+        loss = debt - total
+    
+    if loss > 0:
+        if lockedProfit > loss:
+            self.lockedProfit -= loss
+        else:
+            self.lockedProfit = 0
+            self.debt -= (loss - lockedProfit)
+    elif gain > 0:
+        free: uint256 = self.token.balanceOf(msg.sender)
+        gain = min(gain, free)
+
+        self.debt += gain
+        self.lockedProfit = lockedProfit + gain
 
     self.lastReport = block.timestamp
 
-    assert self.token.balanceOf(self) >= self.balanceInVault, "bal < vault"
-
-    return 0
+    
 
 
 @external
