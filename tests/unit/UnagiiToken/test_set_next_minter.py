@@ -2,11 +2,6 @@ import brownie
 import pytest
 
 
-@pytest.fixture(scope="module", autouse=True)
-def setup(module_isolation):
-    pass
-
-
 def test_set_next_minter(accounts, uToken, minter):
     # not minter
     with brownie.reverts("!minter"):

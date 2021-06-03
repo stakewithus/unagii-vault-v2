@@ -12,10 +12,15 @@ def setup(fn_isolation):
 
 
 @given(
-    to=strategy("address", exclude=ZERO_ADDRESS),
+    to=strategy("address"),
     amount=strategy("uint256"),
 )
 def test_mint(uToken, minter, to, amount):
+    if to in [uToken.address, ZERO_ADDRESS]:
+        with brownie.reverts("invalid receiver"):
+            uToken.mint(to, 1, {"from": minter})
+        return
+
     totalSupply = uToken.totalSupply()
     bal = uToken.balanceOf(to)
     tx = uToken.mint(to, amount, {"from": minter})
@@ -28,8 +33,3 @@ def test_mint(uToken, minter, to, amount):
 def test_mint_not_minter(uToken, accounts):
     with brownie.reverts("!minter"):
         uToken.mint(accounts[1], 1, {"from": accounts[1]})
-
-
-def test_mint_zero_address(uToken, minter):
-    with brownie.reverts("to = 0 address"):
-        uToken.mint(ZERO_ADDRESS, 1, {"from": minter})

@@ -2,11 +2,6 @@ import brownie
 import pytest
 
 
-@pytest.fixture(scope="module", autouse=True)
-def setup(module_isolation):
-    pass
-
-
 def test_set_next_admin(accounts, uToken):
     admin = uToken.admin()
 
@@ -19,4 +14,4 @@ def test_set_next_admin(accounts, uToken):
         uToken.setNextAdmin(uToken.admin(), {"from": admin})
 
     uToken.setNextAdmin(accounts[1], {"from": admin})
-    assert uToken.nextAdmin(), accounts[1]
+    assert uToken.nextAdmin() == accounts[1]

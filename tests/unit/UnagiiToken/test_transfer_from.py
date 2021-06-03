@@ -6,27 +6,6 @@ import pytest
 ZERO_ADDRESS = "0x0000000000000000000000000000000000000000"
 
 
-@pytest.fixture(scope="function", autouse=True)
-def setup(fn_isolation):
-    pass
-
-
-def snapshot(uToken, caller, owner, receiver):
-    return {
-        "balance": {
-            "caller": uToken.balanceOf(caller),
-            "owner": uToken.balanceOf(owner),
-            "receiver": uToken.balanceOf(receiver),
-        },
-        "allowance": {
-            "caller": uToken.allowance(owner, caller),
-            "owner": uToken.allowance(owner, owner),
-            "receiver": uToken.allowance(owner, receiver),
-        },
-        "totalSupply": uToken.totalSupply(),
-    }
-
-
 @given(
     accs=strategy(
         "address[]", min_length=3, max_length=3, unique=True, exclude=ZERO_ADDRESS
@@ -45,17 +24,32 @@ def test_transfer_from(
     uToken.approve(caller, approve_amount, {"from": owner})
 
     bal = uToken.balanceOf(owner)
-    # test transfer > allowance
-    # test transfer > balance
+    # transfer > allowance
+    # transfer > balance
     if transfer_amount > approve_amount or transfer_amount > bal:
         with brownie.reverts():
             uToken.transferFrom(owner, receiver, transfer_amount, {"from": caller})
         return
 
-    # test transfer <= allowance and balance
-    before = snapshot(uToken, caller, owner, receiver)
+    # transfer <= allowance and balance
+    def snapshot():
+        return {
+            "balance": {
+                "caller": uToken.balanceOf(caller),
+                "owner": uToken.balanceOf(owner),
+                "receiver": uToken.balanceOf(receiver),
+            },
+            "allowance": {
+                "caller": uToken.allowance(owner, caller),
+                "owner": uToken.allowance(owner, owner),
+                "receiver": uToken.allowance(owner, receiver),
+            },
+            "totalSupply": uToken.totalSupply(),
+        }
+
+    before = snapshot()
     tx = uToken.transferFrom(owner, receiver, transfer_amount, {"from": caller})
-    after = snapshot(uToken, caller, owner, receiver)
+    after = snapshot()
 
     assert after["balance"]["caller"] == before["balance"]["caller"]
     assert after["balance"]["owner"] == before["balance"]["owner"] - transfer_amount

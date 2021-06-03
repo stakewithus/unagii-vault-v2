@@ -42,5 +42,5 @@ def test_burn_not_minter(uToken, minter, accounts):
 
 
 def test_burn_zero_address(uToken, minter):
-    with brownie.reverts("from = 0 address"):
+    with brownie.reverts("from = 0"):
         uToken.burn(ZERO_ADDRESS, 1, {"from": minter})
