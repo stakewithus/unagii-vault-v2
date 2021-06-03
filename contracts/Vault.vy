@@ -127,6 +127,7 @@ def __init__(
     self.paused = True
     self.blockDelay = 1
     self.lastReport = block.timestamp
+    self.minReserve = 500
     # 6 hours
     self.lockedProfitDegradation = convert(DEGRADATION_COEFFICIENT / 21600, uint256)
 
@@ -158,12 +159,12 @@ def __init__(
 #     # this will fail if self != minter
 #     self.uToken.setNextMinter(vault)
 
-
-# @external
-# def acceptMinter():
-#     assert msg.sender == self.admin, "!admin"
-#     # this will fail if self != minter
-#     self.uToken.acceptMinter()
+# TODO: test
+@external
+def acceptMinter():
+    assert msg.sender == self.admin, "!admin"
+    # this will fail if self != minter
+    self.uToken.acceptMinter()
 
 
 @external
@@ -184,6 +185,7 @@ def acceptAdmin():
 
 @external
 def setTimeLock(timeLock: address):
+    # TODO: how to recover from incorrect address
     assert msg.sender == self.timeLock, "!time lock"
     assert timeLock != self.timeLock, "new time lock = current"
     self.timeLock = timeLock
@@ -198,8 +200,7 @@ def setGuardian(guardian: address):
     log SetGuardian(guardian)
 
 
-# TODO: test
-# TODO: migration
+# TODO: test migration
 @external
 def setFundManager(fundManager: address):
     assert msg.sender == self.timeLock, "!time lock"
@@ -216,12 +217,11 @@ def setFundManager(fundManager: address):
 
 @external
 def setPause(paused: bool):
-    assert msg.sender in [self.admin, self.guardian], "!authorized"
+    assert msg.sender in [self.admin, self.guardian], "!auth"
     self.paused = paused
     log SetPause(paused)
 
 
-# TODO: test
 @external
 def setMinReserve(minReserve: uint256):
     assert msg.sender == self.admin, "!admin"

@@ -28,6 +28,8 @@ event SetTimeLock:
 vault: public(Vault)
 token: public(ERC20)
 admin: public(address)
+# TODO: guardian
+# TODO: keeper
 nextAdmin: public(address)
 timeLock: public(address)
 
@@ -56,6 +58,7 @@ def acceptAdmin():
 
 @external
 def setTimeLock(timeLock: address):
+    # TODO: how to recover from incorrect address
     assert msg.sender == self.timeLock, "!time lock"
     assert timeLock != self.timeLock, "new time lock = current"
     self.timeLock = timeLock
