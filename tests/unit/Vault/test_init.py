@@ -1,11 +1,11 @@
 import brownie
 
 
-def test_init(Vault, token, uToken, admin, timeLock, guardian):
-    vault = Vault.deploy(token, uToken, timeLock, guardian, {"from": admin})
+def test_init(Vault, token, uToken, admin, guardian):
+    vault = Vault.deploy(token, uToken, guardian, {"from": admin})
 
     assert vault.admin() == admin
-    assert vault.timeLock() == timeLock
+    assert vault.timeLock() == admin
     assert vault.guardian() == guardian
 
     assert vault.token() == token.address

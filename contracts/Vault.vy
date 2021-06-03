@@ -50,7 +50,11 @@ event AcceptAdmin:
     admin: address
 
 
-event SetTimeLock:
+event SetNextTimeLock:
+    nextTimeLock: address
+
+
+event AcceptTimeLock:
     timeLock: address
 
 
@@ -91,6 +95,7 @@ fundManager: public(FundManager)
 admin: public(address)
 nextAdmin: public(address)
 timeLock: public(address)
+nextTimeLock: public(address)
 guardian: public(address)
 
 paused: public(bool)
@@ -108,16 +113,15 @@ blockDelay: public(uint256)
 feeOnTransfer: public(bool)
 whitelist: public(HashMap[address, bool])
 
-
+# TODO: test events
 @external
 def __init__(
     token: address,
     uToken: address,
-    timeLock: address,
     guardian: address,
 ):
     self.admin = msg.sender
-    self.timeLock = timeLock
+    self.timeLock = msg.sender
     self.guardian = guardian
     self.token = ERC20(token)
     self.uToken = UnagiiToken(uToken)
@@ -172,7 +176,7 @@ def setNextAdmin(nextAdmin: address):
     assert msg.sender == self.admin, "!admin"
     assert nextAdmin != self.admin, "next admin = current"
     self.nextAdmin = nextAdmin
-    log SetNextAdmin(msg.sender)
+    log SetNextAdmin(nextAdmin)
 
 
 @external
@@ -184,12 +188,19 @@ def acceptAdmin():
 
 
 @external
-def setTimeLock(timeLock: address):
-    # TODO: how to recover from incorrect address
+def setNextTimeLock(nextTimeLock: address):
     assert msg.sender == self.timeLock, "!time lock"
-    assert timeLock != self.timeLock, "new time lock = current"
-    self.timeLock = timeLock
-    log SetTimeLock(timeLock)
+    assert nextTimeLock != self.timeLock, "next time lock = current"
+    self.nextTimeLock = nextTimeLock
+    log SetNextTimeLock(nextTimeLock)
+
+
+@external
+def acceptTimeLock():
+    assert msg.sender == self.nextTimeLock, "!next time lock"
+    self.timeLock = msg.sender
+    self.nextTimeLock = ZERO_ADDRESS
+    log AcceptTimeLock(msg.sender)
 
 
 @external
