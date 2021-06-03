@@ -46,6 +46,7 @@ event AcceptMinter:
     minter: address
 
 
+# TODO: test events
 name: public(String[64])
 symbol: public(String[32])
 # Vyper does not support uint8
