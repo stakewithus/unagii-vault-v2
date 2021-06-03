@@ -12,15 +12,10 @@ implements: ERC20
 
 
 interface DetailedERC20:
-    def name() -> String[42]:
-        view
-
-    def symbol() -> String[20]:
-        view
-
+    def name() -> String[42]: view
+    def symbol() -> String[20]: view
     # Vyper does not support uint8
-    def decimals() -> uint256:
-        view
+    def decimals() -> uint256: view
 
 
 event Transfer:
