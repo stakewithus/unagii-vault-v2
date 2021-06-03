@@ -65,6 +65,14 @@ def test_transfer_from(
     assert uToken.lastBlock(receiver) == tx.block_number
     assert after["totalSupply"] == before["totalSupply"]
 
+    assert len(tx.events) == 2
+    assert tx.events["Approval"].values() == [
+        owner,
+        caller,
+        after["allowance"]["caller"],
+    ]
+    assert tx.events["Transfer"].values() == [owner, receiver, transfer_amount]
+
 
 def test_transfer_from_to_owner(uToken, minter, accounts):
     caller = accounts[0]

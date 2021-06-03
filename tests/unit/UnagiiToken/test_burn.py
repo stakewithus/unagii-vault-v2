@@ -32,6 +32,8 @@ def test_burn(uToken, minter, to, mint_amount, burn_amount):
     assert uToken.balanceOf(to) == bal - burn_amount
     assert uToken.totalSupply() == totalSupply - burn_amount
     assert uToken.lastBlock(to) == tx.block_number
+    assert len(tx.events) == 1
+    assert tx.events["Transfer"].values() == [to, ZERO_ADDRESS, burn_amount]
 
 
 def test_burn_not_minter(uToken, minter, accounts):

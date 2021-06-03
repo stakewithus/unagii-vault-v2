@@ -28,6 +28,8 @@ def test_mint(uToken, minter, to, amount):
     assert uToken.balanceOf(to) == bal + amount
     assert uToken.totalSupply() == totalSupply + amount
     assert uToken.lastBlock(to) == tx.block_number
+    assert len(tx.events) == 1
+    assert tx.events["Transfer"].values() == [ZERO_ADDRESS, to, amount]
 
 
 def test_mint_not_minter(uToken, accounts):

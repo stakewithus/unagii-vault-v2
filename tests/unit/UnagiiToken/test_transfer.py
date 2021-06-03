@@ -60,6 +60,8 @@ def test_transfer(uToken, minter, sender, receiver, mint_amount, transfer_amount
     assert after["totalSupply"] == before["totalSupply"]
     assert uToken.lastBlock(sender) == tx.block_number
     assert uToken.lastBlock(receiver) == tx.block_number
+    assert len(tx.events) == 1
+    assert tx.events["Transfer"].values() == [sender, receiver, transfer_amount]
 
 
 def test_transfer_to_self(uToken, accounts):
