@@ -4,18 +4,13 @@ import pytest
 ZERO_ADDRESS = "0x0000000000000000000000000000000000000000"
 
 
-@pytest.fixture(scope="module", autouse=True)
-def setup(module_isolation):
-    pass
-
-
-def test_accept_admin(accounts, vault, admin):
-    vault.setNextAdmin(accounts[1], {"from": admin})
+def test_accept_admin(vault, admin, user):
+    vault.setNextAdmin(user, {"from": admin})
 
     # not next admin
     with brownie.reverts("!next admin"):
-        vault.acceptAdmin({"from": accounts[0]})
+        vault.acceptAdmin({"from": admin})
 
-    vault.acceptAdmin({"from": accounts[1]})
-    assert vault.admin() == accounts[1]
+    vault.acceptAdmin({"from": user})
+    assert vault.admin() == user
     assert vault.nextAdmin() == ZERO_ADDRESS

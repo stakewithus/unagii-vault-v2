@@ -2,15 +2,10 @@ import brownie
 import pytest
 
 
-@pytest.fixture(scope="module", autouse=True)
-def setup(module_isolation):
-    pass
-
-
-def test_set_pause(accounts, vault, admin, guardian):
+def test_set_pause(vault, admin, guardian, user):
     # not admin
-    with brownie.reverts("!authorized"):
-        vault.setPause(True, {"from": accounts[1]})
+    with brownie.reverts("!auth"):
+        vault.setPause(True, {"from": user})
 
     # guadian can pause
     vault.setPause(False, {"from": guardian})

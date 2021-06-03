@@ -2,15 +2,10 @@ import brownie
 import pytest
 
 
-@pytest.fixture(scope="module", autouse=True)
-def setup(module_isolation):
-    pass
-
-
-def test_set_block_delay(accounts, vault, admin):
+def test_set_block_delay(vault, admin, user):
     # not admin
     with brownie.reverts("!admin"):
-        vault.setBlockDelay(123, {"from": accounts[1]})
+        vault.setBlockDelay(123, {"from": user})
 
     # delay = 0
     with brownie.reverts("delay = 0"):

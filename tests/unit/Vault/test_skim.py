@@ -2,7 +2,15 @@ import brownie
 import pytest
 
 
-def test_skim(accounts, vault, token, admin, user):
+def test_skim(vault, token, admin, user):
+    # not admin
+    with brownie.reverts("!admin"):
+        vault.skim({"from": user})
+
+    token.mint(vault, 123)
+
+    diff = token.balanceOf(vault) - vault.balanceInVault()
+
     def snapshot():
         return {
             "vault": {"balanceInVault": vault.balanceInVault()},
@@ -11,14 +19,6 @@ def test_skim(accounts, vault, token, admin, user):
                 "vault": token.balanceOf(vault),
             },
         }
-
-    # not admin
-    with brownie.reverts("!admin"):
-        vault.skim({"from": user})
-
-    token.mint(vault, 123)
-
-    diff = token.balanceOf(vault) - vault.balanceInVault()
 
     before = snapshot()
     vault.skim({"from": admin})

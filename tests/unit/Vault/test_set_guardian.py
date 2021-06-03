@@ -2,19 +2,14 @@ import brownie
 import pytest
 
 
-@pytest.fixture(scope="module", autouse=True)
-def setup(module_isolation):
-    pass
-
-
-def test_set_guardian(accounts, vault, admin):
+def test_set_guardian(vault, admin, user):
     # not admin
     with brownie.reverts("!admin"):
-        vault.setGuardian(accounts[1], {"from": accounts[1]})
+        vault.setGuardian(user, {"from": user})
 
     # new guardian is current guardian
     with brownie.reverts("new guardian = current"):
         vault.setGuardian(vault.guardian(), {"from": admin})
 
-    vault.setGuardian(accounts[0], {"from": admin})
-    assert vault.guardian(), accounts[0]
+    vault.setGuardian(user, {"from": admin})
+    assert vault.guardian() == user

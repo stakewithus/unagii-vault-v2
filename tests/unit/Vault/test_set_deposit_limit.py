@@ -2,15 +2,10 @@ import brownie
 import pytest
 
 
-@pytest.fixture(scope="module", autouse=True)
-def setup(module_isolation):
-    pass
-
-
-def test_set_deposit_limit(accounts, vault, admin):
+def test_set_deposit_limit(vault, admin, user):
     # not admin
     with brownie.reverts("!admin"):
-        vault.setDepositLimit(123, {"from": accounts[1]})
+        vault.setDepositLimit(123, {"from": user})
 
     # admin can call
     vault.setDepositLimit(123, {"from": admin})

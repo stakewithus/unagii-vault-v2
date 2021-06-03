@@ -48,10 +48,10 @@ def uToken(UnagiiToken, token, minter):
 
 
 @pytest.fixture(scope="module")
-def vault(Vault, token, uToken, minter, admin, timeLock, guardian, keeper):
-    vault = Vault.deploy(token, uToken, timeLock, guardian, keeper, {"from": admin})
+def vault(Vault, token, uToken, minter, admin, timeLock, guardian):
+    vault = Vault.deploy(token, uToken, timeLock, guardian, {"from": admin})
     uToken.setNextMinter(vault, {"from": minter})
-    vault.initialize({"from": admin})
+    vault.acceptMinter({"from": admin})
     vault.setPause(False, {"from": admin})
     vault.setDepositLimit(2 ** 256 - 1, {"from": admin})
     yield vault

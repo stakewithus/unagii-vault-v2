@@ -2,15 +2,10 @@ import brownie
 import pytest
 
 
-@pytest.fixture(scope="module", autouse=True)
-def setup(module_isolation):
-    pass
-
-
-def test_set_fee_on_transfer(accounts, vault, admin):
+def test_set_fee_on_transfer(vault, admin, user):
     # not admin
     with brownie.reverts("!admin"):
-        vault.setFeeOnTransfer(True, {"from": accounts[1]})
+        vault.setFeeOnTransfer(True, {"from": user})
 
     # admin can call
     vault.setFeeOnTransfer(True, {"from": admin})
