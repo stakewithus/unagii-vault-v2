@@ -12,48 +12,31 @@ from vyper.interfaces import ERC20
 
 
 interface DetailedERC20:
-    def decimals() -> uint256:
-        view
+    def decimals() -> uint256: view
 
 
 interface UnagiiToken:
-    def acceptMinter():
-        nonpayable
+    def setNextMinter(minter: address): nonpayable
+    def acceptMinter(): nonpayable
+    def token() -> address: view
+    def decimals() -> uint256: view
+    def totalSupply() -> uint256: view
+    def balanceOf(owner: address) -> uint256: view
+    def mint(receiver: address, amount: uint256): nonpayable
+    def burn(spender: address, amount: uint256): nonpayable
+    def lastBlock(owner: address) -> uint256: view
 
-    def token() -> address:
-        view
 
-    def decimals() -> uint256:
-        view
-
-    def totalSupply() -> uint256:
-        view
-
-    def balanceOf(owner: address) -> uint256:
-        view
-
-    def mint(receiver: address, amount: uint256):
-        nonpayable
-
-    def burn(spender: address, amount: uint256):
-        nonpayable
-
-    def lastBlock(owner: address) -> uint256:
-        view
+interface Vault:
+    def uToken() -> address: view
+    def token() -> address: view
 
 
 interface FundManager:
-    def vault() -> address:
-        view
-
-    def token() -> address:
-        view
-
-    def totalAssets() -> uint256:
-        view
-
-    def withdraw(amount: uint256) -> uint256:
-        nonpayable
+    def vault() -> address: view
+    def token() -> address: view
+    def totalAssets() -> uint256: view
+    def withdraw(amount: uint256) -> uint256: nonpayable
 
 
 MAX_MIN_RESERVE: constant(uint256) = 10000
@@ -98,11 +81,9 @@ event Repay:
     amount: uint256
 
 
-event Sync:
+event ForceUpdateBalanceInVault:
     balanceInVault: uint256
 
-
-initialized: public(bool)
 
 token: public(ERC20)
 uToken: public(UnagiiToken)
@@ -150,15 +131,6 @@ def __init__(
     self.lockedProfitDegradation = convert(DEGRADATION_COEFFICIENT / 21600, uint256)
 
 
-@external
-def initialize():
-    assert msg.sender == self.admin, "!admin"
-    assert not self.initialized, "initialized"
-
-    self.initialized = True
-    self.uToken.acceptMinter()
-
-
 # TODO: migrate to new vault
 
 # # u = token token
@@ -171,6 +143,27 @@ def initialize():
 # # ut.setMinter(v2)
 # # u.approve(v2, bal of v1, {from: v1})
 # # u.transferFrom(v1, v2, bal of v1, {from: v2})
+
+# @external
+# def setNextMinter(vault: address):
+#     # TODO: pause?
+#     assert msg.sender == self.timeLock, "!time lock"
+#     assert vault != self, "new vault = current"
+
+#     # vault = ZERO_ADDRESS means cancel next minter
+#     if vault != ZERO_ADDRESS:
+#         assert Vault(vault).token() == self.token.address, "vault token != token"
+#         assert Vault(vault).uToken() == self.uToken.address, "vault uToken != uToken"
+
+#     # this will fail if self != minter
+#     self.uToken.setNextMinter(vault)
+
+
+# @external
+# def acceptMinter():
+#     assert msg.sender == self.admin, "!admin"
+#     # this will fail if self != minter
+#     self.uToken.acceptMinter()
 
 
 @external
@@ -560,6 +553,12 @@ def _calcOutstandingDebt() -> uint256:
     return 0
 
 
+# TODO: test? remove?
+@external
+def calcOutstandingDebt() -> uint256:
+    return self._calcOutstandingDebt()
+
+
 # TODO: test
 @external
 def borrow(_amount: uint256) -> uint256:
@@ -617,32 +616,30 @@ def report():
         gain = total - debt
     else:
         loss = debt - total
-    
-    if loss > 0:
-        if lockedProfit > loss:
-            self.lockedProfit -= loss
-        else:
-            self.lockedProfit = 0
-            self.debt -= (loss - lockedProfit)
-    elif gain > 0:
+
+    if gain > 0:
         free: uint256 = self.token.balanceOf(msg.sender)
         gain = min(gain, free)
 
         self.debt += gain
         self.lockedProfit = lockedProfit + gain
+    elif loss > 0:
+        if lockedProfit > loss:
+            self.lockedProfit -= loss
+        else:
+            self.lockedProfit = 0
+            self.debt -= loss - lockedProfit
 
     self.lastReport = block.timestamp
 
-    
-
 
 @external
-def sync():
+def forceUpdateBalanceInVault():
     assert msg.sender == self.admin, "!admin"
     bal: uint256 = self.token.balanceOf(self)
     assert bal < self.balanceInVault, "bal >= vault"
     self.balanceInVault = bal
-    log Sync(bal)
+    log ForceUpdateBalanceInVault(bal)
 
 
 @external
