@@ -11,5 +11,7 @@ def test_set_next_admin(vault, admin, user):
     with brownie.reverts("next admin = current"):
         vault.setNextAdmin(admin, {"from": admin})
 
-    vault.setNextAdmin(user, {"from": admin})
+    tx = vault.setNextAdmin(user, {"from": admin})
     assert vault.nextAdmin() == user
+    assert len(tx.events) == 1
+    assert tx.events["SetNextAdmin"].values() == [user]

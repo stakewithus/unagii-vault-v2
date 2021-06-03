@@ -8,9 +8,13 @@ def test_set_pause(vault, admin, guardian, user):
         vault.setPause(True, {"from": user})
 
     # guadian can pause
-    vault.setPause(False, {"from": guardian})
+    tx = vault.setPause(False, {"from": guardian})
     assert not vault.paused()
+    assert len(tx.events) == 1
+    assert tx.events["SetPause"].values() == [False]
 
     # admin can pause
-    vault.setPause(True, {"from": admin})
+    tx = vault.setPause(True, {"from": admin})
     assert vault.paused()
+    assert len(tx.events) == 1
+    assert tx.events["SetPause"].values() == [True]

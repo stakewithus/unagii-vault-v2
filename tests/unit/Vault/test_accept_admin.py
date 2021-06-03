@@ -11,6 +11,7 @@ def test_accept_admin(vault, admin, user):
     with brownie.reverts("!next admin"):
         vault.acceptAdmin({"from": admin})
 
-    vault.acceptAdmin({"from": user})
+    tx = vault.acceptAdmin({"from": user})
     assert vault.admin() == user
-    assert vault.nextAdmin() == ZERO_ADDRESS
+    assert len(tx.events) == 1
+    assert tx.events["AcceptAdmin"].values() == [user]

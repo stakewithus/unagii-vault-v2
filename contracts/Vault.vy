@@ -183,7 +183,6 @@ def setNextAdmin(nextAdmin: address):
 def acceptAdmin():
     assert msg.sender == self.nextAdmin, "!next admin"
     self.admin = msg.sender
-    self.nextAdmin = ZERO_ADDRESS
     log AcceptAdmin(msg.sender)
 
 
@@ -199,7 +198,6 @@ def setNextTimeLock(nextTimeLock: address):
 def acceptTimeLock():
     assert msg.sender == self.nextTimeLock, "!next time lock"
     self.timeLock = msg.sender
-    self.nextTimeLock = ZERO_ADDRESS
     log AcceptTimeLock(msg.sender)
 
 

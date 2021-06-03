@@ -13,6 +13,5 @@ def test_accept_time_lock(vault, admin, timeLock, user):
 
     tx = vault.acceptTimeLock({"from": user})
     assert vault.timeLock() == user
-    assert vault.nextTimeLock() == ZERO_ADDRESS
     assert len(tx.events) == 1
     assert tx.events["AcceptTimeLock"].values() == [user]

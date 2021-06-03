@@ -11,5 +11,7 @@ def test_set_guardian(vault, admin, user):
     with brownie.reverts("new guardian = current"):
         vault.setGuardian(vault.guardian(), {"from": admin})
 
-    vault.setGuardian(user, {"from": admin})
+    tx = vault.setGuardian(user, {"from": admin})
     assert vault.guardian() == user
+    assert len(tx.events) == 1
+    assert tx.events["SetGuardian"].values() == [user]
