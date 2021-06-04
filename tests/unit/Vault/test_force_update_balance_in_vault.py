@@ -28,8 +28,12 @@ def test_force_update_balance_in_vault(vault, token, admin, user):
         }
 
     before = snapshot()
-    vault.forceUpdateBalanceInVault({"from": admin})
+    tx = vault.forceUpdateBalanceInVault({"from": admin})
     after = snapshot()
 
     assert after["vault"]["balanceInVault"] == before["token"]["vault"]
     assert after["token"]["vault"] == before["token"]["vault"]
+    assert len(tx.events) == 1
+    assert tx.events["ForceUpdateBalanceInVault"].values() == [
+        after["vault"]["balanceInVault"]
+    ]
