@@ -383,7 +383,7 @@ def _calcSharesToMint(
 def calcSharesToMint(amount: uint256) -> uint256:
     return self._calcSharesToMint(
         amount,
-        self.token.totalSupply(),
+        self.uToken.totalSupply(),
         self._calcFreeFunds()
     )
 
@@ -417,7 +417,7 @@ def _calcSharesToBurn(
 def calcSharesToBurn(amount: uint256) -> uint256:
     return self._calcSharesToBurn(
         amount,
-        self.token.totalSupply(),
+        self.uToken.totalSupply(),
         self._calcFreeFunds()
     )
 
@@ -455,6 +455,7 @@ def calcWithdraw(shares: uint256) -> uint256:
 
 
 # TODO: deposit log
+# TODO: test reentrancy
 @external
 @nonreentrant("lock")
 def deposit(_amount: uint256, minShares: uint256) -> uint256:
@@ -470,9 +471,9 @@ def deposit(_amount: uint256, minShares: uint256) -> uint256:
     amount: uint256 = _amount
     if amount == MAX_UINT256:
         amount = self.token.balanceOf(msg.sender)
+    assert amount > 0, "deposit = 0"
 
     assert self._totalAssets() + amount <= self.depositLimit, "deposit limit"
-    assert amount > 0, "deposit = 0"
 
     totalSupply: uint256 = self.uToken.totalSupply()
     # TODO: test free funds
