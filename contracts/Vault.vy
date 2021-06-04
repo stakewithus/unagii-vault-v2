@@ -138,16 +138,17 @@ def __init__(
 
 # TODO: migrate to new vault
 
-# # u = token token
-# # ut = unagi token
-# # v1 = vault 1
-# # v2 = vault 2
+# u = token token
+# ut = unagi token
+# v1 = vault 1
+# v2 = vault 2
 
-# # v2.pause
-# # v1.pause
-# # ut.setMinter(v2)
-# # u.approve(v2, bal of v1, {from: v1})
-# # u.transferFrom(v1, v2, bal of v1, {from: v2})
+# v2.pause
+# v1.pause
+# ut.setMinter(v2)
+# u.approve(v2, bal of v1, {from: v1})
+# u.transferFrom(v1, v2, bal of v1, {from: v2})
+# update balance in vault and debt?
 
 # @external
 # def setNextMinter(vault: address):
