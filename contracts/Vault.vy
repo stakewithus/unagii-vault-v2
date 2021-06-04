@@ -450,7 +450,6 @@ def calcWithdraw(shares: uint256) -> uint256:
 
 
 # TODO: deposit log
-# TODO: test reentrancy
 @external
 @nonreentrant("lock")
 def deposit(_amount: uint256, minShares: uint256) -> uint256:
