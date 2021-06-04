@@ -331,6 +331,14 @@ def _calcLockedProfit() -> uint256:
         return 0
 
 
+# TODO: remove?
+# TODO: test?
+@external
+@view
+def calcLockedProfit() -> uint256:
+    return self._calcLockedProfit() 
+
+
 @internal
 @view
 def _calcFreeFunds() -> uint256:
