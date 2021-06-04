@@ -310,7 +310,7 @@ def _safeTransferFrom(
 def _totalAssets() -> uint256:
     return self.balanceInVault + self.debt
 
-
+# TODO: test
 @external
 @view
 def totalAssets() -> uint256:
@@ -331,8 +331,7 @@ def _calcLockedProfit() -> uint256:
         return 0
 
 
-# TODO: remove?
-# TODO: test?
+# TODO: test
 @external
 @view
 def calcLockedProfit() -> uint256:
@@ -352,7 +351,6 @@ def calcFreeFunds() -> uint256:
     return self._calcFreeFunds()
 
 
-# TODO: test
 @internal
 @pure
 def _calcSharesToMint(
@@ -377,7 +375,6 @@ def _calcSharesToMint(
     return amount * totalSupply / freeFunds
 
 
-# TODO: remove?
 @external
 @view
 def calcSharesToMint(amount: uint256) -> uint256:
