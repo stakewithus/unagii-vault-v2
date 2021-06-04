@@ -686,12 +686,15 @@ def forceUpdateBalanceInVault():
 @external
 def skim():
     assert msg.sender == self.admin, "!admin"
-    diff: uint256 = self.token.balanceOf(self) - self.balanceInVault
-    self._safeTransfer(self.token.address, self.admin, diff)
+    self._safeTransfer(
+        self.token.address,
+        msg.sender,
+        self.token.balanceOf(self) - self.balanceInVault
+    )
 
 
 @external
 def sweep(token: address):
     assert msg.sender == self.admin, "!admin"
     assert token != self.token.address, "protected"
-    self._safeTransfer(token, self.admin, ERC20(token).balanceOf(self))
+    self._safeTransfer(token, msg.sender, ERC20(token).balanceOf(self))
