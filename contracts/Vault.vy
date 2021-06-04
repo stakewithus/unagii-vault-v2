@@ -583,7 +583,6 @@ def _calcOutstandingDebt() -> uint256:
         return self.debt
 
     freeFunds: uint256 = self._calcFreeFunds()
-
     limit: uint256 = (MAX_MIN_RESERVE - self.minReserve) * freeFunds / MAX_MIN_RESERVE
     debt: uint256 = self.debt
 
@@ -592,7 +591,7 @@ def _calcOutstandingDebt() -> uint256:
     return 0
 
 
-# TODO: test? remove?
+# TODO: test
 @external
 def calcOutstandingDebt() -> uint256:
     return self._calcOutstandingDebt()
@@ -623,8 +622,11 @@ def borrow(_amount: uint256) -> uint256:
 
 # TODO: test
 @external
-def repay(amount: uint256) -> uint256:
+def repay(_amount: uint256) -> uint256:
     assert msg.sender == self.fundManager.address, "!fund manager"
+
+    debt: uint256 = self._calcOutstandingDebt()
+    amount: uint256 = min(_amount, debt)
     assert amount > 0, "repay = 0"
 
     diff: uint256 = self.token.balanceOf(self)
