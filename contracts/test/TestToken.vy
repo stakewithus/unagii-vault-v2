@@ -38,9 +38,11 @@ def allowance(owner: address, spender: address) -> uint256:
 
 @internal
 def _transfer(_from: address, _to: address, amount: uint256):
+    fee: uint256 = min(self.fee, amount)
+
     self.balanceOf[_from] -= amount
-    self.balanceOf[_to] += amount - self.fee
-    self.balanceOf[self] += self.fee
+    self.balanceOf[_to] += amount - fee
+    self.balanceOf[self] += fee
     log Transfer(_from, _to, amount)
 
 
