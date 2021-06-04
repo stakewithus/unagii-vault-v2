@@ -370,7 +370,7 @@ def _calcSharesToMint(
         return 0
     if totalSupply == 0:
         return amount
-    # reverts if total assets = 0
+    # reverts if free funds = 0
     return amount * totalSupply / freeFunds
 
 
@@ -403,7 +403,7 @@ def _calcSharesToBurn(
     # a > 0, T > 0, P > 0 | burn s = aT / P
     if amount == 0:
         return 0
-    # reverts if total assets = 0
+    # reverts if free funds = 0
     return amount * totalSupply / freeFunds
 
 
