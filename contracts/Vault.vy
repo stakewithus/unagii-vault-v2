@@ -613,12 +613,12 @@ def calcOutstandingDebt() -> uint256:
     return self._calcOutstandingDebt()
 
 
-# TODO: test
 @external
 def borrow(_amount: uint256) -> uint256:
     assert not self.paused, "paused"
     assert msg.sender == self.fundManager.address, "!fund manager"
 
+    # TODO test _calcAvailableToInvest
     available: uint256 = self._calcAvailableToInvest()
     amount: uint256 = min(_amount, available)
     assert amount > 0, "borrow = 0"
@@ -629,6 +629,7 @@ def borrow(_amount: uint256) -> uint256:
     # include fee on trasfer to debt
     self.debt += amount
 
+    # TODO: test
     assert self.token.balanceOf(self) >= self.balanceOfVault, "bal < vault"
 
     log Borrow(msg.sender, amount)
