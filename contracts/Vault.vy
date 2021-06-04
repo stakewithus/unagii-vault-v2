@@ -377,6 +377,17 @@ def _calcSharesToMint(
     return amount * totalSupply / freeFunds
 
 
+# TODO: remove?
+@external
+@view
+def calcSharesToMint(amount: uint256) -> uint256:
+    return self._calcSharesToMint(
+        amount,
+        self.token.totalSupply(),
+        self._calcFreeFunds()
+    )
+
+
 # TODO: test
 @internal
 @pure
@@ -398,6 +409,17 @@ def _calcSharesToBurn(
         return 0
     # reverts if total assets = 0
     return amount * totalSupply / freeFunds
+
+
+# TODO: remove?
+@external
+@view
+def calcSharesToBurn(amount: uint256) -> uint256:
+    return self._calcSharesToBurn(
+        amount,
+        self.token.totalSupply(),
+        self._calcFreeFunds()
+    )
 
 
 # TODO: test
@@ -425,7 +447,11 @@ def _calcWithdraw(shares: uint256, totalSupply: uint256, freeFunds: uint256) -> 
 @external
 @view
 def calcWithdraw(shares: uint256) -> uint256:
-    return self._calcWithdraw(shares, self.uToken.totalSupply(), self._calcFreeFunds())
+    return self._calcWithdraw(
+        shares,
+        self.uToken.totalSupply(),
+        self._calcFreeFunds()
+    )
 
 
 # TODO: deposit log
