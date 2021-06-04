@@ -30,7 +30,7 @@ def test_deposit(vault, token, uToken, user, amount):
                 "totalSupply": uToken.totalSupply(),
             },
             "vault": {
-                "balanceInVault": vault.balanceInVault(),
+                "balanceOfVault": vault.balanceOfVault(),
             },
         }
 
@@ -49,7 +49,7 @@ def test_deposit(vault, token, uToken, user, amount):
         after["token"]["balance"]["vault"]
         == before["token"]["balance"]["vault"] + amount
     )
-    assert after["vault"]["balanceInVault"] == after["token"]["balance"]["vault"]
+    assert after["vault"]["balanceOfVault"] == after["token"]["balance"]["vault"]
     assert after["uToken"]["balance"]["user"] > before["uToken"]["balance"]["user"]
 
 
@@ -81,8 +81,8 @@ def test_deposit_fee_on_transfer(vault, admin, token, uToken, user):
     # test diff = 0
     amount = 123
     fee = amount
-    vault.setFeeOnTransfer(True, {"from": admin})
     token.setFeeOnTransfer(fee)
+    vault.setFeeOnTransfer(True, {"from": admin})
 
     token.approve(vault, amount, {"from": user})
 

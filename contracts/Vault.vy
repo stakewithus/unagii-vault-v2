@@ -93,8 +93,8 @@ event Report:
     lockedProfit: uint256
 
 
-event ForceUpdateBalanceInVault:
-    balanceInVault: uint256
+event ForceUpdateBalanceOfVault:
+    balanceOfVault: uint256
 
 
 token: public(ERC20)
@@ -108,7 +108,7 @@ guardian: public(address)
 
 paused: public(bool)
 depositLimit: public(uint256)
-balanceInVault: public(uint256)
+balanceOfVault: public(uint256)
 debt: public(uint256)  # debt to users (amount borrowed by fund manager)
 minReserve: public(uint256)
 lastReport: public(uint256)
@@ -316,7 +316,7 @@ def _safeTransferFrom(
 @internal
 @view
 def _totalAssets() -> uint256:
-    return self.balanceInVault + self.debt
+    return self.balanceOfVault + self.debt
 
 # TODO: test
 @external
@@ -481,10 +481,11 @@ def deposit(_amount: uint256, minShares: uint256) -> uint256:
     # TODO: test free funds
     freeFunds: uint256 = self._calcFreeFunds()
 
+    # amount of tokens that this vault received
     diff: uint256 = 0
     if self.feeOnTransfer:
-        # Actual amount transferred may be less than `amount`,
-        # for example if token has fee on transfer
+        # Actual amount transferred may be less than `amount`
+        # if token has fee on transfer
         diff = self.token.balanceOf(self)
         self._safeTransferFrom(self.token.address, msg.sender, self, amount)
         diff = self.token.balanceOf(self) - diff
@@ -497,11 +498,12 @@ def deposit(_amount: uint256, minShares: uint256) -> uint256:
     shares: uint256 = self._calcSharesToMint(diff, totalSupply, freeFunds)
     assert shares >= minShares, "shares < min"
 
-    # TODO: test balanceInVault <= ERC20.balanceOf(self)
-    self.balanceInVault += diff
+    # TODO: test balanceOfVault <= ERC20.balanceOf(self)
+    self.balanceOfVault += diff
     self.uToken.mint(msg.sender, shares)
 
-    assert self.token.balanceOf(self) >= self.balanceInVault, "bal < vault"
+    # TODO: test
+    assert self.token.balanceOf(self) >= self.balanceOfVault, "bal < vault"
 
     return shares
 
@@ -522,11 +524,13 @@ def withdraw(_maxShares: uint256, _min: uint256) -> uint256:
     assert shares > 0, "shares = 0"
 
     totalSupply: uint256 = self.uToken.totalSupply()
+    # TODO: test calcWithdraw, calcFreeFunds
     amount: uint256 = self._calcWithdraw(shares, totalSupply, self._calcFreeFunds())
 
-    if amount > self.balanceInVault:
+    # TODO: test
+    if amount > self.balanceOfVault:
         diff: uint256 = self.token.balanceOf(self)
-        loss: uint256 = self.fundManager.withdraw(amount - self.balanceInVault)
+        loss: uint256 = self.fundManager.withdraw(amount - self.balanceOfVault)
         diff = self.token.balanceOf(self) - diff
 
         if loss > 0:
@@ -534,29 +538,33 @@ def withdraw(_maxShares: uint256, _min: uint256) -> uint256:
             self.debt -= loss
 
         self.debt -= diff
-        self.balanceInVault += diff
+        self.balanceOfVault += diff
 
-        if amount > self.balanceInVault:
-            amount = self.balanceInVault
+        if amount > self.balanceOfVault:
+            amount = self.balanceOfVault
+            # TODO: test
             shares = self._calcSharesToBurn(
                 amount + loss, totalSupply, self._calcFreeFunds()
             )
 
     self.uToken.burn(msg.sender, shares)
 
+    # amount of tokens msg.sender received
     diff: uint256 = 0
     if self.feeOnTransfer:
-        diff = self.token.balanceOf(self)
+        diff = self.token.balanceOf(msg.sender)
         self._safeTransfer(self.token.address, msg.sender, amount)
-        diff = self.token.balanceOf(self) - diff
+        diff = self.token.balanceOf(msg.sender) - diff
     else:
         self._safeTransfer(self.token.address, msg.sender, amount)
         diff = amount
 
     assert diff >= _min, "diff < min"
-    self.balanceInVault -= diff
+    # TODO: test balanceOfVault <= ERC20.balanceOf(self)
+    self.balanceOfVault -= amount
 
-    assert self.token.balanceOf(self) >= self.balanceInVault, "bal < vault"
+    # TODO: test
+    assert self.token.balanceOf(self) >= self.balanceOfVault, "bal < vault"
 
     return diff
 
@@ -573,8 +581,8 @@ def _calcAvailableToInvest() -> uint256:
     freeFunds: uint256 = self._calcFreeFunds()
     minReserve: uint256 = freeFunds * self.minReserve / MAX_MIN_RESERVE
 
-    if self.balanceInVault > minReserve:
-        return self.balanceInVault - minReserve
+    if self.balanceOfVault > minReserve:
+        return self.balanceOfVault - minReserve
     return 0
 
 
@@ -617,11 +625,11 @@ def borrow(_amount: uint256) -> uint256:
 
     self._safeTransfer(self.token.address, msg.sender, amount)
 
-    self.balanceInVault -= amount
+    self.balanceOfVault -= amount
     # include fee on trasfer to debt
     self.debt += amount
 
-    assert self.token.balanceOf(self) >= self.balanceInVault, "bal < vault"
+    assert self.token.balanceOf(self) >= self.balanceOfVault, "bal < vault"
 
     log Borrow(msg.sender, amount)
 
@@ -641,11 +649,11 @@ def repay(_amount: uint256) -> uint256:
     self._safeTransferFrom(self.token.address, msg.sender, self, amount)
     diff = self.token.balanceOf(self) - diff
 
-    self.balanceInVault += diff
+    self.balanceOfVault += diff
     # exclude fee on transfer from debt payment
     self.debt -= diff
 
-    assert self.token.balanceOf(self) >= self.balanceInVault, "bal < vault"
+    assert self.token.balanceOf(self) >= self.balanceOfVault, "bal < vault"
 
     log Repay(msg.sender, diff)
 
@@ -688,12 +696,12 @@ def report():
 
 
 @external
-def forceUpdateBalanceInVault():
+def forceUpdateBalanceOfVault():
     assert msg.sender == self.admin, "!admin"
     bal: uint256 = self.token.balanceOf(self)
-    assert bal < self.balanceInVault, "bal >= vault"
-    self.balanceInVault = bal
-    log ForceUpdateBalanceInVault(bal)
+    assert bal < self.balanceOfVault, "bal >= vault"
+    self.balanceOfVault = bal
+    log ForceUpdateBalanceOfVault(bal)
 
 
 @external
@@ -702,7 +710,7 @@ def skim():
     self._safeTransfer(
         self.token.address,
         msg.sender,
-        self.token.balanceOf(self) - self.balanceInVault
+        self.token.balanceOf(self) - self.balanceOfVault
     )
 
 
