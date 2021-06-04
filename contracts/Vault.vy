@@ -84,6 +84,14 @@ event Repay:
     fundManager: indexed(address)
     amount: uint256
 
+event Report:
+    fundManager: indexed(address)
+    totalAssets: uint256
+    debt: uint256
+    gain: uint256
+    loss: uint256
+    lockedProfit: uint256
+
 
 event ForceUpdateBalanceInVault:
     balanceInVault: uint256
@@ -662,16 +670,21 @@ def report():
         free: uint256 = self.token.balanceOf(msg.sender)
         gain = min(gain, free)
 
+        # free funds = bal + debt + gain - (locked profit + gain)
         self.debt += gain
         self.lockedProfit = lockedProfit + gain
     elif loss > 0:
+        # free funds = bal + debt - loss - (locked profit - loss)
+        self.debt -= loss
         if lockedProfit > loss:
             self.lockedProfit -= loss
         else:
+            # no locked profit to be released
             self.lockedProfit = 0
-            self.debt -= loss - lockedProfit
 
     self.lastReport = block.timestamp
+
+    log Report(msg.sender, total, self.debt, gain, loss, self.lockedProfit)
 
 
 @external
