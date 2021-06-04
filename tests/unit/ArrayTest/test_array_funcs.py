@@ -1,8 +1,8 @@
 import brownie
+from brownie import ZERO_ADDRESS
 from brownie.test import strategy
 
 
-ZERO_ADDRESS = "0x0000000000000000000000000000000000000000"
 N = 5
 
 

@@ -1,9 +1,7 @@
 import brownie
+from brownie import ZERO_ADDRESS
 from brownie.test import given, strategy
 import pytest
-
-
-ZERO_ADDRESS = "0x0000000000000000000000000000000000000000"
 
 
 @given(

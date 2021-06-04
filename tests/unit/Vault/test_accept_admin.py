@@ -1,8 +1,6 @@
 import brownie
 import pytest
 
-ZERO_ADDRESS = "0x0000000000000000000000000000000000000000"
-
 
 def test_accept_admin(vault, admin, user):
     vault.setNextAdmin(user, {"from": admin})

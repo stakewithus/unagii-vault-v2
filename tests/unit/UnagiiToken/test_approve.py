@@ -3,9 +3,6 @@ from brownie.test import given, strategy
 import pytest
 
 
-ZERO_ADDRESS = "0x0000000000000000000000000000000000000000"
-
-
 @pytest.fixture(scope="function", autouse=True)
 def setup(fn_isolation):
     pass

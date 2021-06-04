@@ -1,8 +1,6 @@
 import brownie
 import pytest
 
-ZERO_ADDRESS = "0x0000000000000000000000000000000000000000"
-
 
 def test_accept_time_lock(vault, admin, timeLock, user):
     vault.setNextTimeLock(user, {"from": timeLock})
