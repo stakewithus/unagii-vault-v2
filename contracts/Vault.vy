@@ -350,7 +350,6 @@ def _calcFreeFunds() -> uint256:
 def calcFreeFunds() -> uint256:
     return self._calcFreeFunds()
 
-
 @internal
 @pure
 def _calcSharesToMint(
@@ -375,6 +374,7 @@ def _calcSharesToMint(
     return amount * totalSupply / freeFunds
 
 
+# TODO: test
 @external
 @view
 def calcSharesToMint(amount: uint256) -> uint256:
@@ -385,7 +385,6 @@ def calcSharesToMint(amount: uint256) -> uint256:
     )
 
 
-# TODO: test
 @internal
 @pure
 def _calcSharesToBurn(
@@ -408,7 +407,7 @@ def _calcSharesToBurn(
     return amount * totalSupply / freeFunds
 
 
-# TODO: remove?
+# TODO: test
 @external
 @view
 def calcSharesToBurn(amount: uint256) -> uint256:
@@ -419,7 +418,6 @@ def calcSharesToBurn(amount: uint256) -> uint256:
     )
 
 
-# TODO: test
 @internal
 @pure
 def _calcWithdraw(shares: uint256, totalSupply: uint256, freeFunds: uint256) -> uint256:
