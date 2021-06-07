@@ -15,6 +15,9 @@ pip install black
 pip install blackadder
 
 cp .env.sample .env
+
+# npm
+npm i
 ```
 
 ```shell
