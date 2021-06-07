@@ -86,7 +86,6 @@ def setNextAdmin(nextAdmin: address):
     @param nextAdmin Address of next admin
     """
     assert msg.sender == self.admin, "!admin"
-    assert nextAdmin != self.admin, "next admin = current"
     # allow next admin = zero address (cancel next admin)
     self.nextAdmin = nextAdmin
     log SetNextAdmin(nextAdmin)
@@ -110,7 +109,6 @@ def setMinter(minter: address):
     @param minter Address of minter
     """
     assert msg.sender == self.admin, "!admin"
-    assert minter != self.minter, "minter = current"
     # allow minter = zero address
     self.minter = minter
     log SetMinter(minter)
