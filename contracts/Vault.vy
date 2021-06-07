@@ -113,7 +113,7 @@ blockDelay: public(uint256)
 feeOnTransfer: public(bool)
 whitelist: public(HashMap[address, bool])
 
-# TODO: test events
+
 @external
 def __init__(
     token: address,
