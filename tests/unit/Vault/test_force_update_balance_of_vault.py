@@ -2,9 +2,9 @@ import brownie
 import pytest
 
 
-def test_force_update_balance_of_vault(vault, token, admin, user):
-    # not admin
-    with brownie.reverts("!admin"):
+def test_force_update_balance_of_vault(vault, token, admin, keeper, user):
+    # not auth
+    with brownie.reverts("!auth"):
         vault.forceUpdateBalanceOfVault({"from": user})
 
     # deposit to increase balanceOfVault
@@ -37,3 +37,8 @@ def test_force_update_balance_of_vault(vault, token, admin, user):
     assert tx.events["ForceUpdateBalanceOfVault"].values() == [
         after["vault"]["balanceOfVault"]
     ]
+
+    # keeper
+    # force token balance of vault < balanceOfVault
+    token.burn(vault, 1)
+    vault.forceUpdateBalanceOfVault({"from": keeper})

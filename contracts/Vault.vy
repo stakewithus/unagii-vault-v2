@@ -169,7 +169,6 @@ def __init__(
 @external
 def setNextAdmin(nextAdmin: address):
     assert msg.sender == self.admin, "!admin"
-    assert nextAdmin != self.admin, "next admin = current"
     self.nextAdmin = nextAdmin
     log SetNextAdmin(nextAdmin)
 
@@ -184,7 +183,6 @@ def acceptAdmin():
 @external
 def setGuardian(guardian: address):
     assert msg.sender in [self.admin, self.guardian, self.keeper], "!auth"
-    assert guardian != self.guardian, "new guardian = current"
     self.guardian = guardian
     log SetGuardian(guardian)
 
@@ -192,7 +190,6 @@ def setGuardian(guardian: address):
 @external
 def setKeeper(keeper: address):
     assert msg.sender in [self.admin, self.guardian, self.keeper], "!auth"
-    assert keeper != self.keeper, "new keeper = current"
     self.keeper = keeper
     log SetKeeper(keeper)
 
@@ -201,7 +198,6 @@ def setKeeper(keeper: address):
 @external
 def setFundManager(fundManager: address):
     assert msg.sender == self.admin, "!admin"
-    assert fundManager != self.fundManager.address, "new fund manager = current"
 
     assert FundManager(fundManager).vault() == self, "fund manager vault != vault"
     assert (

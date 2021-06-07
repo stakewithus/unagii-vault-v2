@@ -5,9 +5,9 @@ import pytest
 
 
 @pytest.fixture(scope="function", autouse=True)
-def setup(fn_isolation, vault, token, timeLock, testFundManager, user):
+def setup(fn_isolation, vault, token, admin, testFundManager, user):
     if vault.fundManager() != testFundManager.address:
-        vault.setFundManager(testFundManager, {"from": timeLock})
+        vault.setFundManager(testFundManager, {"from": admin})
 
 
 @given(

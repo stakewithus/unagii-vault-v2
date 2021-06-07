@@ -8,22 +8,22 @@ def setup(fn_isolation):
 
 
 def test_set_guardian_admin(vault, admin, user):
-    tx = vault.setGuardian(user, {"from": admin})
-    assert vault.guardian() == user
+    tx = vault.setKeeper(user, {"from": admin})
+    assert vault.keeper() == user
     assert len(tx.events) == 1
-    assert tx.events["SetGuardian"].values() == [user]
+    assert tx.events["SetKeeper"].values() == [user]
 
 
 def test_set_guardian_guardian(vault, guardian, user):
-    vault.setGuardian(user, {"from": guardian})
-    assert vault.guardian() == user
+    vault.setKeeper(user, {"from": guardian})
+    assert vault.keeper() == user
 
 
 def test_set_guardian_keeper(vault, keeper, user):
-    vault.setGuardian(user, {"from": keeper})
-    assert vault.guardian() == user
+    vault.setKeeper(user, {"from": keeper})
+    assert vault.keeper() == user
 
 
 def test_set_guardian_not_auth(vault, user):
     with brownie.reverts("!auth"):
-        vault.setGuardian(user, {"from": user})
+        vault.setKeeper(user, {"from": user})

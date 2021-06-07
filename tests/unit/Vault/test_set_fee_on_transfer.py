@@ -2,11 +2,15 @@ import brownie
 import pytest
 
 
-def test_set_fee_on_transfer(vault, admin, user):
-    # not admin
-    with brownie.reverts("!admin"):
+def test_set_fee_on_transfer(vault, admin, keeper, user):
+    # not auth
+    with brownie.reverts("!auth"):
         vault.setFeeOnTransfer(True, {"from": user})
 
-    # admin can call
+    # admin
     vault.setFeeOnTransfer(True, {"from": admin})
     assert vault.feeOnTransfer()
+
+    # keeper
+    vault.setFeeOnTransfer(False, {"from": keeper})
+    assert not vault.feeOnTransfer()

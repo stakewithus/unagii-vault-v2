@@ -2,9 +2,9 @@ import brownie
 import pytest
 
 
-def test_skim(vault, token, admin, user):
-    # not admin
-    with brownie.reverts("!admin"):
+def test_skim(vault, token, admin, keeper, user):
+    # not auth
+    with brownie.reverts("!auth"):
         vault.skim({"from": user})
 
     token.mint(vault, 123)
@@ -16,6 +16,7 @@ def test_skim(vault, token, admin, user):
             "vault": {"balanceOfVault": vault.balanceOfVault()},
             "token": {
                 "admin": token.balanceOf(admin),
+                "keeper": token.balanceOf(keeper),
                 "vault": token.balanceOf(vault),
             },
         }
@@ -28,3 +29,12 @@ def test_skim(vault, token, admin, user):
     assert after["token"]["vault"] == before["token"]["vault"] - diff
     assert after["vault"]["balanceOfVault"] == before["vault"]["balanceOfVault"]
     assert after["vault"]["balanceOfVault"] == after["token"]["vault"]
+
+    # keeper
+    token.mint(vault, 1)
+
+    before = snapshot()
+    vault.skim({"from": keeper})
+    after = snapshot()
+
+    assert after["token"]["keeper"] == before["token"]["keeper"] + 1

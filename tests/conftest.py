@@ -15,28 +15,23 @@ def admin(accounts):
 
 
 @pytest.fixture(scope="session")
-def timeLock(accounts):
+def guardian(accounts):
     yield accounts[1]
 
 
 @pytest.fixture(scope="session")
-def guardian(accounts):
+def keeper(accounts):
     yield accounts[2]
 
 
 @pytest.fixture(scope="session")
-def keeper(accounts):
+def minter(accounts):
     yield accounts[3]
 
 
 @pytest.fixture(scope="session")
-def minter(accounts):
-    yield accounts[4]
-
-
-@pytest.fixture(scope="session")
 def attacker(accounts):
-    yield accounts[5]
+    yield accounts[4]
 
 
 @pytest.fixture(scope="session")
@@ -57,14 +52,10 @@ def uToken(UnagiiToken, token, admin, minter):
 
 
 @pytest.fixture(scope="module")
-def vault(Vault, token, uToken, minter, admin, timeLock, guardian):
-    vault = Vault.deploy(token, uToken, guardian, {"from": admin})
+def vault(Vault, token, uToken, admin, guardian, keeper):
+    vault = Vault.deploy(token, uToken, guardian, keeper, {"from": admin})
 
-    uToken.setNextMinter(vault, {"from": minter})
-    vault.acceptMinter({"from": admin})
-
-    vault.setNextTimeLock(timeLock, {"from": admin})
-    vault.acceptTimeLock({"from": timeLock})
+    uToken.setMinter(vault, {"from": admin})
 
     vault.setPause(False, {"from": admin})
     vault.setDepositLimit(2 ** 256 - 1, {"from": admin})
