@@ -405,13 +405,14 @@ def updateStrategyPerformanceFee(strategy: address, perfFee: uint256):
     log UpdateStrategyPerformanceFee(strategy, perfFee)
 
 
+
+# functions between Vault and this contract
 @external
 def withdraw(amount: uint256) -> uint256:
     assert msg.sender == self.vault.address, "!vault"
     return 0
 
 
-# functions between Vault and this contract
 @external
 def borrowFromVault(amount: uint256):
     pass
