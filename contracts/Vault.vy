@@ -47,16 +47,12 @@ event AcceptAdmin:
     admin: address
 
 
-event SetNextTimeLock:
-    nextTimeLock: address
-
-
-event AcceptTimeLock:
-    timeLock: address
-
-
 event SetGuardian:
     guardian: address
+
+
+event SetKeeper:
+    keeper: address
 
 
 event SetFundManager:
@@ -99,9 +95,8 @@ uToken: public(UnagiiToken)
 fundManager: public(FundManager)
 admin: public(address)
 nextAdmin: public(address)
-timeLock: public(address)
-nextTimeLock: public(address)
 guardian: public(address)
+keeper: public(address)
 
 paused: public(bool)
 depositLimit: public(uint256)
@@ -124,10 +119,11 @@ def __init__(
     token: address,
     uToken: address,
     guardian: address,
+    keeper: address
 ):
     self.admin = msg.sender
-    self.timeLock = msg.sender
     self.guardian = guardian
+    self.keeper = keeper
     self.token = ERC20(token)
     self.uToken = UnagiiToken(uToken)
 
@@ -186,32 +182,25 @@ def acceptAdmin():
 
 
 @external
-def setNextTimeLock(nextTimeLock: address):
-    assert msg.sender == self.timeLock, "!time lock"
-    assert nextTimeLock != self.timeLock, "next time lock = current"
-    self.nextTimeLock = nextTimeLock
-    log SetNextTimeLock(nextTimeLock)
-
-
-@external
-def acceptTimeLock():
-    assert msg.sender == self.nextTimeLock, "!next time lock"
-    self.timeLock = msg.sender
-    log AcceptTimeLock(msg.sender)
-
-
-@external
 def setGuardian(guardian: address):
-    assert msg.sender == self.admin, "!admin"
+    assert msg.sender in [self.admin, self.guardian, self.keeper], "!auth"
     assert guardian != self.guardian, "new guardian = current"
     self.guardian = guardian
     log SetGuardian(guardian)
 
 
+@external
+def setKeeper(keeper: address):
+    assert msg.sender in [self.admin, self.guardian, self.keeper], "!auth"
+    assert keeper != self.keeper, "new keeper = current"
+    self.keeper = keeper
+    log SetKeeper(keeper)
+
+
 # TODO: test migration
 @external
 def setFundManager(fundManager: address):
-    assert msg.sender == self.timeLock, "!time lock"
+    assert msg.sender == self.admin, "!admin"
     assert fundManager != self.fundManager.address, "new fund manager = current"
 
     assert FundManager(fundManager).vault() == self, "fund manager vault != vault"
@@ -225,47 +214,47 @@ def setFundManager(fundManager: address):
 
 @external
 def setPause(paused: bool):
-    assert msg.sender in [self.admin, self.guardian], "!auth"
+    assert msg.sender in [self.admin, self.guardian, self.keeper], "!auth"
     self.paused = paused
     log SetPause(paused)
 
 
 @external
 def setMinReserve(minReserve: uint256):
-    assert msg.sender == self.admin, "!admin"
+    assert msg.sender in [self.admin, self.keeper], "!auth"
     assert minReserve <= MAX_MIN_RESERVE, "min reserve > max"
     self.minReserve = minReserve
 
 
 @external
 def setLockedProfitDegradation(degradation: uint256):
-    assert msg.sender == self.admin, "!admin"
+    assert msg.sender in [self.admin, self.keeper], "!auth"
     assert degradation <= DEGRADATION_COEFFICIENT, "degradation > max"
     self.lockedProfitDegradation = degradation
 
 
 @external
 def setDepositLimit(limit: uint256):
-    assert msg.sender == self.admin, "!admin"
+    assert msg.sender in [self.admin, self.keeper], "!auth"
     self.depositLimit = limit
 
 
 @external
 def setBlockDelay(delay: uint256):
-    assert msg.sender == self.admin, "!admin"
+    assert msg.sender in [self.admin, self.keeper], "!auth"
     assert delay >= 1, "delay = 0"
     self.blockDelay = delay
 
 
 @external
 def setFeeOnTransfer(feeOnTransfer: bool):
-    assert msg.sender == self.admin, "!admin"
+    assert msg.sender in [self.admin, self.keeper], "!auth"
     self.feeOnTransfer = feeOnTransfer
 
 
 @external
 def setWhitelist(addr: address, approved: bool):
-    assert msg.sender == self.admin, "!admin"
+    assert msg.sender in [self.admin, self.keeper], "!auth"
     self.whitelist[addr] = approved
     log SetWhitelist(addr, approved)
 
@@ -654,7 +643,7 @@ def report(gain: uint256, loss: uint256):
 
 @external
 def forceUpdateBalanceOfVault():
-    assert msg.sender == self.admin, "!admin"
+    assert msg.sender in [self.admin, self.keeper], "!auth"
     bal: uint256 = self.token.balanceOf(self)
     assert bal < self.balanceOfVault, "bal >= vault"
     self.balanceOfVault = bal
@@ -663,7 +652,7 @@ def forceUpdateBalanceOfVault():
 
 @external
 def skim():
-    assert msg.sender == self.admin, "!admin"
+    assert msg.sender in [self.admin, self.keeper], "!auth"
     self._safeTransfer(
         self.token.address, msg.sender, self.token.balanceOf(self) - self.balanceOfVault
     )
@@ -671,6 +660,6 @@ def skim():
 
 @external
 def sweep(token: address):
-    assert msg.sender == self.admin, "!admin"
+    assert msg.sender in [self.admin, self.keeper], "!auth"
     assert token != self.token.address, "protected"
     self._safeTransfer(token, msg.sender, ERC20(token).balanceOf(self))
