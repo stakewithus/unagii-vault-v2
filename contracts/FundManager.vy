@@ -11,6 +11,10 @@ from vyper.interfaces import ERC20
 
 interface Vault:
     def token() -> address: view
+    def debt() -> uint256: view
+    def borrow(amount: uint256) -> uint256: nonpayable
+    def repay(amount: uint256) -> uint256: nonpayable
+    def report(gain: uint256, loss: uint256): nonpayable
 
 
 event SetNextAdmin:
