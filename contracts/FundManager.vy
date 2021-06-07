@@ -406,8 +406,36 @@ def updateStrategyPerformanceFee(strategy: address, perfFee: uint256):
 
 
 @external
-def invest(strategy: address, amount: uint256):
+def withdraw(amount: uint256) -> uint256:
+    assert msg.sender == self.vault.address, "!vault"
+    return 0
+
+
+# functions between Vault and this contract
+@external
+def borrowFromVault(amount: uint256):
+    pass
+
+
+@external
+def repayToVault(amount: uint256):
+    pass
+
+
+@external
+def reportToVault():
+    pass
+
+
+# functions between this contract and strategies
+@external
+def investIntoStrategy(strategy: address, amount: uint256):
     # vault.borrow
+    pass
+
+
+@external
+def withdrawFromStrategy(strategy: address, amount: uint256):
     pass
 
 
@@ -415,26 +443,6 @@ def invest(strategy: address, amount: uint256):
 @external
 def report(gain: uint256, loss: uint256):
     pass
-
-
-@external
-def borrowFromVault(amount: uint256):
-    pass
-
-
-@external
-def repayVault(amount: uint256):
-    pass
-
-@external
-def withdraw(amount: uint256) -> uint256:
-    assert msg.sender == self.vault.address, "!vault"
-    return 0
-
-@external
-def reportToVault():
-    pass
-
 
 
 @external
