@@ -23,3 +23,5 @@ black --check --include "(tests|scripts)" .
 # format vyper
 blackadder --fast --include '\.vy$' contracts
 ```
+
+# TODO: time lock V2 (set / accept admin)
