@@ -38,11 +38,7 @@ event AcceptAdmin:
     admin: address
 
 
-event SetNextMinter:
-    minter: address
-
-
-event AcceptMinter:
+event SetMinter:
     minter: address
 
 
@@ -56,7 +52,6 @@ totalSupply: public(uint256)
 admin: public(address)
 nextAdmin: public(address)
 minter: public(address)
-nextMinter: public(address)
 token: public(ERC20)
 lastBlock: public(HashMap[address, uint256])
 
@@ -66,7 +61,6 @@ lastBlock: public(HashMap[address, uint256])
 @external
 def __init__(token: address):
     self.admin = msg.sender
-    self.minter = msg.sender
     self.token = ERC20(token)
     self.name = concat("unagii_", DetailedERC20(token).name(), "_v2")
     self.symbol = concat("u", DetailedERC20(token).symbol(), "v2")
@@ -110,27 +104,16 @@ def acceptAdmin():
 
 
 @external
-def setNextMinter(nextMinter: address):
+def setMinter(minter: address):
     """
-    @notice Set next minter
-    @param nextMinter Address of next minter
+    @notice Set minter
+    @param minter Address of minter
     """
-    assert msg.sender == self.minter, "!minter"
-    assert nextMinter != self.minter, "next minter = current"
-    # allow next minter = zero address (cancel next minter)
-    self.nextMinter = nextMinter
-    log SetNextMinter(nextMinter)
-
-
-@external
-def acceptMinter():
-    """
-    @notice Accept minter
-    @dev Only `nextMinter` can claim minter
-    """
-    assert msg.sender == self.nextMinter, "!next minter"
-    self.minter = msg.sender
-    log AcceptMinter(msg.sender)
+    assert msg.sender == self.admin, "!admin"
+    assert minter != self.minter, "minter = current"
+    # allow minter = zero address
+    self.minter = minter
+    log SetMinter(minter)
 
 
 @internal

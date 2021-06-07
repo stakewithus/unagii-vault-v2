@@ -50,8 +50,10 @@ def token(TestToken, admin):
 
 
 @pytest.fixture(scope="module")
-def uToken(UnagiiToken, token, minter):
-    yield UnagiiToken.deploy(token, {"from": minter})
+def uToken(UnagiiToken, token, admin, minter):
+    uToken = UnagiiToken.deploy(token, {"from": admin})
+    uToken.setMinter(minter, {"from": admin})
+    yield uToken
 
 
 @pytest.fixture(scope="module")
