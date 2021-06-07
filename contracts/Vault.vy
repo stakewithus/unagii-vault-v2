@@ -172,7 +172,7 @@ def __init__(
 #     # this will fail if self != minter
 #     self.uToken.setNextMinter(vault)
 
-# TODO: test
+# TODO: test? remove?
 @external
 def acceptMinter():
     assert msg.sender == self.admin, "!admin"
