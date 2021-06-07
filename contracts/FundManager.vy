@@ -100,6 +100,7 @@ nextAdmin: public(address)
 guardian: public(address) # TODO: remove?
 keeper: public(address)
 
+debt: public(uint256)
 strategies: public(HashMap[address, Strategy])
 queue: public(address[MAX_QUEUE])
 
@@ -185,6 +186,18 @@ def _safeTransferFrom(
     )
     if len(res) > 0:
         assert convert(res, bool), "transferFrom failed"
+
+
+@internal
+@view
+def _totalAssets() -> uint256:
+    return self.token.balanceOf(self) + self.debt
+
+
+@external
+def totalAssets() -> uint256:
+    return self._totalAssets()
+
 
 # @internal
 # @view
@@ -275,7 +288,7 @@ def approveStrategy(
 
 @external
 def revokeStrategy(strategy: address):
-    assert msg.sender in [self.admin, self.guardian], "!auth"
+    assert msg.sender in [self.admin, self.guardian, self.keeper], "!auth"
     assert self.strategies[strategy].approved, "!approved"
     assert not self.strategies[strategy].active, "active"
 
@@ -313,7 +326,7 @@ def removeStrategyFromQueue(strategy: address):
 
 @external
 def setQueue(queue: address[MAX_QUEUE]):
-    assert msg.sender == self.admin, "!admin"
+    assert msg.sender in [self.admin, self.keeper], "!auth"
 
     # check no gaps in new queue
     zero: bool = False
@@ -390,6 +403,38 @@ def updateStrategyPerformanceFee(strategy: address, perfFee: uint256):
     assert perfFee <= MAX_PERF_FEE, "perf fee > max"
     self.strategies[strategy].perfFee = perfFee
     log UpdateStrategyPerformanceFee(strategy, perfFee)
+
+
+@external
+def invest(strategy: address, amount: uint256):
+    # vault.borrow
+    pass
+
+
+
+@external
+def report(gain: uint256, loss: uint256):
+    pass
+
+
+@external
+def borrowFromVault(amount: uint256):
+    pass
+
+
+@external
+def repayVault(amount: uint256):
+    pass
+
+@external
+def withdraw(amount: uint256) -> uint256:
+    assert msg.sender == self.vault.address, "!vault"
+    return 0
+
+@external
+def reportToVault():
+    pass
+
 
 
 @external
