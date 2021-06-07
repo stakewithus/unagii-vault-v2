@@ -35,7 +35,6 @@ interface Vault:
 interface FundManager:
     def vault() -> address: view
     def token() -> address: view
-    def totalAssets() -> uint256: view
     def withdraw(amount: uint256) -> uint256: nonpayable
 
 
@@ -84,9 +83,9 @@ event Repay:
     fundManager: indexed(address)
     amount: uint256
 
+
 event Report:
     fundManager: indexed(address)
-    totalAssets: uint256
     debt: uint256
     gain: uint256
     loss: uint256
@@ -318,6 +317,7 @@ def _safeTransferFrom(
 def _totalAssets() -> uint256:
     return self.balanceOfVault + self.debt
 
+
 # TODO: test
 @external
 @view
@@ -343,7 +343,7 @@ def _calcLockedProfit() -> uint256:
 @external
 @view
 def calcLockedProfit() -> uint256:
-    return self._calcLockedProfit() 
+    return self._calcLockedProfit()
 
 
 @internal
@@ -357,6 +357,7 @@ def _calcFreeFunds() -> uint256:
 @view
 def calcFreeFunds() -> uint256:
     return self._calcFreeFunds()
+
 
 @internal
 @pure
@@ -387,9 +388,7 @@ def _calcSharesToMint(
 @view
 def calcSharesToMint(amount: uint256) -> uint256:
     return self._calcSharesToMint(
-        amount,
-        self.uToken.totalSupply(),
-        self._calcFreeFunds()
+        amount, self.uToken.totalSupply(), self._calcFreeFunds()
     )
 
 
@@ -420,9 +419,7 @@ def _calcSharesToBurn(
 @view
 def calcSharesToBurn(amount: uint256) -> uint256:
     return self._calcSharesToBurn(
-        amount,
-        self.uToken.totalSupply(),
-        self._calcFreeFunds()
+        amount, self.uToken.totalSupply(), self._calcFreeFunds()
     )
 
 
@@ -450,11 +447,7 @@ def _calcWithdraw(shares: uint256, totalSupply: uint256, freeFunds: uint256) -> 
 @external
 @view
 def calcWithdraw(shares: uint256) -> uint256:
-    return self._calcWithdraw(
-        shares,
-        self.uToken.totalSupply(),
-        self._calcFreeFunds()
-    )
+    return self._calcWithdraw(shares, self.uToken.totalSupply(), self._calcFreeFunds())
 
 
 # TODO: deposit log
@@ -640,22 +633,15 @@ def repay(_amount: uint256) -> uint256:
 
 
 @external
-def report():
+def report(gain: uint256, loss: uint256):
     assert msg.sender == self.fundManager.address, "!fund manager"
-    total: uint256 = self.fundManager.totalAssets()
-    debt: uint256 = self.debt
-    gain: uint256 = 0
-    loss: uint256 = 0
+    # can't have both gain and loss > 0
+    assert (gain >= 0 and loss == 0) or (gain == 0 and loss >= 0), "gain and loss > 0"
+
     lockedProfit: uint256 = self._calcLockedProfit()
 
-    if total > debt:
-        gain = total - debt
-    else:
-        loss = debt - total
-
     if gain > 0:
-        free: uint256 = self.token.balanceOf(msg.sender)
-        gain = min(gain, free)
+        assert self.token.balanceOf(msg.sender) >= gain, "gain < bal"
 
         # free funds = bal + debt + gain - (locked profit + gain)
         self.debt += gain
@@ -671,7 +657,8 @@ def report():
 
     self.lastReport = block.timestamp
 
-    log Report(msg.sender, total, self.debt, gain, loss, self.lockedProfit)
+    # log updated debt and lockedProfit
+    log Report(msg.sender, self.debt, gain, loss, self.lockedProfit)
 
 
 @external
@@ -687,9 +674,7 @@ def forceUpdateBalanceOfVault():
 def skim():
     assert msg.sender == self.admin, "!admin"
     self._safeTransfer(
-        self.token.address,
-        msg.sender,
-        self.token.balanceOf(self) - self.balanceOfVault
+        self.token.address, msg.sender, self.token.balanceOf(self) - self.balanceOfVault
     )
 
 
