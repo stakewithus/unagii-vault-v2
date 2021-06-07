@@ -592,27 +592,6 @@ def calcAvailableToInvest() -> uint256:
     return self._calcAvailableToInvest()
 
 
-@internal
-@view
-def _calcOutstandingDebt() -> uint256:
-    if self.paused:
-        return self.debt
-
-    freeFunds: uint256 = self._calcFreeFunds()
-    limit: uint256 = (MAX_MIN_RESERVE - self.minReserve) * freeFunds / MAX_MIN_RESERVE
-    debt: uint256 = self.debt
-
-    if debt >= limit:
-        return debt - limit
-    return 0
-
-
-# TODO: test
-@external
-def calcOutstandingDebt() -> uint256:
-    return self._calcOutstandingDebt()
-
-
 @external
 def borrow(_amount: uint256) -> uint256:
     assert not self.paused, "paused"
@@ -637,13 +616,11 @@ def borrow(_amount: uint256) -> uint256:
     return amount
 
 
-# TODO: test
 @external
 def repay(_amount: uint256) -> uint256:
     assert msg.sender == self.fundManager.address, "!fund manager"
 
-    debt: uint256 = self._calcOutstandingDebt()
-    amount: uint256 = min(_amount, debt)
+    amount: uint256 = min(_amount, self.debt)
     assert amount > 0, "repay = 0"
 
     diff: uint256 = self.token.balanceOf(self)
@@ -654,6 +631,7 @@ def repay(_amount: uint256) -> uint256:
     # exclude fee on transfer from debt payment
     self.debt -= diff
 
+    # TODO: test
     assert self.token.balanceOf(self) >= self.balanceOfVault, "bal < vault"
 
     log Repay(msg.sender, diff)
