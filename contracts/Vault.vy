@@ -16,8 +16,6 @@ interface DetailedERC20:
 
 
 interface UnagiiToken:
-    def setNextMinter(minter: address): nonpayable
-    def acceptMinter(): nonpayable
     def token() -> address: view
     def decimals() -> uint256: view
     def totalSupply() -> uint256: view
@@ -170,13 +168,6 @@ def __init__(
 
 #     # this will fail if self != minter
 #     self.uToken.setNextMinter(vault)
-
-# TODO: test? remove?
-@external
-def acceptMinter():
-    assert msg.sender == self.admin, "!admin"
-    # this will fail if self != minter
-    self.uToken.acceptMinter()
 
 
 @external
