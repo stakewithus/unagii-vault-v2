@@ -182,14 +182,14 @@ def acceptAdmin():
 
 @external
 def setGuardian(guardian: address):
-    assert msg.sender in [self.admin, self.guardian, self.keeper], "!auth"
+    assert msg.sender in [self.admin, self.keeper], "!auth"
     self.guardian = guardian
     log SetGuardian(guardian)
 
 
 @external
 def setKeeper(keeper: address):
-    assert msg.sender in [self.admin, self.guardian, self.keeper], "!auth"
+    assert msg.sender in [self.admin, self.keeper], "!auth"
     self.keeper = keeper
     log SetKeeper(keeper)
 

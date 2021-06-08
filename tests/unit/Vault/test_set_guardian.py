@@ -14,11 +14,6 @@ def test_set_guardian_admin(vault, admin, user):
     assert tx.events["SetGuardian"].values() == [user]
 
 
-def test_set_guardian_guardian(vault, guardian, user):
-    vault.setGuardian(user, {"from": guardian})
-    assert vault.guardian() == user
-
-
 def test_set_guardian_keeper(vault, keeper, user):
     vault.setGuardian(user, {"from": keeper})
     assert vault.guardian() == user
