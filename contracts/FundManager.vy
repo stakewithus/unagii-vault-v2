@@ -38,8 +38,11 @@ struct Strategy:
     activatedAt: uint256
     debtRatio: uint256
     debt: uint256
+    # TODO: remove?
     totalGain: uint256
+    # TODO: remove?
     totalLoss: uint256
+    # TODO: remove
     perfFee: uint256
     # TODO: remove?
     minDebtPerHarvest: uint256
@@ -127,6 +130,12 @@ event Borrow:
 event Repay:
     strategy: indexed(address)
     amount: uint256
+
+event Report:
+    strategy: indexed(address)
+    gain: uint256
+    loss: uint256
+    debt: uint256
 
 vault: public(Vault)
 token: public(ERC20)
@@ -432,6 +441,8 @@ def updateStrategyMaxDebtPerHarvest(strategy: address, maxDebtPerHarvest: uint25
     log UpdateStrategyMaxDebtPerHarvest(strategy, maxDebtPerHarvest)
 
 
+# TODO: update debt ratios
+
 @external
 def updateStrategyPerformanceFee(strategy: address, perfFee: uint256):
     assert msg.sender in [self.admin, self.keeper], "!auth"
@@ -459,7 +470,7 @@ def _reportLoss(strategy: address, loss: uint256):
     #     )
     self.strategies[strategy].totalLoss += loss
     self.strategies[strategy].debt -= loss
-    # self.totalDebt -= loss
+    self.totalDebt -= loss
     self.strategies[strategy].debtRatio -= dr
     # self.totalDebtRatio -= dr
 
@@ -626,7 +637,7 @@ def repay(_amount: uint256):
     debt: uint256 = self._calcOutstandingDebt(msg.sender)
     amount: uint256 = min(_amount, debt)
     assert amount > 0, "repay = 0"
-    
+
     diff: uint256 = self.token.balanceOf(self)
     self._safeTransferFrom(self.token.address, msg.sender, self, amount)
     diff = self.token.balanceOf(self) - diff
@@ -640,10 +651,19 @@ def repay(_amount: uint256):
 
 @external
 def report(gain: uint256, loss: uint256):
-    # gain = transfer profit to here
-    # TODO: loss = ?
-    # TODO: event
-    pass
+    assert self.strategies[msg.sender].active, "!active"
+    # can't have both gain and loss > 0
+    assert (gain >= 0 and loss == 0) or (gain == 0 and loss >= 0), "gain and loss > 0"
+    assert self.token.balanceOf(msg.sender) >= gain, "bal < gain"
+
+    if gain > 0:
+        # TODO: diff?
+        self._safeTransferFrom(self.token.address, msg.sender, self, gain)
+    elif loss > 0:
+        self._reportLoss(msg.sender, loss)
+    
+    log Report(msg.sender, gain, loss, self.strategies[msg.sender].debt)
+
 
 # TODO: migrate strategy
 
