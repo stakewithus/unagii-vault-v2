@@ -4,6 +4,7 @@ from brownie import (
     Vault,
     UnagiiToken,
     TimeLock,
+    FundManager,
     TestTimeLock,
     TestToken,
     TestStrategy,
@@ -32,8 +33,13 @@ def minter(accounts):
 
 
 @pytest.fixture(scope="session")
-def attacker(accounts):
+def worker(accounts):
     yield accounts[4]
+
+
+@pytest.fixture(scope="session")
+def attacker(accounts):
+    yield accounts[5]
 
 
 @pytest.fixture(scope="session")
@@ -75,17 +81,15 @@ def vault(Vault, token, uToken, admin, guardian, keeper):
 
 
 @pytest.fixture(scope="module")
+def fundManager(FundManager, vault, token, admin, guardian, keeper, worker):
+    fundManager = FundManager.deploy(token, guardian, keeper, worker, {"from": admin})
+    fundManager.setVault(vault, {"from": admin})
+    yield fundManager
+
+
+@pytest.fixture(scope="module")
 def testFundManager(TestFundManager, vault, token, admin):
     yield TestFundManager.deploy(vault, token, {"from": admin})
-
-
-# @pytest.fixture(scope="module")
-# def fundManger(FundManager, vault, token, admin, timeLock):
-#     fundManager = FundManager.deploy(token, {"from": admin})
-#     fundManager.setNextTimeLock(timeLock, {"from": admin})
-#     fundManger.acceptTimeLock(timeLock, {"from": timeLock})
-#     fundManger.setVault(vault, {"from": timeLock})
-#     yield fundManager
 
 
 @pytest.fixture(scope="module")
