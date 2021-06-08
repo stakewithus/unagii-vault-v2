@@ -61,6 +61,10 @@ event SetKeeper:
     keeper: address
 
 
+event SetWorker:
+    worker: address
+
+
 event SetVault:
     vault: address
 
@@ -97,10 +101,12 @@ event UpdateStrategyPerformanceFee:
 
 vault: public(Vault)
 token: public(ERC20)
+# privileges - admin > keeper > guardian, worker
 admin: public(address)
 nextAdmin: public(address)
 guardian: public(address) # TODO: remove?
 keeper: public(address)
+worker: public(address)
 
 debt: public(uint256)
 strategies: public(HashMap[address, Strategy])
@@ -111,12 +117,14 @@ queue: public(address[MAX_QUEUE])
 def __init__(
     token: address,
     guardian: address,
-    keeper: address
+    keeper: address,
+    worker: address
 ):
+    self.token = ERC20(token)
     self.admin = msg.sender
     self.guardian = guardian
     self.keeper = keeper
-    self.token = ERC20(token)
+    self.worker = worker
 
 
 @external
@@ -135,16 +143,23 @@ def acceptAdmin():
 
 @external
 def setGuardian(guardian: address):
-    assert msg.sender in [self.admin, self.guardian, self.keeper], "!auth"
+    assert msg.sender in [self.admin, self.keeper], "!auth"
     self.guardian = guardian
     log SetGuardian(guardian)
 
 
 @external
 def setKeeper(keeper: address):
-    assert msg.sender in [self.admin, self.guardian, self.keeper], "!auth"
+    assert msg.sender in [self.admin, self.keeper], "!auth"
     self.keeper = keeper
     log SetKeeper(keeper)
+
+
+@external
+def setWorker(worker: address):
+    assert msg.sender in [self.admin, self.keeper], "!auth"
+    self.worker = worker
+    log SetWorker(worker)
 
 
 # TODO: test migration
@@ -290,7 +305,8 @@ def approveStrategy(
 
 @external
 def revokeStrategy(strategy: address):
-    assert msg.sender in [self.admin, self.guardian, self.keeper], "!auth"
+    # TODO: remove guardian?
+    assert msg.sender in [self.admin, self.keeper, self.guardian], "!auth"
     assert self.strategies[strategy].approved, "!approved"
     assert not self.strategies[strategy].active, "active"
 
@@ -400,7 +416,7 @@ def updateStrategyMaxDebtPerHarvest(strategy: address, maxDebtPerHarvest: uint25
 
 @external
 def updateStrategyPerformanceFee(strategy: address, perfFee: uint256):
-    assert msg.sender == self.admin, "!admin"
+    assert msg.sender in [self.admin, self.keeper], "!auth"
     assert self.strategies[strategy].approved, "!approved"
     assert perfFee <= MAX_PERF_FEE, "perf fee > max"
     self.strategies[strategy].perfFee = perfFee
