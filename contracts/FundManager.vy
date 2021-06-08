@@ -479,17 +479,17 @@ def withdraw(_amount: uint256) -> uint256:
     return loss
 
 
-# @external
-# def borrowFromVault(amount: uint256):
-#     # vault.borrow(amount)
-#     pass
+@external
+def borrowFromVault(amount: uint256):
+    assert msg.sender in [self.admin, self.keeper], "!auth"
+    self.vault.borrow(amount)
 
 
-# @external
-# def repayToVault(amount: uint256):
-#     # infinite approve vault
-#     # vault.repay(amount)
-#     pass
+@external
+def repayToVault(amount: uint256):
+    assert msg.sender in [self.admin, self.keeper], "!auth"
+    # infinite approve vault
+    self.vault.repay(amount)
 
 
 @external
