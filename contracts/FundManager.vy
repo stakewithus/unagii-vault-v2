@@ -21,7 +21,9 @@ interface IStrategy:
     def fundManager() -> address: view
     def token() -> address: view
     def totalAssets() -> uint256: view
+    def deposit(amount: uint256): nonpayable
     def withdraw(amount: uint256) -> uint256: nonpayable
+    # TODO: migrate
     def migrate(newVersion: address): nonpayable
 
 
@@ -405,44 +407,132 @@ def updateStrategyPerformanceFee(strategy: address, perfFee: uint256):
     log UpdateStrategyPerformanceFee(strategy, perfFee)
 
 
+@internal
+def _reportLoss(strategy: address, loss: uint256):
+    debt: uint256 = self.strategies[strategy].debt
+    assert loss <= debt, "loss > debt"
+
+    dr: uint256 = 0 # change in debt ratio
+    # if self.totalDebtRatio != 0:
+    #     # l = loss
+    #     # D = total debt
+    #     # x = ratio of loss
+    #     # R = total debt ratio
+    #     # l / D = x / R
+    #     dr = min(
+    #         loss * self.totalDebtRatio / self.totalDebt,
+    #         self.strategies[strategy].debtRatio,
+    #     )
+    self.strategies[strategy].totalLoss += loss
+    self.strategies[strategy].debt -= loss
+    # self.totalDebt -= loss
+    self.strategies[strategy].debtRatio -= dr
+    # self.totalDebtRatio -= dr
+
+
+@internal
+def _withdrawFromStrategies(_amount: uint256) -> uint256:
+    amount: uint256 = _amount
+    totalLoss: uint256 = 0
+    for strategy in self.queue:
+        if strategy == ZERO_ADDRESS:
+            break
+
+        bal: uint256 = self.token.balanceOf(self)
+        if amount <= bal:
+            break
+
+        debt: uint256 = self.strategies[strategy].debt
+        amountNeeded: uint256 = min(amount - bal, debt)
+        if amountNeeded == 0:
+            continue
+
+        diff: uint256 = self.token.balanceOf(self)
+        loss: uint256 = IStrategy(strategy).withdraw(amountNeeded)
+        diff = self.token.balanceOf(self) - diff
+
+        if loss > 0:
+            amount -= loss
+            totalLoss += loss
+            self._reportLoss(strategy, loss)
+
+        self.strategies[strategy].debt -= diff
+        # self.totalDebt -= diff
+
+    return totalLoss
+
 
 # functions between Vault and this contract
 @external
-def withdraw(amount: uint256) -> uint256:
+def withdraw(_amount: uint256) -> uint256:
     assert msg.sender == self.vault.address, "!vault"
-    return 0
+    
+    amount: uint256 = _amount
+    bal: uint256 = self.token.balanceOf(self)
+    loss: uint256 = 0
+    if amount > bal:
+        loss = self._withdrawFromStrategies(amount - bal)
+        amount -= loss
+    
+    self._safeTransfer(self.token.address, msg.sender, min(amount, self.token.balanceOf(self)))
+
+    return loss
 
 
-@external
-def borrowFromVault(amount: uint256):
-    pass
+# @external
+# def borrowFromVault(amount: uint256):
+#     # vault.borrow(amount)
+#     pass
 
 
-@external
-def repayToVault(amount: uint256):
-    pass
+# @external
+# def repayToVault(amount: uint256):
+#     # infinite approve vault
+#     # vault.repay(amount)
+#     pass
 
 
 @external
 def reportToVault():
+    # total: uint256 = self._totalAssets()
+    # debt: uint256 = self.vault.debt()
+    # gain: uint256 = 0
+    # loss: uint256 = 0
+
+    # if total > debt:
+    #     # TODO: if bal part of debt?
+    #     gain = min(total - debt, self.token.balanceOf(self))
+    # else:
+    #     loss = debt - total
+    
+    # self.vault.report(gain, loss)
     pass
 
 
 # functions between this contract and strategies
 @external
-def investIntoStrategy(strategy: address, amount: uint256):
-    # vault.borrow
+def depositIntoStrategy(strategy: address, amount: uint256):
+    # borrowed = vault.borrow(amount)
+    # strategy infinit approve
+    # strategy.deposit(diff)
+    # self.debt += borrowed
+    # strategy.debt += borrowed
     pass
 
 
 @external
 def withdrawFromStrategy(strategy: address, amount: uint256):
+    # loss = strategy.withdraw(amount)
+    # self.debt -= diff + loss?
+    # infinite approve vault
+    # vault.repay(diff)
     pass
-
 
 
 @external
 def report(gain: uint256, loss: uint256):
+    # gain = transfer profit to here
+    # TODO: loss = ?
     pass
 
 
