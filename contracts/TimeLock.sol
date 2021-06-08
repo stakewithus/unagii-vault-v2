@@ -67,7 +67,6 @@ contract TimeLock {
     require(_delay >= MIN_DELAY, "delay < min");
     require(_delay <= MAX_DELAY, "delay > max");
     delay = _delay;
-
     emit SetDelay(delay);
   }
 
@@ -76,7 +75,6 @@ contract TimeLock {
     */
   function setDelay(uint256 _delay) external {
     require(msg.sender == address(this), "!timelock");
-
     _setDelay(_delay);
   }
 
@@ -135,12 +133,12 @@ contract TimeLock {
     queued[txHash] = false;
 
     // solium-disable-next-line security/no-call-value
-    (bool success, bytes memory returnData) = target.call{ value: value }(data);
+    (bool success, bytes memory res) = target.call{ value: value }(data);
     require(success, "tx failed");
 
     emit Execute(txHash, target, value, data, eta);
 
-    return returnData;
+    return res;
   }
 
   function cancel(
