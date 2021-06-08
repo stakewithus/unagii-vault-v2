@@ -1,12 +1,12 @@
 # @version ^0.2.12
 
-vault: public(address)
+fundManager: public(address)
 token: public(address)
 
 
 @external
-def __init__(vault: address, token: address):
-    self.vault = vault
+def __init__(fundManager: address, token: address):
+    self.fundManager = fundManager
     self.token = token
 
 @external
@@ -39,8 +39,8 @@ def report():
 
 ### test helpers ###
 @external
-def setVault(vault: address):
-    self.vault = vault
+def setFundManager(fundManager: address):
+    self.fundManager = fundManager
 
 
 @external

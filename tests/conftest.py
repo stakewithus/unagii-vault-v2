@@ -99,5 +99,5 @@ def testFundManager(TestFundManager, vault, token, admin):
 
 
 @pytest.fixture(scope="module")
-def strategy(TestStrategy, vault, token, admin):
-    yield TestStrategy.deploy(vault, token, {"from": admin})
+def testStrategy(TestStrategy, fundManager, token, admin):
+    yield TestStrategy.deploy(fundManager, token, {"from": admin})
