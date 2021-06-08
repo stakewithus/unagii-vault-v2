@@ -306,6 +306,7 @@ def approveStrategy(strategy: address):
         debtRatio: 0,
         debt: 0
     })
+
     log ApproveStrategy(strategy)
 
 
