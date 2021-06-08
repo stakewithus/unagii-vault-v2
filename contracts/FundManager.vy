@@ -41,7 +41,9 @@ struct Strategy:
     totalGain: uint256
     totalLoss: uint256
     perfFee: uint256
+    # TODO: remove?
     minDebtPerHarvest: uint256
+    # TODO: remove?
     maxDebtPerHarvest: uint256
 
 
@@ -64,6 +66,8 @@ event SetKeeper:
 event SetWorker:
     worker: address
 
+event SetPause:
+    paused: bool
 
 event SetVault:
     vault: address
@@ -116,6 +120,14 @@ event ReportToVault:
     gain: uint256
     loss: uint256
 
+event Borrow:
+    strategy: indexed(address)
+    amount: uint256
+
+event Repay:
+    strategy: indexed(address)
+    amount: uint256
+
 vault: public(Vault)
 token: public(ERC20)
 # privileges - admin > keeper > guardian, worker
@@ -125,7 +137,9 @@ guardian: public(address) # TODO: remove?
 keeper: public(address)
 worker: public(address)
 
-debt: public(uint256)
+paused: public(bool)
+totalDebt: public(uint256)
+totalDebtRatio: public(uint256)
 strategies: public(HashMap[address, Strategy])
 queue: public(address[MAX_QUEUE])
 
@@ -143,6 +157,7 @@ def __init__(
     self.keeper = keeper
     self.worker = worker
 
+# TODO: migrate
 
 @external
 def setNextAdmin(nextAdmin: address):
@@ -177,6 +192,13 @@ def setWorker(worker: address):
     assert msg.sender in [self.admin, self.keeper], "!auth"
     self.worker = worker
     log SetWorker(worker)
+
+
+@external
+def setPause(paused: bool):
+    assert msg.sender in [self.admin, self.keeper, self.guardian], "!auth"
+    self.paused = paused
+    log SetPause(paused)
 
 
 # TODO: test migration
@@ -225,33 +247,12 @@ def _safeTransferFrom(
 @internal
 @view
 def _totalAssets() -> uint256:
-    return self.token.balanceOf(self) + self.debt
+    return self.token.balanceOf(self) + self.totalDebt
 
 
 @external
 def totalAssets() -> uint256:
     return self._totalAssets()
-
-
-# @internal
-# @view
-# def _calcOutstandingDebt() -> uint256:
-#     if self.paused:
-#         return self.debt
-
-#     freeFunds: uint256 = self._calcFreeFunds()
-#     limit: uint256 = (MAX_MIN_RESERVE - self.minReserve) * freeFunds / MAX_MIN_RESERVE
-#     debt: uint256 = self.debt
-
-#     if debt >= limit:
-#         return debt - limit
-#     return 0
-
-
-# # TODO: test
-# @external
-# def calcOutstandingDebt() -> uint256:
-#     return self._calcOutstandingDebt()
 
 # array functions tested in test/Array.vy 
 @internal
@@ -327,7 +328,7 @@ def revokeStrategy(strategy: address):
     assert self.strategies[strategy].approved, "!approved"
     assert not self.strategies[strategy].active, "active"
 
-    # TODO: if strategy.debt > 0?
+    # TODO: if strategy.totalDebt > 0?
     self.strategies[strategy].approved = False
     log RevokeStrategy(strategy)
 
@@ -550,37 +551,91 @@ def reportToVault():
 
 
 # functions between this contract and strategies
+@internal
+@view
+def _calcOutstandingDebt(strategy: address) -> uint256:
+    if self.totalDebtRatio == 0:
+        return self.strategies[strategy].debt
+
+    limit: uint256 = self.strategies[strategy].debtRatio * self.totalDebt / self.totalDebtRatio
+    debt: uint256 = self.strategies[strategy].debt
+
+    if self.paused:
+        return debt
+    elif debt <= limit:
+        return 0
+    else:
+        return debt - limit
+
+# TODO: test
 @external
-def borrow(amount: uint256):
+@view
+def calcOutstandingDebt(strategy: address) -> uint256:
+    return self._calcOutstandingDebt(strategy)
+
+
+@internal
+@view
+def _calcAvailableCredit(strategy: address) -> uint256:
+    if self.paused:
+        return 0
+
+    totalAssets: uint256 = self._totalAssets()
+    limit: uint256 = self.strategies[strategy].debtRatio * totalAssets / MAX_BPS
+    debt: uint256 = self.strategies[strategy].debt
+
+    if debt >= limit:
+        return 0
+
+    available: uint256 = min(limit - debt, self.token.balanceOf(self))
+
+    if available < self.strategies[strategy].minDebtPerHarvest:
+        return 0
+    else:
+        return min(available, self.strategies[strategy].maxDebtPerHarvest)
+
+
+# TODO: test
+@external
+@view
+def calcAvailableCredit(strategy: address) -> uint256:
+    return self._calcAvailableCredit(strategy)
+
+
+@external
+def borrow(_amount: uint256):
+    assert not self.paused, "paused"
     assert self.strategies[msg.sender].active, "!active"
-    # TODO: debt limit
+
+    available: uint256 = self._calcAvailableCredit(msg.sender)
+    amount: uint256 = min(_amount, available)
+    assert amount > 0, "borrow = 0"
+
     self._safeTransfer(self.token.address, msg.sender, amount)
-    self.debt += amount
 
-    # TODO: update strategy.debt
-    # TODO: event
+    self.strategies[msg.sender].debt += amount
+    self.totalDebt += amount
 
+    log Borrow(msg.sender, amount)
 
-# strategy.deposit(amount)
-#     - fundManger.borrow(amount)
-# strategy.withdraw()
-#     - only fund manager
-# strategy.repayFundManager()
-#     - fundManager.repay
-# strategy.exit()
-#     - fundManager.repay
 
 @external
-def repay(amount: uint256):
-    assert self.strategies[msg.sender].active, "!active"
+def repay(_amount: uint256):
+    assert self.strategies[msg.sender].approved, "!approved"
 
+    debt: uint256 = self._calcOutstandingDebt(msg.sender)
+    amount: uint256 = min(_amount, debt)
+    assert amount > 0, "repay = 0"
+    
     diff: uint256 = self.token.balanceOf(self)
     self._safeTransferFrom(self.token.address, msg.sender, self, amount)
     diff = self.token.balanceOf(self) - diff
 
-    self.debt -= diff
-    # TODO: update strategy.debt
-    # TODO: event
+    # exclude fee on transfer from debt payment
+    self.strategies[msg.sender].debt -= diff
+    self.totalDebt -= diff
+
+    log Repay(msg.sender, diff)
 
 
 @external
@@ -589,6 +644,8 @@ def report(gain: uint256, loss: uint256):
     # TODO: loss = ?
     # TODO: event
     pass
+
+# TODO: migrate strategy
 
 
 @external
