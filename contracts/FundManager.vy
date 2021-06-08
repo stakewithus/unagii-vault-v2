@@ -612,7 +612,6 @@ def _calcAvailableCredit(strategy: address) -> uint256:
 def calcAvailableCredit(strategy: address) -> uint256:
     return self._calcAvailableCredit(strategy)
 
-
 @external
 def borrow(_amount: uint256):
     assert not self.paused, "paused"
@@ -657,6 +656,7 @@ def report(gain: uint256, loss: uint256):
     assert self.token.balanceOf(msg.sender) >= gain, "bal < gain"
 
     if gain > 0:
+        # TODO: check total assets ?
         # TODO: diff?
         self._safeTransferFrom(self.token.address, msg.sender, self, gain)
     elif loss > 0:
