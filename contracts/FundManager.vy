@@ -142,7 +142,7 @@ token: public(ERC20)
 # privileges - admin > keeper > guardian, worker
 admin: public(address)
 nextAdmin: public(address)
-guardian: public(address) # TODO: remove?
+guardian: public(address)
 keeper: public(address)
 worker: public(address)
 
@@ -214,9 +214,11 @@ def setPause(paused: bool):
 @external
 def setVault(vault: address):
     assert msg.sender == self.admin, "!admin"
+    # TODO: check Vault.fundManager() == self?
     assert Vault(vault).token() == self.token.address, "vault token != token"
     self.vault = Vault(vault)
     self.token.approve(vault, MAX_UINT256)
+    # TODO: reset total debt?
     log SetVault(vault)
 
 
