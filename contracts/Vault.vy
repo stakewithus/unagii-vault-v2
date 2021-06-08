@@ -93,6 +93,7 @@ event ForceUpdateBalanceOfVault:
 token: public(ERC20)
 uToken: public(UnagiiToken)
 fundManager: public(FundManager)
+# privileges: admin > keeper > guardian
 admin: public(address)
 nextAdmin: public(address)
 guardian: public(address)
@@ -210,7 +211,7 @@ def setFundManager(fundManager: address):
 
 @external
 def setPause(paused: bool):
-    assert msg.sender in [self.admin, self.guardian, self.keeper], "!auth"
+    assert msg.sender in [self.admin, self.keeper, self.guardian], "!auth"
     self.paused = paused
     log SetPause(paused)
 
