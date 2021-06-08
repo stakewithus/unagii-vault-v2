@@ -309,16 +309,16 @@ def approveStrategy(strategy: address):
     log ApproveStrategy(strategy)
 
 
-# @external
-# def revokeStrategy(strategy: address):
-#     # TODO: remove guardian?
-#     assert msg.sender in [self.admin, self.keeper, self.guardian], "!auth"
-#     assert self.strategies[strategy].approved, "!approved"
-#     assert not self.strategies[strategy].active, "active"
+@external
+def revokeStrategy(strategy: address):
+    # TODO: include guardian?
+    assert msg.sender in [self.admin, self.keeper, self.guardian], "!auth"
+    assert self.strategies[strategy].approved, "!approved"
+    assert not self.strategies[strategy].active, "active"
 
-#     # TODO: if strategy.totalDebt > 0?
-#     self.strategies[strategy].approved = False
-#     log RevokeStrategy(strategy)
+    # TODO: assert strategy.debt > 0 ?
+    self.strategies[strategy].approved = False
+    log RevokeStrategy(strategy)
 
 
 @external
@@ -339,6 +339,7 @@ def addStrategyToQueue(strategy: address, debtRatio: uint256):
 
 @external
 def removeStrategyFromQueue(strategy: address):
+    # TODO: include guardian?
     assert msg.sender in [self.admin, self.keeper], "!auth"
     assert self.strategies[strategy].active, "!active"
 
