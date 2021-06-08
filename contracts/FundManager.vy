@@ -337,16 +337,17 @@ def addStrategyToQueue(strategy: address, debtRatio: uint256):
     log AddStrategyToQueue(strategy)
 
 
-# @external
-# def removeStrategyFromQueue(strategy: address):
-#     assert msg.sender in [self.admin, self.keeper], "!auth"
-#     assert self.strategies[strategy].active, "!active"
+@external
+def removeStrategyFromQueue(strategy: address):
+    assert msg.sender in [self.admin, self.keeper], "!auth"
+    assert self.strategies[strategy].active, "!active"
 
-#     self._remove(self._find(strategy))
-#     self.strategies[strategy].active = False
-#     # self.totalDebtRatio -= self.strategies[strategy].debtRatio
-#     self.strategies[strategy].debtRatio = 0
-#     log RemoveStrategyFromQueue(strategy)
+    self._remove(self._find(strategy))
+    self.strategies[strategy].active = False
+    self.totalDebtRatio -= self.strategies[strategy].debtRatio
+    self.strategies[strategy].debtRatio = 0
+
+    log RemoveStrategyFromQueue(strategy)
 
 
 # @external
