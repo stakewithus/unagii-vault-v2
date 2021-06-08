@@ -104,10 +104,17 @@ event BorrowFromVault:
     amount: uint256
     borrowed: uint256
 
-event RepayVault
+event RepayVault:
     vault: indexed(address)
     amount: uint256
     repaid: uint256
+
+event ReportToVault:
+    vault: indexed(address)
+    total: uint256
+    debt: uint256
+    gain: uint256
+    loss: uint256
 
 vault: public(Vault)
 token: public(ERC20)
@@ -510,7 +517,7 @@ def borrowFromVault(amount: uint256):
     # TODO: re-order array to save gas?
     assert msg.sender in [self.admin, self.keeper, self.worker], "!auth"
     borrowed: uint256 = self.vault.borrow(amount)
-    log BorrowFromVault(self.vault, amount, borrowed)
+    log BorrowFromVault(self.vault.address, amount, borrowed)
 
 
 @external
@@ -519,7 +526,7 @@ def repayVault(amount: uint256):
     assert msg.sender in [self.admin, self.keeper, self.worker], "!auth"
     # infinite approved in setVault()
     repaid: uint256 = self.vault.repay(amount)
-    log RepayVault(self.vault, amount, repaid)
+    log RepayVault(self.vault.address, amount, repaid)
 
 
 @external
@@ -538,7 +545,7 @@ def reportToVault():
         loss = debt - total
     
     self.vault.report(gain, loss)
-    # TODO: event
+    log ReportToVault(self.vault.address, total, debt, gain, loss)
 
 
 # functions between this contract and strategies
