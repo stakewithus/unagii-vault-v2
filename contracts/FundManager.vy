@@ -99,6 +99,16 @@ event UpdateStrategyPerformanceFee:
     strategy: indexed(address)
     perfFee: uint256
 
+event BorrowFromVault:
+    vault: indexed(address)
+    amount: uint256
+    borrowed: uint256
+
+event RepayVault
+    vault: indexed(address)
+    amount: uint256
+    repaid: uint256
+
 vault: public(Vault)
 token: public(ERC20)
 # privileges - admin > keeper > guardian, worker
@@ -497,58 +507,79 @@ def withdraw(_amount: uint256) -> uint256:
 
 @external
 def borrowFromVault(amount: uint256):
-    assert msg.sender in [self.admin, self.keeper], "!auth"
-    self.vault.borrow(amount)
+    # TODO: re-order array to save gas?
+    assert msg.sender in [self.admin, self.keeper, self.worker], "!auth"
+    borrowed: uint256 = self.vault.borrow(amount)
+    log BorrowFromVault(self.vault, amount, borrowed)
 
 
 @external
-def repayToVault(amount: uint256):
-    assert msg.sender in [self.admin, self.keeper], "!auth"
-    # infinite approve vault
-    self.vault.repay(amount)
+def repayVault(amount: uint256):
+    # TODO: re-order array to save gas?
+    assert msg.sender in [self.admin, self.keeper, self.worker], "!auth"
+    # infinite approved in setVault()
+    repaid: uint256 = self.vault.repay(amount)
+    log RepayVault(self.vault, amount, repaid)
 
 
 @external
 def reportToVault():
-    # total: uint256 = self._totalAssets()
-    # debt: uint256 = self.vault.debt()
-    # gain: uint256 = 0
-    # loss: uint256 = 0
+    assert msg.sender in [self.admin, self.keeper, self.worker], "!auth"
 
-    # if total > debt:
-    #     # TODO: if bal part of debt?
-    #     gain = min(total - debt, self.token.balanceOf(self))
-    # else:
-    #     loss = debt - total
+    total: uint256 = self._totalAssets()
+    debt: uint256 = self.vault.debt()
+    gain: uint256 = 0
+    loss: uint256 = 0
+
+    if total > debt:
+        # TODO: if bal part of debt?
+        gain = min(total - debt, self.token.balanceOf(self))
+    else:
+        loss = debt - total
     
-    # self.vault.report(gain, loss)
-    pass
+    self.vault.report(gain, loss)
+    # TODO: event
 
 
 # functions between this contract and strategies
 @external
-def depositIntoStrategy(strategy: address, amount: uint256):
-    # borrowed = vault.borrow(amount)
-    # strategy infinit approve
-    # strategy.deposit(diff)
-    # self.debt += borrowed
-    # strategy.debt += borrowed
-    pass
+def borrow(amount: uint256):
+    assert self.strategies[msg.sender].active, "!active"
+    # TODO: debt limit
+    self._safeTransfer(self.token.address, msg.sender, amount)
+    self.debt += amount
 
+    # TODO: update strategy.debt
+    # TODO: event
+
+
+# strategy.deposit(amount)
+#     - fundManger.borrow(amount)
+# strategy.withdraw()
+#     - only fund manager
+# strategy.repayFundManager()
+#     - fundManager.repay
+# strategy.exit()
+#     - fundManager.repay
 
 @external
-def withdrawFromStrategy(strategy: address, amount: uint256):
-    # loss = strategy.withdraw(amount)
-    # self.debt -= diff + loss?
-    # infinite approve vault
-    # vault.repay(diff)
-    pass
+def repay(amount: uint256):
+    assert self.strategies[msg.sender].active, "!active"
+
+    diff: uint256 = self.token.balanceOf(self)
+    self._safeTransferFrom(self.token.address, msg.sender, self, amount)
+    diff = self.token.balanceOf(self) - diff
+
+    self.debt -= diff
+    # TODO: update strategy.debt
+    # TODO: event
 
 
 @external
 def report(gain: uint256, loss: uint256):
     # gain = transfer profit to here
     # TODO: loss = ?
+    # TODO: event
     pass
 
 
