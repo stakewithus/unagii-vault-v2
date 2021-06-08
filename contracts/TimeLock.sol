@@ -12,21 +12,24 @@ contract TimeLock {
         address indexed target,
         uint value,
         bytes data,
-        uint eta
+        uint eta,
+        uint nonce
     );
     event Execute(
         bytes32 indexed txHash,
         address indexed target,
         uint value,
         bytes data,
-        uint eta
+        uint eta,
+        uint nonce
     );
     event Cancel(
         bytes32 indexed txHash,
         address indexed target,
         uint value,
         bytes data,
-        uint eta
+        uint eta,
+        uint nonce
     );
 
     uint private constant GRACE_PERIOD = 14 days;
@@ -76,18 +79,20 @@ contract TimeLock {
         address target,
         uint value,
         bytes memory data,
-        uint eta
+        uint eta,
+        uint nonce
     ) private pure returns (bytes32) {
-        return keccak256(abi.encode(target, value, data, eta));
+        return keccak256(abi.encode(target, value, data, eta, nonce));
     }
 
     function getTxHash(
         address target,
         uint value,
         bytes calldata data,
-        uint eta
+        uint eta,
+        uint nonce
     ) external pure returns (bytes32) {
-        return _getTxHash(target, value, data, eta);
+        return _getTxHash(target, value, data, eta, nonce);
     }
 
     /*
@@ -95,20 +100,26 @@ contract TimeLock {
     @param target Address of contract or account to call
     @param value Ether value to send
     @param data Data to send to `target`
-    @eta Execute Tx After. Time after which transaction can be executed.
+    @param _delay Time in seconds to wait after this tx
+    @param nonce In case there is a need execute same tx multiple times
     */
     function queue(
         address target,
         uint value,
         bytes calldata data,
-        uint eta
+        uint _delay,
+        uint nonce
     ) external onlyAdmin returns (bytes32) {
-        require(eta >= block.timestamp + delay, "eta < now + delay");
+        require(_delay >= delay, "delay < min");
 
-        bytes32 txHash = _getTxHash(target, value, data, eta);
+        // execute time after
+        uint eta = block.timestamp + _delay;
+        bytes32 txHash = _getTxHash(target, value, data, eta, nonce);
+
+        require(!queued[txHash], "queued");
         queued[txHash] = true;
 
-        emit Queue(txHash, target, value, data, eta);
+        emit Queue(txHash, target, value, data, eta, nonce);
 
         return txHash;
     }
@@ -117,9 +128,10 @@ contract TimeLock {
         address target,
         uint value,
         bytes calldata data,
-        uint eta
+        uint eta,
+        uint nonce
     ) external payable onlyAdmin returns (bytes memory) {
-        bytes32 txHash = _getTxHash(target, value, data, eta);
+        bytes32 txHash = _getTxHash(target, value, data, eta, nonce);
         require(queued[txHash], "!queued");
         require(block.timestamp >= eta, "eta < now");
         require(block.timestamp <= eta + GRACE_PERIOD, "eta expired");
@@ -130,7 +142,7 @@ contract TimeLock {
         (bool success, bytes memory res) = target.call{value: value}(data);
         require(success, "tx failed");
 
-        emit Execute(txHash, target, value, data, eta);
+        emit Execute(txHash, target, value, data, eta, nonce);
 
         return res;
     }
@@ -139,13 +151,14 @@ contract TimeLock {
         address target,
         uint value,
         bytes calldata data,
-        uint eta
+        uint eta,
+        uint nonce
     ) external onlyAdmin {
-        bytes32 txHash = _getTxHash(target, value, data, eta);
+        bytes32 txHash = _getTxHash(target, value, data, eta, nonce);
         require(queued[txHash], "!queued");
 
         queued[txHash] = false;
 
-        emit Cancel(txHash, target, value, data, eta);
+        emit Cancel(txHash, target, value, data, eta, nonce);
     }
 }
