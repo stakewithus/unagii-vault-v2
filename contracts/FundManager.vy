@@ -28,8 +28,7 @@ interface IStrategy:
 
 
 MAX_QUEUE: constant(uint256) = 20
-MAX_BPS: constant(uint256) = 10000
-MAX_PERF_FEE: constant(uint256) = 5000
+MAX_TOTAL_DEBT_RATIO: constant(uint256) = 10000
 
 
 struct Strategy:
@@ -322,19 +321,20 @@ def approveStrategy(strategy: address):
 #     log RevokeStrategy(strategy)
 
 
-# @external
-# def addStrategyToQueue(strategy: address, debtRatio: uint256):
-#     assert msg.sender in [self.admin, self.keeper], "!auth"
-#     assert self.strategies[strategy].approved, "!approved"
-#     assert not self.strategies[strategy].active, "active"
-#     # assert self.totalDebtRatio + debtRatio <= MAX_BPS, "ratio > max"
+@external
+def addStrategyToQueue(strategy: address, debtRatio: uint256):
+    assert msg.sender in [self.admin, self.keeper], "!auth"
+    assert self.strategies[strategy].approved, "!approved"
+    assert not self.strategies[strategy].active, "active"
+    assert self.totalDebtRatio + debtRatio <= MAX_TOTAL_DEBT_RATIO, "ratio > max"
 
-#     self._append(strategy)
-#     self.strategies[strategy].active = True
-#     self.strategies[strategy].activatedAt = block.timestamp
-#     self.strategies[strategy].debtRatio = debtRatio
-#     # self.totalDebtRatio += debtRatio
-#     log AddStrategyToQueue(strategy)
+    self._append(strategy)
+    self.strategies[strategy].active = True
+    self.strategies[strategy].activated = True
+    self.strategies[strategy].debtRatio = debtRatio
+    self.totalDebtRatio += debtRatio
+    
+    log AddStrategyToQueue(strategy)
 
 
 # @external
@@ -399,7 +399,7 @@ def approveStrategy(strategy: address):
 #     # self.totalDebtRatio -= self.strategies[strategy].debtRatio
 #     self.strategies[strategy].debtRatio = debtRatio
 #     # self.totalDebtRatio += debtRatio
-#     # assert self.totalDebtRatio <= MAX_BPS, "total > max"
+#     # assert self.totalDebtRatio <= MAX_TOTAL_DEBT_RATIO, "total > max"
 #     log UpdateStrategyDebtRatio(strategy, debtRatio)
 
 
@@ -572,7 +572,7 @@ def approveStrategy(strategy: address):
 #         return 0
 
 #     totalAssets: uint256 = self._totalAssets()
-#     limit: uint256 = self.strategies[strategy].debtRatio * totalAssets / MAX_BPS
+#     limit: uint256 = self.strategies[strategy].debtRatio * totalAssets / MAX_TOTAL_DEBT_RATIO
 #     debt: uint256 = self.strategies[strategy].debt
 
 #     if debt >= limit:
