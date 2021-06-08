@@ -544,8 +544,9 @@ def reportToVault():
     else:
         loss = debt - total
     
-    self.vault.report(gain, loss)
     log ReportToVault(self.vault.address, total, debt, gain, loss)
+
+    self.vault.report(gain, loss)
 
 
 # functions between this contract and strategies
