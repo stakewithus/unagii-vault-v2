@@ -4,32 +4,22 @@ pragma solidity 0.8.4;
 // TODO: stable solidity version
 
 contract TimeLock {
+    enum State {
+        Queued,
+        Executed,
+        Canceled
+    }
+
     event SetNextAdmin(address nextAdmin);
     event AcceptAdmin(address admin);
-    event SetDelay(uint delay);
-    event Queue(
+    event Log(
         bytes32 indexed txHash,
         address indexed target,
         uint value,
         bytes data,
         uint eta,
-        uint nonce
-    );
-    event Execute(
-        bytes32 indexed txHash,
-        address indexed target,
-        uint value,
-        bytes data,
-        uint eta,
-        uint nonce
-    );
-    event Cancel(
-        bytes32 indexed txHash,
-        address indexed target,
-        uint value,
-        bytes data,
-        uint eta,
-        uint nonce
+        uint nonce,
+        State state
     );
 
     uint private constant GRACE_PERIOD = 14 days;
@@ -38,7 +28,6 @@ contract TimeLock {
 
     address public admin;
     address public nextAdmin;
-    uint public delay = MIN_DELAY;
 
     mapping(bytes32 => bool) public queued;
 
@@ -62,17 +51,6 @@ contract TimeLock {
         require(msg.sender == nextAdmin, "!next admin");
         admin = msg.sender;
         emit AcceptAdmin(msg.sender);
-    }
-
-    /*
-    @dev Only this contract can execute this function
-    */
-    function setDelay(uint _delay) external {
-        require(msg.sender == address(this), "!timelock");
-        require(_delay >= MIN_DELAY, "delay < min");
-        require(_delay <= MAX_DELAY, "delay > max");
-        delay = _delay;
-        emit SetDelay(delay);
     }
 
     function _getTxHash(
@@ -110,16 +88,17 @@ contract TimeLock {
         uint _delay,
         uint nonce
     ) external onlyAdmin returns (bytes32) {
-        require(_delay >= delay, "delay < min");
+        require(_delay >= MIN_DELAY, "delay < min");
 
         // execute time after
         uint eta = block.timestamp + _delay;
+        // tx hash may not be unique if eta is same
         bytes32 txHash = _getTxHash(target, value, data, eta, nonce);
 
         require(!queued[txHash], "queued");
         queued[txHash] = true;
 
-        emit Queue(txHash, target, value, data, eta, nonce);
+        emit Log(txHash, target, value, data, eta, nonce, State.Queued);
 
         return txHash;
     }
@@ -142,7 +121,7 @@ contract TimeLock {
         (bool success, bytes memory res) = target.call{value: value}(data);
         require(success, "tx failed");
 
-        emit Execute(txHash, target, value, data, eta, nonce);
+        emit Log(txHash, target, value, data, eta, nonce, State.Executed);
 
         return res;
     }
@@ -159,6 +138,6 @@ contract TimeLock {
 
         queued[txHash] = false;
 
-        emit Cancel(txHash, target, value, data, eta, nonce);
+        emit Log(txHash, target, value, data, eta, nonce, State.Canceled);
     }
 }

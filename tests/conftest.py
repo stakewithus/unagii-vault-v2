@@ -3,6 +3,8 @@ from brownie import (
     accounts,
     Vault,
     UnagiiToken,
+    TimeLock,
+    TestTimeLock,
     TestToken,
     TestStrategy,
     TestFundManager,
@@ -37,6 +39,16 @@ def attacker(accounts):
 @pytest.fixture(scope="session")
 def user(accounts):
     yield accounts[-1]
+
+
+@pytest.fixture(scope="module")
+def timeLock(TimeLock, admin):
+    yield TimeLock.deploy({"from": admin})
+
+
+@pytest.fixture(scope="module")
+def testTimeLock(TestTimeLock, admin):
+    yield TestTimeLock.deploy({"from": admin})
 
 
 @pytest.fixture(scope="module")
