@@ -35,19 +35,9 @@ MAX_PERF_FEE: constant(uint256) = 5000
 struct Strategy:
     approved: bool
     active: bool
-    activatedAt: uint256
+    activated: bool
     debtRatio: uint256
     debt: uint256
-    # TODO: remove?
-    totalGain: uint256
-    # TODO: remove?
-    totalLoss: uint256
-    # TODO: remove
-    perfFee: uint256
-    # TODO: remove?
-    minDebtPerHarvest: uint256
-    # TODO: remove?
-    maxDebtPerHarvest: uint256
 
 
 event SetNextAdmin:
@@ -260,7 +250,7 @@ def _safeTransferFrom(
 def _totalAssets() -> uint256:
     return self.token.balanceOf(self) + self.totalDebt
 
-
+# TODO: test
 @external
 def totalAssets() -> uint256:
     return self._totalAssets()
@@ -302,369 +292,356 @@ def _find(strategy: address) -> uint256:
 
 
 @external
-def approveStrategy(
-    strategy: address,
-    minDebtPerHarvest: uint256,
-    maxDebtPerHarvest: uint256,
-    perfFee: uint256
-):
+def approveStrategy(strategy: address):
     assert msg.sender == self.admin, "!admin"
 
     assert not self.strategies[strategy].approved, "approved"
     assert IStrategy(strategy).fundManager() == self, "strategy fund manager != this"
     assert IStrategy(strategy).token() == self.token.address, "strategy token != token"
 
-    assert minDebtPerHarvest <= maxDebtPerHarvest, "min > max"
-    assert perfFee <= MAX_PERF_FEE, "perf fee > max"
-
     self.strategies[strategy] = Strategy({
         approved: True,
         active: False,
-        activatedAt: 0,
+        activated: False,
         debtRatio: 0,
-        debt: 0,
-        totalGain: 0,
-        totalLoss: 0,
-        minDebtPerHarvest: minDebtPerHarvest,
-        maxDebtPerHarvest: maxDebtPerHarvest,
-        perfFee: perfFee
+        debt: 0
     })
     log ApproveStrategy(strategy)
 
 
-@external
-def revokeStrategy(strategy: address):
-    # TODO: remove guardian?
-    assert msg.sender in [self.admin, self.keeper, self.guardian], "!auth"
-    assert self.strategies[strategy].approved, "!approved"
-    assert not self.strategies[strategy].active, "active"
+# @external
+# def revokeStrategy(strategy: address):
+#     # TODO: remove guardian?
+#     assert msg.sender in [self.admin, self.keeper, self.guardian], "!auth"
+#     assert self.strategies[strategy].approved, "!approved"
+#     assert not self.strategies[strategy].active, "active"
 
-    # TODO: if strategy.totalDebt > 0?
-    self.strategies[strategy].approved = False
-    log RevokeStrategy(strategy)
-
-
-@external
-def addStrategyToQueue(strategy: address, debtRatio: uint256):
-    assert msg.sender in [self.admin, self.keeper], "!auth"
-    assert self.strategies[strategy].approved, "!approved"
-    assert not self.strategies[strategy].active, "active"
-    # assert self.totalDebtRatio + debtRatio <= MAX_BPS, "ratio > max"
-
-    self._append(strategy)
-    self.strategies[strategy].active = True
-    self.strategies[strategy].activatedAt = block.timestamp
-    self.strategies[strategy].debtRatio = debtRatio
-    # self.totalDebtRatio += debtRatio
-    log AddStrategyToQueue(strategy)
+#     # TODO: if strategy.totalDebt > 0?
+#     self.strategies[strategy].approved = False
+#     log RevokeStrategy(strategy)
 
 
-@external
-def removeStrategyFromQueue(strategy: address):
-    assert msg.sender in [self.admin, self.keeper], "!auth"
-    assert self.strategies[strategy].active, "!active"
+# @external
+# def addStrategyToQueue(strategy: address, debtRatio: uint256):
+#     assert msg.sender in [self.admin, self.keeper], "!auth"
+#     assert self.strategies[strategy].approved, "!approved"
+#     assert not self.strategies[strategy].active, "active"
+#     # assert self.totalDebtRatio + debtRatio <= MAX_BPS, "ratio > max"
 
-    self._remove(self._find(strategy))
-    self.strategies[strategy].active = False
-    # self.totalDebtRatio -= self.strategies[strategy].debtRatio
-    self.strategies[strategy].debtRatio = 0
-    log RemoveStrategyFromQueue(strategy)
-
-
-@external
-def setQueue(queue: address[MAX_QUEUE]):
-    assert msg.sender in [self.admin, self.keeper], "!auth"
-
-    # check no gaps in new queue
-    zero: bool = False
-    for i in range(MAX_QUEUE):
-        strat: address = queue[i]
-        if strat == ZERO_ADDRESS:
-            if not zero:
-                zero = True
-        else:
-            assert not zero, "gap"
-
-    # Check old and new queue counts of non zero strategies are equal
-    for i in range(MAX_QUEUE):
-        oldStrat: address = self.queue[i]
-        newStrat: address = queue[i]
-        if oldStrat == ZERO_ADDRESS:
-            assert newStrat == ZERO_ADDRESS, "new != 0"
-        else:
-            assert newStrat != ZERO_ADDRESS, "new = 0"
-
-    # Check new strategy is active and no duplicate
-    for i in range(MAX_QUEUE):
-        strat: address = queue[i]
-        if strat == ZERO_ADDRESS:
-            break
-        # code below will fail if duplicate strategy in new queue
-        assert self.strategies[strat].active, "!active"
-        self.strategies[strat].active = False
-
-    # update queue
-    for i in range(MAX_QUEUE):
-        strat: address = queue[i]
-        if strat == ZERO_ADDRESS:
-            break
-        self.strategies[strat].active = True
-        self.queue[i] = strat
-
-    log SetQueue(queue)
+#     self._append(strategy)
+#     self.strategies[strategy].active = True
+#     self.strategies[strategy].activatedAt = block.timestamp
+#     self.strategies[strategy].debtRatio = debtRatio
+#     # self.totalDebtRatio += debtRatio
+#     log AddStrategyToQueue(strategy)
 
 
-@external
-def updateStrategyDebtRatio(strategy: address, debtRatio: uint256):
-    assert msg.sender in [self.admin, self.keeper], "!auth"
-    assert self.strategies[strategy].active, "!active"
-    # self.totalDebtRatio -= self.strategies[strategy].debtRatio
-    self.strategies[strategy].debtRatio = debtRatio
-    # self.totalDebtRatio += debtRatio
-    # assert self.totalDebtRatio <= MAX_BPS, "total > max"
-    log UpdateStrategyDebtRatio(strategy, debtRatio)
+# @external
+# def removeStrategyFromQueue(strategy: address):
+#     assert msg.sender in [self.admin, self.keeper], "!auth"
+#     assert self.strategies[strategy].active, "!active"
+
+#     self._remove(self._find(strategy))
+#     self.strategies[strategy].active = False
+#     # self.totalDebtRatio -= self.strategies[strategy].debtRatio
+#     self.strategies[strategy].debtRatio = 0
+#     log RemoveStrategyFromQueue(strategy)
 
 
-@external
-def updateStrategyMinDebtPerHarvest(strategy: address, minDebtPerHarvest: uint256):
-    assert msg.sender in [self.admin, self.keeper], "!auth"
-    assert self.strategies[strategy].approved, "!approved"
-    assert self.strategies[strategy].maxDebtPerHarvest >= minDebtPerHarvest, "min > max"
-    self.strategies[strategy].minDebtPerHarvest = minDebtPerHarvest
-    log UpdateStrategyMinDebtPerHarvest(strategy, minDebtPerHarvest)
+# @external
+# def setQueue(queue: address[MAX_QUEUE]):
+#     assert msg.sender in [self.admin, self.keeper], "!auth"
+
+#     # check no gaps in new queue
+#     zero: bool = False
+#     for i in range(MAX_QUEUE):
+#         strat: address = queue[i]
+#         if strat == ZERO_ADDRESS:
+#             if not zero:
+#                 zero = True
+#         else:
+#             assert not zero, "gap"
+
+#     # Check old and new queue counts of non zero strategies are equal
+#     for i in range(MAX_QUEUE):
+#         oldStrat: address = self.queue[i]
+#         newStrat: address = queue[i]
+#         if oldStrat == ZERO_ADDRESS:
+#             assert newStrat == ZERO_ADDRESS, "new != 0"
+#         else:
+#             assert newStrat != ZERO_ADDRESS, "new = 0"
+
+#     # Check new strategy is active and no duplicate
+#     for i in range(MAX_QUEUE):
+#         strat: address = queue[i]
+#         if strat == ZERO_ADDRESS:
+#             break
+#         # code below will fail if duplicate strategy in new queue
+#         assert self.strategies[strat].active, "!active"
+#         self.strategies[strat].active = False
+
+#     # update queue
+#     for i in range(MAX_QUEUE):
+#         strat: address = queue[i]
+#         if strat == ZERO_ADDRESS:
+#             break
+#         self.strategies[strat].active = True
+#         self.queue[i] = strat
+
+#     log SetQueue(queue)
 
 
-@external
-def updateStrategyMaxDebtPerHarvest(strategy: address, maxDebtPerHarvest: uint256):
-    assert msg.sender in [self.admin, self.keeper], "!auth"
-    assert self.strategies[strategy].approved, "!approved"
-    assert self.strategies[strategy].minDebtPerHarvest <= maxDebtPerHarvest, "max < min"
-    self.strategies[strategy].maxDebtPerHarvest = maxDebtPerHarvest
-    log UpdateStrategyMaxDebtPerHarvest(strategy, maxDebtPerHarvest)
+# @external
+# def updateStrategyDebtRatio(strategy: address, debtRatio: uint256):
+#     assert msg.sender in [self.admin, self.keeper], "!auth"
+#     assert self.strategies[strategy].active, "!active"
+#     # self.totalDebtRatio -= self.strategies[strategy].debtRatio
+#     self.strategies[strategy].debtRatio = debtRatio
+#     # self.totalDebtRatio += debtRatio
+#     # assert self.totalDebtRatio <= MAX_BPS, "total > max"
+#     log UpdateStrategyDebtRatio(strategy, debtRatio)
 
 
-# TODO: update debt ratios
-
-@external
-def updateStrategyPerformanceFee(strategy: address, perfFee: uint256):
-    assert msg.sender in [self.admin, self.keeper], "!auth"
-    assert self.strategies[strategy].approved, "!approved"
-    assert perfFee <= MAX_PERF_FEE, "perf fee > max"
-    self.strategies[strategy].perfFee = perfFee
-    log UpdateStrategyPerformanceFee(strategy, perfFee)
+# @external
+# def updateStrategyMinDebtPerHarvest(strategy: address, minDebtPerHarvest: uint256):
+#     assert msg.sender in [self.admin, self.keeper], "!auth"
+#     assert self.strategies[strategy].approved, "!approved"
+#     assert self.strategies[strategy].maxDebtPerHarvest >= minDebtPerHarvest, "min > max"
+#     self.strategies[strategy].minDebtPerHarvest = minDebtPerHarvest
+#     log UpdateStrategyMinDebtPerHarvest(strategy, minDebtPerHarvest)
 
 
-@internal
-def _reportLoss(strategy: address, loss: uint256):
-    debt: uint256 = self.strategies[strategy].debt
-    assert loss <= debt, "loss > debt"
-
-    dr: uint256 = 0 # change in debt ratio
-    # if self.totalDebtRatio != 0:
-    #     # l = loss
-    #     # D = total debt
-    #     # x = ratio of loss
-    #     # R = total debt ratio
-    #     # l / D = x / R
-    #     dr = min(
-    #         loss * self.totalDebtRatio / self.totalDebt,
-    #         self.strategies[strategy].debtRatio,
-    #     )
-    self.strategies[strategy].totalLoss += loss
-    self.strategies[strategy].debt -= loss
-    self.totalDebt -= loss
-    self.strategies[strategy].debtRatio -= dr
-    # self.totalDebtRatio -= dr
+# @external
+# def updateStrategyMaxDebtPerHarvest(strategy: address, maxDebtPerHarvest: uint256):
+#     assert msg.sender in [self.admin, self.keeper], "!auth"
+#     assert self.strategies[strategy].approved, "!approved"
+#     assert self.strategies[strategy].minDebtPerHarvest <= maxDebtPerHarvest, "max < min"
+#     self.strategies[strategy].maxDebtPerHarvest = maxDebtPerHarvest
+#     log UpdateStrategyMaxDebtPerHarvest(strategy, maxDebtPerHarvest)
 
 
-@internal
-def _withdrawFromStrategies(_amount: uint256) -> uint256:
-    amount: uint256 = _amount
-    totalLoss: uint256 = 0
-    for strategy in self.queue:
-        if strategy == ZERO_ADDRESS:
-            break
+# # TODO: update debt ratios
 
-        bal: uint256 = self.token.balanceOf(self)
-        if amount <= bal:
-            break
-
-        debt: uint256 = self.strategies[strategy].debt
-        amountNeeded: uint256 = min(amount - bal, debt)
-        if amountNeeded == 0:
-            continue
-
-        diff: uint256 = self.token.balanceOf(self)
-        loss: uint256 = IStrategy(strategy).withdraw(amountNeeded)
-        diff = self.token.balanceOf(self) - diff
-
-        if loss > 0:
-            amount -= loss
-            totalLoss += loss
-            self._reportLoss(strategy, loss)
-
-        self.strategies[strategy].debt -= diff
-        # self.totalDebt -= diff
-
-    return totalLoss
+# @external
+# def updateStrategyPerformanceFee(strategy: address, perfFee: uint256):
+#     assert msg.sender in [self.admin, self.keeper], "!auth"
+#     assert self.strategies[strategy].approved, "!approved"
+#     assert perfFee <= MAX_PERF_FEE, "perf fee > max"
+#     self.strategies[strategy].perfFee = perfFee
+#     log UpdateStrategyPerformanceFee(strategy, perfFee)
 
 
-# functions between Vault and this contract
-@external
-def withdraw(_amount: uint256) -> uint256:
-    assert msg.sender == self.vault.address, "!vault"
+# @internal
+# def _reportLoss(strategy: address, loss: uint256):
+#     debt: uint256 = self.strategies[strategy].debt
+#     assert loss <= debt, "loss > debt"
+
+#     dr: uint256 = 0 # change in debt ratio
+#     # if self.totalDebtRatio != 0:
+#     #     # l = loss
+#     #     # D = total debt
+#     #     # x = ratio of loss
+#     #     # R = total debt ratio
+#     #     # l / D = x / R
+#     #     dr = min(
+#     #         loss * self.totalDebtRatio / self.totalDebt,
+#     #         self.strategies[strategy].debtRatio,
+#     #     )
+#     self.strategies[strategy].totalLoss += loss
+#     self.strategies[strategy].debt -= loss
+#     self.totalDebt -= loss
+#     self.strategies[strategy].debtRatio -= dr
+#     # self.totalDebtRatio -= dr
+
+
+# @internal
+# def _withdrawFromStrategies(_amount: uint256) -> uint256:
+#     amount: uint256 = _amount
+#     totalLoss: uint256 = 0
+#     for strategy in self.queue:
+#         if strategy == ZERO_ADDRESS:
+#             break
+
+#         bal: uint256 = self.token.balanceOf(self)
+#         if amount <= bal:
+#             break
+
+#         debt: uint256 = self.strategies[strategy].debt
+#         amountNeeded: uint256 = min(amount - bal, debt)
+#         if amountNeeded == 0:
+#             continue
+
+#         diff: uint256 = self.token.balanceOf(self)
+#         loss: uint256 = IStrategy(strategy).withdraw(amountNeeded)
+#         diff = self.token.balanceOf(self) - diff
+
+#         if loss > 0:
+#             amount -= loss
+#             totalLoss += loss
+#             self._reportLoss(strategy, loss)
+
+#         self.strategies[strategy].debt -= diff
+#         # self.totalDebt -= diff
+
+#     return totalLoss
+
+
+# # functions between Vault and this contract
+# @external
+# def withdraw(_amount: uint256) -> uint256:
+#     assert msg.sender == self.vault.address, "!vault"
     
-    amount: uint256 = _amount
-    bal: uint256 = self.token.balanceOf(self)
-    loss: uint256 = 0
-    if amount > bal:
-        loss = self._withdrawFromStrategies(amount - bal)
-        amount -= loss
+#     amount: uint256 = _amount
+#     bal: uint256 = self.token.balanceOf(self)
+#     loss: uint256 = 0
+#     if amount > bal:
+#         loss = self._withdrawFromStrategies(amount - bal)
+#         amount -= loss
     
-    self._safeTransfer(self.token.address, msg.sender, min(amount, self.token.balanceOf(self)))
+#     self._safeTransfer(self.token.address, msg.sender, min(amount, self.token.balanceOf(self)))
 
-    return loss
-
-
-@external
-def borrowFromVault(amount: uint256):
-    # TODO: re-order array to save gas?
-    assert msg.sender in [self.admin, self.keeper, self.worker], "!auth"
-    borrowed: uint256 = self.vault.borrow(amount)
-    log BorrowFromVault(self.vault.address, amount, borrowed)
+#     return loss
 
 
-@external
-def repayVault(amount: uint256):
-    # TODO: re-order array to save gas?
-    assert msg.sender in [self.admin, self.keeper, self.worker], "!auth"
-    # infinite approved in setVault()
-    repaid: uint256 = self.vault.repay(amount)
-    log RepayVault(self.vault.address, amount, repaid)
+# @external
+# def borrowFromVault(amount: uint256):
+#     # TODO: re-order array to save gas?
+#     assert msg.sender in [self.admin, self.keeper, self.worker], "!auth"
+#     borrowed: uint256 = self.vault.borrow(amount)
+#     log BorrowFromVault(self.vault.address, amount, borrowed)
 
 
-@external
-def reportToVault():
-    assert msg.sender in [self.admin, self.keeper, self.worker], "!auth"
+# @external
+# def repayVault(amount: uint256):
+#     # TODO: re-order array to save gas?
+#     assert msg.sender in [self.admin, self.keeper, self.worker], "!auth"
+#     # infinite approved in setVault()
+#     repaid: uint256 = self.vault.repay(amount)
+#     log RepayVault(self.vault.address, amount, repaid)
 
-    total: uint256 = self._totalAssets()
-    debt: uint256 = self.vault.debt()
-    gain: uint256 = 0
-    loss: uint256 = 0
 
-    if total > debt:
-        # TODO: if bal part of debt?
-        gain = min(total - debt, self.token.balanceOf(self))
-    else:
-        loss = debt - total
+# @external
+# def reportToVault():
+#     assert msg.sender in [self.admin, self.keeper, self.worker], "!auth"
+
+#     total: uint256 = self._totalAssets()
+#     debt: uint256 = self.vault.debt()
+#     gain: uint256 = 0
+#     loss: uint256 = 0
+
+#     if total > debt:
+#         # TODO: if bal part of debt?
+#         gain = min(total - debt, self.token.balanceOf(self))
+#     else:
+#         loss = debt - total
     
-    log ReportToVault(self.vault.address, total, debt, gain, loss)
+#     log ReportToVault(self.vault.address, total, debt, gain, loss)
 
-    self.vault.report(gain, loss)
-
-
-# functions between this contract and strategies
-@internal
-@view
-def _calcOutstandingDebt(strategy: address) -> uint256:
-    if self.totalDebtRatio == 0:
-        return self.strategies[strategy].debt
-
-    limit: uint256 = self.strategies[strategy].debtRatio * self.totalDebt / self.totalDebtRatio
-    debt: uint256 = self.strategies[strategy].debt
-
-    if self.paused:
-        return debt
-    elif debt <= limit:
-        return 0
-    else:
-        return debt - limit
-
-# TODO: test
-@external
-@view
-def calcOutstandingDebt(strategy: address) -> uint256:
-    return self._calcOutstandingDebt(strategy)
+#     self.vault.report(gain, loss)
 
 
-@internal
-@view
-def _calcAvailableCredit(strategy: address) -> uint256:
-    if self.paused:
-        return 0
+# # functions between this contract and strategies
+# @internal
+# @view
+# def _calcOutstandingDebt(strategy: address) -> uint256:
+#     if self.totalDebtRatio == 0:
+#         return self.strategies[strategy].debt
 
-    totalAssets: uint256 = self._totalAssets()
-    limit: uint256 = self.strategies[strategy].debtRatio * totalAssets / MAX_BPS
-    debt: uint256 = self.strategies[strategy].debt
+#     limit: uint256 = self.strategies[strategy].debtRatio * self.totalDebt / self.totalDebtRatio
+#     debt: uint256 = self.strategies[strategy].debt
 
-    if debt >= limit:
-        return 0
+#     if self.paused:
+#         return debt
+#     elif debt <= limit:
+#         return 0
+#     else:
+#         return debt - limit
 
-    available: uint256 = min(limit - debt, self.token.balanceOf(self))
-
-    if available < self.strategies[strategy].minDebtPerHarvest:
-        return 0
-    else:
-        return min(available, self.strategies[strategy].maxDebtPerHarvest)
-
-
-# TODO: test
-@external
-@view
-def calcAvailableCredit(strategy: address) -> uint256:
-    return self._calcAvailableCredit(strategy)
-
-@external
-def borrow(_amount: uint256):
-    assert not self.paused, "paused"
-    assert self.strategies[msg.sender].active, "!active"
-
-    available: uint256 = self._calcAvailableCredit(msg.sender)
-    amount: uint256 = min(_amount, available)
-    assert amount > 0, "borrow = 0"
-
-    self._safeTransfer(self.token.address, msg.sender, amount)
-
-    self.strategies[msg.sender].debt += amount
-    self.totalDebt += amount
-
-    log Borrow(msg.sender, amount)
+# # TODO: test
+# @external
+# @view
+# def calcOutstandingDebt(strategy: address) -> uint256:
+#     return self._calcOutstandingDebt(strategy)
 
 
-@external
-def repay(_amount: uint256):
-    assert self.strategies[msg.sender].approved, "!approved"
+# @internal
+# @view
+# def _calcAvailableCredit(strategy: address) -> uint256:
+#     if self.paused:
+#         return 0
 
-    debt: uint256 = self._calcOutstandingDebt(msg.sender)
-    amount: uint256 = min(_amount, debt)
-    assert amount > 0, "repay = 0"
+#     totalAssets: uint256 = self._totalAssets()
+#     limit: uint256 = self.strategies[strategy].debtRatio * totalAssets / MAX_BPS
+#     debt: uint256 = self.strategies[strategy].debt
 
-    diff: uint256 = self.token.balanceOf(self)
-    self._safeTransferFrom(self.token.address, msg.sender, self, amount)
-    diff = self.token.balanceOf(self) - diff
+#     if debt >= limit:
+#         return 0
 
-    # exclude fee on transfer from debt payment
-    self.strategies[msg.sender].debt -= diff
-    self.totalDebt -= diff
+#     available: uint256 = min(limit - debt, self.token.balanceOf(self))
 
-    log Repay(msg.sender, diff)
+#     if available < self.strategies[strategy].minDebtPerHarvest:
+#         return 0
+#     else:
+#         return min(available, self.strategies[strategy].maxDebtPerHarvest)
 
 
-@external
-def report(gain: uint256, loss: uint256):
-    assert self.strategies[msg.sender].active, "!active"
-    # can't have both gain and loss > 0
-    assert (gain >= 0 and loss == 0) or (gain == 0 and loss >= 0), "gain and loss > 0"
-    assert self.token.balanceOf(msg.sender) >= gain, "bal < gain"
+# # TODO: test
+# @external
+# @view
+# def calcAvailableCredit(strategy: address) -> uint256:
+#     return self._calcAvailableCredit(strategy)
 
-    if gain > 0:
-        # TODO: check total assets ?
-        # TODO: diff?
-        self._safeTransferFrom(self.token.address, msg.sender, self, gain)
-    elif loss > 0:
-        self._reportLoss(msg.sender, loss)
+# @external
+# def borrow(_amount: uint256):
+#     assert not self.paused, "paused"
+#     assert self.strategies[msg.sender].active, "!active"
+
+#     available: uint256 = self._calcAvailableCredit(msg.sender)
+#     amount: uint256 = min(_amount, available)
+#     assert amount > 0, "borrow = 0"
+
+#     self._safeTransfer(self.token.address, msg.sender, amount)
+
+#     self.strategies[msg.sender].debt += amount
+#     self.totalDebt += amount
+
+#     log Borrow(msg.sender, amount)
+
+
+# @external
+# def repay(_amount: uint256):
+#     assert self.strategies[msg.sender].approved, "!approved"
+
+#     debt: uint256 = self._calcOutstandingDebt(msg.sender)
+#     amount: uint256 = min(_amount, debt)
+#     assert amount > 0, "repay = 0"
+
+#     diff: uint256 = self.token.balanceOf(self)
+#     self._safeTransferFrom(self.token.address, msg.sender, self, amount)
+#     diff = self.token.balanceOf(self) - diff
+
+#     # exclude fee on transfer from debt payment
+#     self.strategies[msg.sender].debt -= diff
+#     self.totalDebt -= diff
+
+#     log Repay(msg.sender, diff)
+
+
+# @external
+# def report(gain: uint256, loss: uint256):
+#     assert self.strategies[msg.sender].active, "!active"
+#     # can't have both gain and loss > 0
+#     assert (gain >= 0 and loss == 0) or (gain == 0 and loss >= 0), "gain and loss > 0"
+#     assert self.token.balanceOf(msg.sender) >= gain, "bal < gain"
+
+#     if gain > 0:
+#         # TODO: check total assets ?
+#         # TODO: diff?
+#         self._safeTransferFrom(self.token.address, msg.sender, self, gain)
+#     elif loss > 0:
+#         self._reportLoss(msg.sender, loss)
     
-    log Report(msg.sender, gain, loss, self.strategies[msg.sender].debt)
+#     log Report(msg.sender, gain, loss, self.strategies[msg.sender].debt)
 
 
 # TODO: migrate strategy
