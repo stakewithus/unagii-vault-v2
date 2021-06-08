@@ -11,7 +11,7 @@ def test_add_strategy_to_queue(fundManager, admin, keeper, testStrategy, user):
 
     # revert if not approved
     with brownie.reverts("!approved"):
-        fundManager.addStrategyToQueue(strategy, 0, {"from": admin})
+        fundManager.addStrategyToQueue(strategy, 0, {"from": keeper})
 
     fundManager.approveStrategy(strategy, {"from": admin})
 
