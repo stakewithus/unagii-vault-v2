@@ -454,7 +454,7 @@ def setMinMaxBorrow(strategy: address, minBorrow: uint256, maxBorrow: uint256):
     log SetMinMaxBorrow(strategy, minBorrow, maxBorrow)
 
 
-# functions between Vault and this contract
+# functions between Vault and this contract #
 @external
 def borrowFromVault(amount: uint256):
     assert msg.sender in [self.admin, self.keeper, self.worker], "!auth"
@@ -562,10 +562,59 @@ def reportToVault():
 #     return loss
 
 
+# functions between this contract and strategies #
+@internal
+@view
+def _calcAvailableCredit(strategy: address) -> uint256:
+    if self.paused:
+        return 0
+
+    if self.totalDebtRatio == 0:
+        return 0
+
+    totalAssets: uint256 = self._totalAssets()
+    # TODO: test with multiple strategies
+    limit: uint256 = self.strategies[strategy].debtRatio * totalAssets / self.totalDebtRatio
+    debt: uint256 = self.strategies[strategy].debt
+
+    if debt >= limit:
+        return 0
+
+    available: uint256 = min(limit - debt, self.token.balanceOf(self))
+
+    if available < self.strategies[strategy].minBorrow:
+        return 0
+    else:
+        return min(available, self.strategies[strategy].maxBorrow)
 
 
+# TODO: test
+@external
+@view
+def calcAvailableCredit(strategy: address) -> uint256:
+    return self._calcAvailableCredit(strategy)
 
-# # functions between this contract and strategies
+
+@external
+def borrow(_amount: uint256) -> uint256:
+    assert not self.paused, "paused"
+    assert self.strategies[msg.sender].active, "!active"
+
+    available: uint256 = self._calcAvailableCredit(msg.sender)
+    amount: uint256 = min(_amount, available)
+    assert amount > 0, "borrow = 0"
+
+    self._safeTransfer(self.token.address, msg.sender, amount)
+
+    # include any fee on transfer to debt
+    self.strategies[msg.sender].debt += amount
+    self.totalDebt += amount
+
+    log Borrow(msg.sender, amount)
+
+    return amount
+
+
 # @internal
 # @view
 # def _calcOutstandingDebt(strategy: address) -> uint256:
@@ -587,51 +636,6 @@ def reportToVault():
 # @view
 # def calcOutstandingDebt(strategy: address) -> uint256:
 #     return self._calcOutstandingDebt(strategy)
-
-
-# @internal
-# @view
-# def _calcAvailableCredit(strategy: address) -> uint256:
-#     if self.paused:
-#         return 0
-
-#     totalAssets: uint256 = self._totalAssets()
-#     limit: uint256 = self.strategies[strategy].debtRatio * totalAssets / MAX_TOTAL_DEBT_RATIO
-#     debt: uint256 = self.strategies[strategy].debt
-
-#     if debt >= limit:
-#         return 0
-
-#     available: uint256 = min(limit - debt, self.token.balanceOf(self))
-
-#     if available < self.strategies[strategy].minDebtPerHarvest:
-#         return 0
-#     else:
-#         return min(available, self.strategies[strategy].maxDebtPerHarvest)
-
-
-# # TODO: test
-# @external
-# @view
-# def calcAvailableCredit(strategy: address) -> uint256:
-#     return self._calcAvailableCredit(strategy)
-
-# @external
-# def borrow(_amount: uint256):
-#     assert not self.paused, "paused"
-#     assert self.strategies[msg.sender].active, "!active"
-
-#     available: uint256 = self._calcAvailableCredit(msg.sender)
-#     amount: uint256 = min(_amount, available)
-#     assert amount > 0, "borrow = 0"
-
-#     self._safeTransfer(self.token.address, msg.sender, amount)
-
-#     self.strategies[msg.sender].debt += amount
-#     self.totalDebt += amount
-
-#     log Borrow(msg.sender, amount)
-
 
 # @external
 # def repay(_amount: uint256):
