@@ -2,9 +2,7 @@ import brownie
 from brownie import ZERO_ADDRESS
 
 
-def test_borrow_from_vault(
-    fundManager, token, minter, testVault, admin, keeper, worker, user
-):
+def test_borrow_from_vault(fundManager, token, testVault, admin, keeper, worker, user):
     vault = testVault
 
     with brownie.reverts("!auth"):
