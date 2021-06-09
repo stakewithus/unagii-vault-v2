@@ -188,16 +188,19 @@ def setPause(paused: bool):
     log SetPause(paused)
 
 
-# TODO: test migration
-@external
-def setVault(vault: address):
-    assert msg.sender == self.admin, "!admin"
-    # TODO: check Vault.fundManager() == self?
-    assert Vault(vault).token() == self.token.address, "vault token != token"
-    self.vault = Vault(vault)
-    self.token.approve(vault, MAX_UINT256)
-    # TODO: reset total debt?
-    log SetVault(vault)
+@internal
+def _safeApprove(token: address, spender: address, amount: uint256):
+    res: Bytes[32] = raw_call(
+        token,
+        concat(
+            method_id("approve(address,uint256)"),
+            convert(spender, bytes32),
+            convert(amount, bytes32),
+        ),
+        max_outsize=32,
+    )
+    if len(res) > 0:
+        assert convert(res, bool), "approve failed"
 
 
 @internal
@@ -231,6 +234,22 @@ def _safeTransferFrom(
     )
     if len(res) > 0:
         assert convert(res, bool), "transferFrom failed"
+
+
+# TODO: test migration
+@external
+def setVault(vault: address):
+    assert msg.sender == self.admin, "!admin"
+    # TODO: check Vault.fundManager() == self?
+    assert Vault(vault).token() == self.token.address, "vault token != token"
+
+    if self.vault.address != ZERO_ADDRESS:
+        self._safeApprove(self.token.address, self.vault.address, 0)
+
+    self.vault = Vault(vault)
+    self._safeApprove(self.token.address, self.vault.address, MAX_UINT256)
+    # TODO: reset total debt?
+    log SetVault(vault)
 
 
 @internal
