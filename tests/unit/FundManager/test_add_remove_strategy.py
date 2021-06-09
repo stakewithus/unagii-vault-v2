@@ -47,7 +47,7 @@ class StateMachine:
         strat = self.fundManager.strategies(addr)
 
         if strat["approved"] and not strat["active"]:
-            self.fundManager.addStrategyToQueue(addr, 1, {"from": self.keeper})
+            self.fundManager.addStrategyToQueue(addr, 1, 2, 3, {"from": self.keeper})
             self.active[addr] = True
             self.queue.append(addr)
 
