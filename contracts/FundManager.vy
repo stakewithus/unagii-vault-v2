@@ -8,6 +8,8 @@
 
 from vyper.interfaces import ERC20
 
+# TODO: comment
+
 
 interface Vault:
     def token() -> address: view
@@ -407,15 +409,21 @@ def setDebtRatios(debtRatios: uint256[MAX_QUEUE]):
 
     log SetDebtRatios(debtRatios)
 
+# functions between Vault and this contract
+@external
+def borrowFromVault(amount: uint256):
+    assert msg.sender in [self.admin, self.keeper, self.worker], "!auth"
+    # fails if vault not set
+    borrowed: uint256 = self.vault.borrow(amount)
+    log BorrowFromVault(self.vault.address, amount, borrowed)
+
+
 # @external
-# def updateStrategyDebtRatio(strategy: address, debtRatio: uint256):
-#     assert msg.sender in [self.admin, self.keeper], "!auth"
-#     assert self.strategies[strategy].active, "!active"
-#     # self.totalDebtRatio -= self.strategies[strategy].debtRatio
-#     self.strategies[strategy].debtRatio = debtRatio
-#     # self.totalDebtRatio += debtRatio
-#     # assert self.totalDebtRatio <= MAX_TOTAL_DEBT_RATIO, "total > max"
-#     log UpdateStrategyDebtRatio(strategy, debtRatio)
+# def repayVault(amount: uint256):
+#     assert msg.sender in [self.admin, self.keeper, self.worker], "!auth"
+#     # infinite approved in setVault()
+#     repaid: uint256 = self.vault.repay(amount)
+#     log RepayVault(self.vault.address, amount, repaid)
 
 # @internal
 # def _reportLoss(strategy: address, loss: uint256):
@@ -472,7 +480,6 @@ def setDebtRatios(debtRatios: uint256[MAX_QUEUE]):
 #     return totalLoss
 
 
-# # functions between Vault and this contract
 # @external
 # def withdraw(_amount: uint256) -> uint256:
 #     assert msg.sender == self.vault.address, "!vault"
@@ -489,21 +496,6 @@ def setDebtRatios(debtRatios: uint256[MAX_QUEUE]):
 #     return loss
 
 
-# @external
-# def borrowFromVault(amount: uint256):
-#     # TODO: re-order array to save gas?
-#     assert msg.sender in [self.admin, self.keeper, self.worker], "!auth"
-#     borrowed: uint256 = self.vault.borrow(amount)
-#     log BorrowFromVault(self.vault.address, amount, borrowed)
-
-
-# @external
-# def repayVault(amount: uint256):
-#     # TODO: re-order array to save gas?
-#     assert msg.sender in [self.admin, self.keeper, self.worker], "!auth"
-#     # infinite approved in setVault()
-#     repaid: uint256 = self.vault.repay(amount)
-#     log RepayVault(self.vault.address, amount, repaid)
 
 
 # @external

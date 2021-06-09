@@ -567,7 +567,7 @@ def borrow(_amount: uint256) -> uint256:
     assert not self.paused, "paused"
     assert msg.sender == self.fundManager.address, "!fund manager"
 
-    # TODO test _calcAvailableToInvest
+    # TODO: test _calcAvailableToInvest
     available: uint256 = self._calcAvailableToInvest()
     amount: uint256 = min(_amount, available)
     assert amount > 0, "borrow = 0"

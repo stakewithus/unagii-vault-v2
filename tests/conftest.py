@@ -82,10 +82,8 @@ def vault(Vault, token, uToken, admin, guardian, keeper):
 
 
 @pytest.fixture(scope="module")
-def fundManager(FundManager, vault, token, admin, guardian, keeper, worker):
-    fundManager = FundManager.deploy(token, guardian, keeper, worker, {"from": admin})
-    fundManager.setVault(vault, {"from": admin})
-    yield fundManager
+def testFundManager(TestFundManager, vault, token, admin):
+    yield TestFundManager.deploy(vault, token, {"from": admin})
 
 
 @pytest.fixture(scope="module")
@@ -94,8 +92,10 @@ def testVault(TestVault, token, admin):
 
 
 @pytest.fixture(scope="module")
-def testFundManager(TestFundManager, vault, token, admin):
-    yield TestFundManager.deploy(vault, token, {"from": admin})
+def fundManager(FundManager, testVault, token, admin, guardian, keeper, worker):
+    fundManager = FundManager.deploy(token, guardian, keeper, worker, {"from": admin})
+    fundManager.setVault(testVault, {"from": admin})
+    yield fundManager
 
 
 @pytest.fixture(scope="module")
