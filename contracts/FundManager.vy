@@ -79,21 +79,8 @@ event RemoveStrategyFromQueue:
 event SetQueue:
     queue: address[MAX_QUEUE]
 
-event UpdateStrategyDebtRatio:
-    strategy: indexed(address)
-    debtRatio: uint256
-
-event UpdateStrategyMinDebtPerHarvest:
-    strategy: indexed(address)
-    minDebtPerHarvest: uint256
-
-event UpdateStrategyMaxDebtPerHarvest:
-    strategy: indexed(address)
-    maxDebtPerHarvest: uint256
-
-event UpdateStrategyPerformanceFee:
-    strategy: indexed(address)
-    perfFee: uint256
+event SetDebtRatios:
+    debtRatios: uint256[MAX_QUEUE]
 
 event BorrowFromVault:
     vault: indexed(address)
@@ -394,7 +381,31 @@ def setQueue(queue: address[MAX_QUEUE]):
     log SetQueue(queue)
 
 
-# # TODO: update debt ratios
+@external
+def setDebtRatios(debtRatios: uint256[MAX_QUEUE]):
+    assert msg.sender in [self.admin, self.keeper], "!auth"
+
+    # check that we're only setting debt ratio on active strategy
+    for i in range(MAX_QUEUE):
+        if self.queue[i] == ZERO_ADDRESS:
+            assert debtRatios[i] == 0, "debt ratio != 0"
+
+    # use memory to save gas
+    totalDebtRatio: uint256 = 0
+    for i in range(MAX_QUEUE):
+        addr: address = self.queue[i]
+        if addr == ZERO_ADDRESS:
+            break
+        
+        debtRatio: uint256 = debtRatios[i]
+        self.strategies[addr].debtRatio = debtRatio
+        totalDebtRatio += debtRatio
+    
+    self.totalDebtRatio = totalDebtRatio
+
+    assert self.totalDebtRatio <= MAX_TOTAL_DEBT_RATIO, "total > max"
+
+    log SetDebtRatios(debtRatios)
 
 # @external
 # def updateStrategyDebtRatio(strategy: address, debtRatio: uint256):
