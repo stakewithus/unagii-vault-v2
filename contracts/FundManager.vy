@@ -437,12 +437,13 @@ def borrowFromVault(amount: uint256):
     log BorrowFromVault(self.vault.address, amount, borrowed)
 
 
-# @external
-# def repayVault(amount: uint256):
-#     assert msg.sender in [self.admin, self.keeper, self.worker], "!auth"
-#     # infinite approved in setVault()
-#     repaid: uint256 = self.vault.repay(amount)
-#     log RepayVault(self.vault.address, amount, repaid)
+@external
+def repayVault(amount: uint256):
+    assert msg.sender in [self.admin, self.keeper, self.worker], "!auth"
+    # fails if vault not set
+    # infinite approved in setVault()
+    repaid: uint256 = self.vault.repay(amount)
+    log RepayVault(self.vault.address, amount, repaid)
 
 # @internal
 # def _reportLoss(strategy: address, loss: uint256):
