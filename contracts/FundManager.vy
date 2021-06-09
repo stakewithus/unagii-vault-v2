@@ -86,6 +86,12 @@ event SetQueue:
 event SetDebtRatios:
     debtRatios: uint256[MAX_QUEUE]
 
+event SetMinMaxBorrow:
+    strategy: indexed(address)
+    minBorrow: uint256
+    maxBorrow: uint256
+
+
 event BorrowFromVault:
     vault: indexed(address)
     amount: uint256
@@ -434,6 +440,19 @@ def setDebtRatios(debtRatios: uint256[MAX_QUEUE]):
     assert self.totalDebtRatio <= MAX_TOTAL_DEBT_RATIO, "total > max"
 
     log SetDebtRatios(debtRatios)
+
+
+@external
+def setMinMaxBorrow(strategy: address, minBorrow: uint256, maxBorrow: uint256):
+    assert msg.sender in [self.admin, self.keeper], "!auth"
+    assert self.strategies[strategy].approved, "!approved" 
+    assert minBorrow <= maxBorrow, "min borrow > max borrow"
+
+    self.strategies[strategy].minBorrow = minBorrow
+    self.strategies[strategy].maxBorrow = maxBorrow
+
+    log SetMinMaxBorrow(strategy, minBorrow, maxBorrow)
+
 
 # functions between Vault and this contract
 @external
