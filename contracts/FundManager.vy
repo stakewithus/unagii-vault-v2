@@ -445,6 +445,26 @@ def repayVault(amount: uint256):
     repaid: uint256 = self.vault.repay(amount)
     log RepayVault(self.vault.address, amount, repaid)
 
+
+@external
+def reportToVault():
+    assert msg.sender in [self.admin, self.keeper, self.worker], "!auth"
+
+    total: uint256 = self._totalAssets()
+    debt: uint256 = self.vault.debt()
+    gain: uint256 = 0
+    loss: uint256 = 0
+
+    if total > debt:
+        # TODO: if bal part of debt?
+        gain = min(total - debt, self.token.balanceOf(self))
+    else:
+        loss = debt - total
+
+    self.vault.report(gain, loss)
+    log ReportToVault(self.vault.address, total, debt, gain, loss)
+
+
 # @internal
 # def _reportLoss(strategy: address, loss: uint256):
 #     debt: uint256 = self.strategies[strategy].debt
@@ -517,25 +537,6 @@ def repayVault(amount: uint256):
 
 
 
-
-# @external
-# def reportToVault():
-#     assert msg.sender in [self.admin, self.keeper, self.worker], "!auth"
-
-#     total: uint256 = self._totalAssets()
-#     debt: uint256 = self.vault.debt()
-#     gain: uint256 = 0
-#     loss: uint256 = 0
-
-#     if total > debt:
-#         # TODO: if bal part of debt?
-#         gain = min(total - debt, self.token.balanceOf(self))
-#     else:
-#         loss = debt - total
-    
-#     log ReportToVault(self.vault.address, total, debt, gain, loss)
-
-#     self.vault.report(gain, loss)
 
 
 # # functions between this contract and strategies
