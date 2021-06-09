@@ -64,7 +64,7 @@ def test_set_queue(fundManager, token, admin, keeper, user, k):
             fundManager.setQueue(queue, {"from": admin})
 
     # check old and new queue have same non zero strategy count
-    if k > 0:
+    if k > 0 and k < N - 1:
         queue = merge(EMPTY, strats)
         # count of non zero strategies in new queue > old queue
         queue[k] = queue[k - 1]
@@ -72,6 +72,7 @@ def test_set_queue(fundManager, token, admin, keeper, user, k):
         with brownie.reverts("new != 0"):
             fundManager.setQueue(queue, {"from": admin})
 
+    if k > 0:
         queue = merge(EMPTY, strats)
         # count of non zero strategies in new queue < old queue
         queue[k - 1] = ZERO_ADDRESS

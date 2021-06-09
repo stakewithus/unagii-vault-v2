@@ -351,48 +351,50 @@ def removeStrategyFromQueue(strategy: address):
     log RemoveStrategyFromQueue(strategy)
 
 
-# @external
-# def setQueue(queue: address[MAX_QUEUE]):
-#     assert msg.sender in [self.admin, self.keeper], "!auth"
+@external
+def setQueue(queue: address[MAX_QUEUE]):
+    assert msg.sender in [self.admin, self.keeper], "!auth"
 
-#     # check no gaps in new queue
-#     zero: bool = False
-#     for i in range(MAX_QUEUE):
-#         strat: address = queue[i]
-#         if strat == ZERO_ADDRESS:
-#             if not zero:
-#                 zero = True
-#         else:
-#             assert not zero, "gap"
+    # check no gaps in new queue
+    zero: bool = False
+    for i in range(MAX_QUEUE):
+        strat: address = queue[i]
+        if strat == ZERO_ADDRESS:
+            if not zero:
+                zero = True
+        else:
+            assert not zero, "gap"
 
-#     # Check old and new queue counts of non zero strategies are equal
-#     for i in range(MAX_QUEUE):
-#         oldStrat: address = self.queue[i]
-#         newStrat: address = queue[i]
-#         if oldStrat == ZERO_ADDRESS:
-#             assert newStrat == ZERO_ADDRESS, "new != 0"
-#         else:
-#             assert newStrat != ZERO_ADDRESS, "new = 0"
+    # Check old and new queue counts of non zero strategies are equal
+    for i in range(MAX_QUEUE):
+        oldStrat: address = self.queue[i]
+        newStrat: address = queue[i]
+        if oldStrat == ZERO_ADDRESS:
+            assert newStrat == ZERO_ADDRESS, "new != 0"
+        else:
+            assert newStrat != ZERO_ADDRESS, "new = 0"
 
-#     # Check new strategy is active and no duplicate
-#     for i in range(MAX_QUEUE):
-#         strat: address = queue[i]
-#         if strat == ZERO_ADDRESS:
-#             break
-#         # code below will fail if duplicate strategy in new queue
-#         assert self.strategies[strat].active, "!active"
-#         self.strategies[strat].active = False
+    # Check new strategy is active and no duplicate
+    for i in range(MAX_QUEUE):
+        strat: address = queue[i]
+        if strat == ZERO_ADDRESS:
+            break
+        # code below will fail if duplicate strategy in new queue
+        assert self.strategies[strat].active, "!active"
+        self.strategies[strat].active = False
 
-#     # update queue
-#     for i in range(MAX_QUEUE):
-#         strat: address = queue[i]
-#         if strat == ZERO_ADDRESS:
-#             break
-#         self.strategies[strat].active = True
-#         self.queue[i] = strat
+    # update queue
+    for i in range(MAX_QUEUE):
+        strat: address = queue[i]
+        if strat == ZERO_ADDRESS:
+            break
+        self.strategies[strat].active = True
+        self.queue[i] = strat
 
-#     log SetQueue(queue)
+    log SetQueue(queue)
 
+
+# # TODO: update debt ratios
 
 # @external
 # def updateStrategyDebtRatio(strategy: address, debtRatio: uint256):
@@ -403,36 +405,6 @@ def removeStrategyFromQueue(strategy: address):
 #     # self.totalDebtRatio += debtRatio
 #     # assert self.totalDebtRatio <= MAX_TOTAL_DEBT_RATIO, "total > max"
 #     log UpdateStrategyDebtRatio(strategy, debtRatio)
-
-
-# @external
-# def updateStrategyMinDebtPerHarvest(strategy: address, minDebtPerHarvest: uint256):
-#     assert msg.sender in [self.admin, self.keeper], "!auth"
-#     assert self.strategies[strategy].approved, "!approved"
-#     assert self.strategies[strategy].maxDebtPerHarvest >= minDebtPerHarvest, "min > max"
-#     self.strategies[strategy].minDebtPerHarvest = minDebtPerHarvest
-#     log UpdateStrategyMinDebtPerHarvest(strategy, minDebtPerHarvest)
-
-
-# @external
-# def updateStrategyMaxDebtPerHarvest(strategy: address, maxDebtPerHarvest: uint256):
-#     assert msg.sender in [self.admin, self.keeper], "!auth"
-#     assert self.strategies[strategy].approved, "!approved"
-#     assert self.strategies[strategy].minDebtPerHarvest <= maxDebtPerHarvest, "max < min"
-#     self.strategies[strategy].maxDebtPerHarvest = maxDebtPerHarvest
-#     log UpdateStrategyMaxDebtPerHarvest(strategy, maxDebtPerHarvest)
-
-
-# # TODO: update debt ratios
-
-# @external
-# def updateStrategyPerformanceFee(strategy: address, perfFee: uint256):
-#     assert msg.sender in [self.admin, self.keeper], "!auth"
-#     assert self.strategies[strategy].approved, "!approved"
-#     assert perfFee <= MAX_PERF_FEE, "perf fee > max"
-#     self.strategies[strategy].perfFee = perfFee
-#     log UpdateStrategyPerformanceFee(strategy, perfFee)
-
 
 # @internal
 # def _reportLoss(strategy: address, loss: uint256):
