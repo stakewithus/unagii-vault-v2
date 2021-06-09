@@ -39,6 +39,8 @@ struct Strategy:
     activated: bool
     debtRatio: uint256
     debt: uint256
+    minBorrow: uint256
+    maxBorrow: uint256
 
 
 event SetNextAdmin:
@@ -311,7 +313,9 @@ def approveStrategy(strategy: address):
         active: False,
         activated: False,
         debtRatio: 0,
-        debt: 0
+        debt: 0,
+        minBorrow: 0,
+        maxBorrow: 0
     })
 
     log ApproveStrategy(strategy)
@@ -330,16 +334,19 @@ def revokeStrategy(strategy: address):
 
 
 @external
-def addStrategyToQueue(strategy: address, debtRatio: uint256):
+def addStrategyToQueue(strategy: address, debtRatio: uint256, minBorrow: uint256, maxBorrow: uint256):
     assert msg.sender in [self.admin, self.keeper], "!auth"
     assert self.strategies[strategy].approved, "!approved"
     assert not self.strategies[strategy].active, "active"
     assert self.totalDebtRatio + debtRatio <= MAX_TOTAL_DEBT_RATIO, "ratio > max"
+    assert minBorrow <= maxBorrow, "min borrow > max borrow"
 
     self._append(strategy)
     self.strategies[strategy].active = True
     self.strategies[strategy].activated = True
     self.strategies[strategy].debtRatio = debtRatio
+    self.strategies[strategy].minBorrow = minBorrow
+    self.strategies[strategy].maxBorrow = maxBorrow
     self.totalDebtRatio += debtRatio
     
     log AddStrategyToQueue(strategy)

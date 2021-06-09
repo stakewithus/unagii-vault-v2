@@ -32,6 +32,8 @@ def test_approve_strategy(fundManager, token, admin, testStrategy, user):
     assert not strat["activated"]
     assert strat["debtRatio"] == 0
     assert strat["debt"] == 0
+    assert strat["minBorrow"] == 0
+    assert strat["maxBorrow"] == 0
 
     assert tx.events["ApproveStrategy"].values() == [strategy]
 
