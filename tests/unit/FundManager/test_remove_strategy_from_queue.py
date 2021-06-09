@@ -7,7 +7,7 @@ def test_remove_strategy_from_queue(fundManager, admin, keeper, testStrategy, us
     strategy = testStrategy
 
     fundManager.approveStrategy(strategy, {"from": admin})
-    fundManager.addStrategyToQueue(strategy, 123, {"from": keeper})
+    fundManager.addStrategyToQueue(strategy, 123, 0, 0, {"from": keeper})
 
     # revert if not authorized
     with brownie.reverts("!auth"):
