@@ -22,8 +22,6 @@ interface Vault:
 interface IStrategy:
     def fundManager() -> address: view
     def token() -> address: view
-    def totalAssets() -> uint256: view
-    def deposit(amount: uint256): nonpayable
     def withdraw(amount: uint256) -> uint256: nonpayable
     # TODO: migrate
     def migrate(newVersion: address): nonpayable
@@ -107,6 +105,11 @@ event ReportToVault:
     total: uint256
     debt: uint256
     gain: uint256
+    loss: uint256
+
+event Withdraw:
+    vault: indexed(address)
+    amount: uint256
     loss: uint256
 
 event Borrow:
@@ -267,6 +270,7 @@ def _totalAssets() -> uint256:
 
 # TODO: test
 @external
+@view
 def totalAssets() -> uint256:
     return self._totalAssets()
 
@@ -515,59 +519,62 @@ def reportToVault():
 #     self.strategies[strategy].debtRatio -= dr
 #     # self.totalDebtRatio -= dr
 
+# functions between vault -> this contract -> strategies #
+@internal
+def _withdraw(_amount: uint256) -> uint256:
+    amount: uint256 = _amount
+    totalLoss: uint256 = 0
+    for strategy in self.queue:
+        if strategy == ZERO_ADDRESS:
+            break
 
-# @internal
-# def _withdrawFromStrategies(_amount: uint256) -> uint256:
-#     amount: uint256 = _amount
-#     totalLoss: uint256 = 0
-#     for strategy in self.queue:
-#         if strategy == ZERO_ADDRESS:
-#             break
+        bal: uint256 = self.token.balanceOf(self)
+        if amount <= bal:
+            break
 
-#         bal: uint256 = self.token.balanceOf(self)
-#         if amount <= bal:
-#             break
+        debt: uint256 = self.strategies[strategy].debt
+        amountNeeded: uint256 = min(amount - bal, debt)
+        if amountNeeded == 0:
+            continue
 
-#         debt: uint256 = self.strategies[strategy].debt
-#         amountNeeded: uint256 = min(amount - bal, debt)
-#         if amountNeeded == 0:
-#             continue
+        diff: uint256 = self.token.balanceOf(self)
+        loss: uint256 = IStrategy(strategy).withdraw(amountNeeded)
+        diff = self.token.balanceOf(self) - diff
 
-#         diff: uint256 = self.token.balanceOf(self)
-#         loss: uint256 = IStrategy(strategy).withdraw(amountNeeded)
-#         diff = self.token.balanceOf(self) - diff
+        if loss > 0:
+            amount -= loss
+            totalLoss += loss
+            self.strategies[strategy].debt -= loss
+            self.totalDebt -= loss
 
-#         if loss > 0:
-#             amount -= loss
-#             totalLoss += loss
-#             self._reportLoss(strategy, loss)
+        self.strategies[strategy].debt -= diff
+        self.totalDebt -= diff
 
-#         self.strategies[strategy].debt -= diff
-#         # self.totalDebt -= diff
-
-#     return totalLoss
+    return totalLoss
 
 
-# @external
-# def withdraw(_amount: uint256) -> uint256:
-#     assert msg.sender == self.vault.address, "!vault"
+@external
+def withdraw(_amount: uint256) -> uint256:
+    assert msg.sender == self.vault.address, "!vault"
     
-#     amount: uint256 = _amount
-#     bal: uint256 = self.token.balanceOf(self)
-#     loss: uint256 = 0
-#     if amount > bal:
-#         loss = self._withdrawFromStrategies(amount - bal)
-#         amount -= loss
+    amount: uint256 = _amount
+    bal: uint256 = self.token.balanceOf(self)
+    loss: uint256 = 0
+    if amount > bal:
+        loss = self._withdraw(amount - bal)
+        amount = min(amount - loss, self.token.balanceOf(self))
     
-#     self._safeTransfer(self.token.address, msg.sender, min(amount, self.token.balanceOf(self)))
+    self._safeTransfer(self.token.address, msg.sender, amount)
 
-#     return loss
+    log Withdraw(msg.sender, amount, loss)
+
+    return loss
 
 
 # functions between this contract and strategies #
 @internal
 @view
-def _calcAvailableCredit(strategy: address) -> uint256:
+def _calcMaxBorrow(strategy: address) -> uint256:
     if self.paused or self.totalDebtRatio == 0:
         return 0
 
@@ -589,8 +596,8 @@ def _calcAvailableCredit(strategy: address) -> uint256:
 # TODO: test
 @external
 @view
-def calcAvailableCredit(strategy: address) -> uint256:
-    return self._calcAvailableCredit(strategy)
+def calcMaxBorrow(strategy: address) -> uint256:
+    return self._calcMaxBorrow(strategy)
 
 
 @internal
@@ -621,7 +628,7 @@ def borrow(_amount: uint256) -> uint256:
     assert not self.paused, "paused"
     assert self.strategies[msg.sender].active, "!active"
 
-    available: uint256 = self._calcAvailableCredit(msg.sender)
+    available: uint256 = self._calcMaxBorrow(msg.sender)
     amount: uint256 = min(_amount, available)
     assert amount > 0, "borrow = 0"
 

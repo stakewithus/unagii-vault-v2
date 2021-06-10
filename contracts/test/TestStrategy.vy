@@ -1,13 +1,20 @@
 # @version ^0.2.12
 
-fundManager: public(address)
-token: public(address)
+from vyper.interfaces import ERC20
 
+fundManager: public(address)
+token: public(ERC20)
+
+interface TestToken:
+    def burn(_from: address, amount: uint256): nonpayable
+
+# test helpers
+loss: public(uint256)
 
 @external
 def __init__(fundManager: address, token: address):
     self.fundManager = fundManager
-    self.token = token
+    self.token = ERC20(token)
 
 @external
 def totalAssets():
@@ -19,9 +26,11 @@ def deposit():
     pass
 
 @external
-def withdraw():
-    # assert only fund manager
-    pass
+def withdraw(amount: uint256) -> uint256:
+    self.token.transfer(self.fundManager, amount - self.loss)
+    if self.loss > 0:
+        TestToken(self.token.address).burn(self, self.loss)
+    return self.loss
 
 @external
 def harvest():
@@ -45,4 +54,8 @@ def setFundManager(fundManager: address):
 
 @external
 def setToken(token: address):
-    self.token = token
+    self.token = ERC20(token)
+
+@external
+def setLoss(loss: uint256):
+    self.loss = loss
