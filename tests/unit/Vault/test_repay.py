@@ -45,10 +45,11 @@ def test_repay(
         }
 
     before = snapshot()
-    vault.repay(repay_amount, {"from": testFundManager})
+    tx = vault.repay(repay_amount, {"from": fundManager})
     after = snapshot()
 
     diff = after["token"]["vault"] - before["token"]["vault"]
+    assert tx.events["Repay"].values() == [fundManager, repay_amount, diff]
     assert diff > 0
     assert after["token"]["fundManager"] == before["token"]["fundManager"] - diff
     assert after["vault"]["balanceOfVault"] == before["vault"]["balanceOfVault"] + diff

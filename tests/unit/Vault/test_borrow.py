@@ -36,10 +36,11 @@ def test_borrow(vault, token, testFundManager, user, deposit_amount, borrow_amou
         }
 
     before = snapshot()
-    vault.borrow(borrow_amount, {"from": testFundManager})
+    tx = vault.borrow(borrow_amount, {"from": fundManager})
     after = snapshot()
 
     diff = before["token"]["vault"] - after["token"]["vault"]
+    assert tx.events["Borrow"].values() == [fundManager, borrow_amount, diff]
     assert diff > 0
     assert after["token"]["fundManager"] == before["token"]["fundManager"] + diff
     assert after["vault"]["balanceOfVault"] == before["vault"]["balanceOfVault"] - diff

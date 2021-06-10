@@ -71,11 +71,13 @@ event SetWhitelist:
 event Borrow:
     fundManager: indexed(address)
     amount: uint256
+    borrowed: uint256
 
 
 event Repay:
     fundManager: indexed(address)
     amount: uint256
+    repaid: uint256
 
 
 event Report:
@@ -430,7 +432,7 @@ def calcWithdraw(shares: uint256) -> uint256:
 # TODO: deposit log
 @external
 @nonreentrant("lock")
-def deposit(_amount: uint256, minShares: uint256) -> uint256:
+def deposit(amount: uint256, minShares: uint256) -> uint256:
     assert not self.paused, "paused"
     # TODO: test deposit / withdraw flash attack
     # TODO: test block delay
@@ -440,12 +442,10 @@ def deposit(_amount: uint256, minShares: uint256) -> uint256:
         or block.number >= self.uToken.lastBlock(msg.sender) + self.blockDelay
     ), "block < delay"
 
-    amount: uint256 = _amount
-    if amount == MAX_UINT256:
-        amount = self.token.balanceOf(msg.sender)
-    assert amount > 0, "deposit = 0"
+    _amount: uint256 = min(amount, self.token.balanceOf(msg.sender)
+    assert _amount > 0, "deposit = 0"
 
-    assert self._totalAssets() + amount <= self.depositLimit, "deposit limit"
+    assert self._totalAssets() + _amount <= self.depositLimit, "deposit limit"
 
     totalSupply: uint256 = self.uToken.totalSupply()
     # TODO: test free funds
@@ -457,11 +457,11 @@ def deposit(_amount: uint256, minShares: uint256) -> uint256:
         # Actual amount transferred may be less than `amount`
         # if token has fee on transfer
         diff = self.token.balanceOf(self)
-        self._safeTransferFrom(self.token.address, msg.sender, self, amount)
+        self._safeTransferFrom(self.token.address, msg.sender, self, _amount)
         diff = self.token.balanceOf(self) - diff
     else:
-        self._safeTransferFrom(self.token.address, msg.sender, self, amount)
-        diff = amount
+        self._safeTransferFrom(self.token.address, msg.sender, self, _amount)
+        diff = _amount
 
     assert diff > 0, "diff = 0"
 
@@ -481,7 +481,7 @@ def deposit(_amount: uint256, minShares: uint256) -> uint256:
 # TODO: withdraw log
 @external
 @nonreentrant("lock")
-def withdraw(_maxShares: uint256, _min: uint256) -> uint256:
+def withdraw(shares: uint256, _min: uint256) -> uint256:
     # TODO: smart contract cannot transferFrom and then withdraw?
     # TODO: test flash deposit / withdraw
     # TODO: test whitelist
@@ -490,12 +490,12 @@ def withdraw(_maxShares: uint256, _min: uint256) -> uint256:
         or block.number >= self.uToken.lastBlock(msg.sender) + self.blockDelay
     ), "block < delay"
 
-    shares: uint256 = min(_maxShares, self.uToken.balanceOf(msg.sender))
-    assert shares > 0, "shares = 0"
+    _shares: uint256 = min(shares, self.uToken.balanceOf(msg.sender))
+    assert _shares > 0, "shares = 0"
 
     totalSupply: uint256 = self.uToken.totalSupply()
     # TODO: test calcWithdraw, calcFreeFunds
-    amount: uint256 = self._calcWithdraw(shares, totalSupply, self._calcFreeFunds())
+    amount: uint256 = self._calcWithdraw(_shares, totalSupply, self._calcFreeFunds())
 
     # TODO: test
     if amount > self.balanceOfVault:
@@ -513,11 +513,11 @@ def withdraw(_maxShares: uint256, _min: uint256) -> uint256:
         if amount > self.balanceOfVault:
             amount = self.balanceOfVault
             # TODO: test
-            shares = self._calcSharesToBurn(
+            _shares = self._calcSharesToBurn(
                 amount + loss, totalSupply, self._calcFreeFunds()
             )
 
-    self.uToken.burn(msg.sender, shares)
+    self.uToken.burn(msg.sender, _shares)
 
     # amount of tokens msg.sender received
     diff: uint256 = 0
@@ -563,38 +563,38 @@ def calcAvailableToInvest() -> uint256:
 
 
 @external
-def borrow(_amount: uint256) -> uint256:
+def borrow(amount: uint256) -> uint256:
     assert not self.paused, "paused"
     assert msg.sender == self.fundManager.address, "!fund manager"
 
     # TODO: test _calcAvailableToInvest
     available: uint256 = self._calcAvailableToInvest()
-    amount: uint256 = min(_amount, available)
-    assert amount > 0, "borrow = 0"
+    _amount: uint256 = min(amount, available)
+    assert _amount > 0, "borrow = 0"
 
-    self._safeTransfer(self.token.address, msg.sender, amount)
+    self._safeTransfer(self.token.address, msg.sender, _amount)
 
-    self.balanceOfVault -= amount
+    self.balanceOfVault -= _amount
     # include fee on trasfer to debt
-    self.debt += amount
+    self.debt += _amount
 
     # TODO: test
     assert self.token.balanceOf(self) >= self.balanceOfVault, "bal < vault"
 
-    log Borrow(msg.sender, amount)
+    log Borrow(msg.sender, amount, _amount)
 
-    return amount
+    return _amount
 
 
 @external
-def repay(_amount: uint256) -> uint256:
+def repay(amount: uint256) -> uint256:
     assert msg.sender == self.fundManager.address, "!fund manager"
 
-    amount: uint256 = min(_amount, self.debt)
-    assert amount > 0, "repay = 0"
+    _amount: uint256 = min(amount, self.debt)
+    assert _amount > 0, "repay = 0"
 
     diff: uint256 = self.token.balanceOf(self)
-    self._safeTransferFrom(self.token.address, msg.sender, self, amount)
+    self._safeTransferFrom(self.token.address, msg.sender, self, _amount)
     diff = self.token.balanceOf(self) - diff
 
     self.balanceOfVault += diff
@@ -604,7 +604,7 @@ def repay(_amount: uint256) -> uint256:
     # TODO: test
     assert self.token.balanceOf(self) >= self.balanceOfVault, "bal < vault"
 
-    log Repay(msg.sender, diff)
+    log Repay(msg.sender, amount, diff)
 
     return diff
 
