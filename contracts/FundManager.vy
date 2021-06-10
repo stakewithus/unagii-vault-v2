@@ -110,15 +110,24 @@ event ReportToVault:
 event Withdraw:
     vault: indexed(address)
     amount: uint256
+    actual: uint256
     loss: uint256
+
+event WithdrawStrategy:
+    strategy: indexed(address)
+    need: uint256
+    loss: uint256
+    diff: uint256
 
 event Borrow:
     strategy: indexed(address)
     amount: uint256
+    borrowed: uint256
 
 event Repay:
     strategy: indexed(address)
     amount: uint256
+    repaid: uint256
 
 event Report:
     strategy: indexed(address)
@@ -519,6 +528,7 @@ def reportToVault():
 #     self.strategies[strategy].debtRatio -= dr
 #     # self.totalDebtRatio -= dr
 
+
 # functions between vault -> this contract -> strategies #
 @internal
 def _withdraw(_amount: uint256) -> uint256:
@@ -533,12 +543,12 @@ def _withdraw(_amount: uint256) -> uint256:
             break
 
         debt: uint256 = self.strategies[strategy].debt
-        amountNeeded: uint256 = min(amount - bal, debt)
-        if amountNeeded == 0:
+        need: uint256 = min(amount - bal, debt)
+        if need == 0:
             continue
 
         diff: uint256 = self.token.balanceOf(self)
-        loss: uint256 = IStrategy(strategy).withdraw(amountNeeded)
+        loss: uint256 = IStrategy(strategy).withdraw(need)
         diff = self.token.balanceOf(self) - diff
 
         if loss > 0:
@@ -550,23 +560,26 @@ def _withdraw(_amount: uint256) -> uint256:
         self.strategies[strategy].debt -= diff
         self.totalDebt -= diff
 
+        log WithdrawStrategy(strategy, need, loss, diff)
+
     return totalLoss
 
 
 @external
-def withdraw(_amount: uint256) -> uint256:
+def withdraw(amount: uint256) -> uint256:
     assert msg.sender == self.vault.address, "!vault"
+    assert amount > 0, "withdraw = 0"
     
-    amount: uint256 = _amount
+    _amount: uint256 = amount
     bal: uint256 = self.token.balanceOf(self)
     loss: uint256 = 0
-    if amount > bal:
-        loss = self._withdraw(amount - bal)
-        amount = min(amount - loss, self.token.balanceOf(self))
+    if _amount > bal:
+        loss = self._withdraw(_amount - bal)
+        _amount = min(_amount - loss, self.token.balanceOf(self))
     
-    self._safeTransfer(self.token.address, msg.sender, amount)
+    self._safeTransfer(self.token.address, msg.sender, _amount)
 
-    log Withdraw(msg.sender, amount, loss)
+    log Withdraw(msg.sender, amount, _amount, loss)
 
     return loss
 
@@ -624,43 +637,43 @@ def calcOutstandingDebt(strategy: address) -> uint256:
 
 
 @external
-def borrow(_amount: uint256) -> uint256:
+def borrow(amount: uint256) -> uint256:
     assert not self.paused, "paused"
     assert self.strategies[msg.sender].active, "!active"
 
     available: uint256 = self._calcMaxBorrow(msg.sender)
-    amount: uint256 = min(_amount, available)
-    assert amount > 0, "borrow = 0"
+    _amount: uint256 = min(amount, available)
+    assert _amount > 0, "borrow = 0"
 
-    self._safeTransfer(self.token.address, msg.sender, amount)
+    self._safeTransfer(self.token.address, msg.sender, _amount)
 
     # include any fee on transfer to debt
-    self.strategies[msg.sender].debt += amount
-    self.totalDebt += amount
+    self.strategies[msg.sender].debt += _amount
+    self.totalDebt += _amount
 
-    log Borrow(msg.sender, amount)
+    log Borrow(msg.sender, amount, _amount)
 
-    return amount
+    return _amount
 
 
 @external
-def repay(_amount: uint256) -> uint256:
+def repay(amount: uint256) -> uint256:
     assert self.strategies[msg.sender].approved, "!approved"
 
     # TODO: remove?
     # debt: uint256 = self._calcOutstandingDebt(msg.sender)
-    amount: uint256 = min(_amount, self.strategies[msg.sender].debt)
-    assert amount > 0, "repay = 0"
+    _amount: uint256 = min(amount, self.strategies[msg.sender].debt)
+    assert _amount > 0, "repay = 0"
 
     diff: uint256 = self.token.balanceOf(self)
-    self._safeTransferFrom(self.token.address, msg.sender, self, amount)
+    self._safeTransferFrom(self.token.address, msg.sender, self, _amount)
     diff = self.token.balanceOf(self) - diff
 
     # exclude fee on transfer from debt payment
     self.strategies[msg.sender].debt -= diff
     self.totalDebt -= diff
 
-    log Repay(msg.sender, diff)
+    log Repay(msg.sender, amount, diff)
 
     return diff
 
