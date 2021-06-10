@@ -468,6 +468,7 @@ def repayVault(amount: uint256):
     assert msg.sender in [self.admin, self.keeper, self.worker], "!auth"
     # fails if vault not set
     # infinite approved in setVault()
+    # TODO: accidentally repay with profit?
     repaid: uint256 = self.vault.repay(amount)
     log RepayVault(self.vault.address, amount, repaid)
 
@@ -491,6 +492,7 @@ def reportToVault():
     log ReportToVault(self.vault.address, total, debt, gain, loss)
 
 
+# TODO: remove?
 # @internal
 # def _reportLoss(strategy: address, loss: uint256):
 #     debt: uint256 = self.strategies[strategy].debt
