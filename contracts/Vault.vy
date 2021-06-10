@@ -442,7 +442,7 @@ def deposit(amount: uint256, minShares: uint256) -> uint256:
         or block.number >= self.uToken.lastBlock(msg.sender) + self.blockDelay
     ), "block < delay"
 
-    _amount: uint256 = min(amount, self.token.balanceOf(msg.sender)
+    _amount: uint256 = min(amount, self.token.balanceOf(msg.sender))
     assert _amount > 0, "deposit = 0"
 
     assert self._totalAssets() + _amount <= self.depositLimit, "deposit limit"
