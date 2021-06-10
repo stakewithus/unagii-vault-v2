@@ -17,7 +17,7 @@ def test_revoke_strategy(fundManager, admin, keeper, guardian, testStrategy, use
     fundManager.approveStrategy(strategy, {"from": admin})
 
     # revert if active
-    fundManager.addStrategyToQueue(strategy, 1, {"from": keeper})
+    fundManager.addStrategyToQueue(strategy, 1, 0, 0, {"from": keeper})
 
     with brownie.reverts("active"):
         fundManager.revokeStrategy(strategy, {"from": keeper})

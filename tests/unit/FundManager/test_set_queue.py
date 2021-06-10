@@ -44,7 +44,7 @@ def test_set_queue(fundManager, token, admin, keeper, user, k):
     for i in range(k):
         strat = TestStrategy.deploy(fundManager, token, {"from": admin})
         fundManager.approveStrategy(strat, {"from": admin})
-        fundManager.addStrategyToQueue(strat, 1, {"from": admin})
+        fundManager.addStrategyToQueue(strat, 1, 0, 0, {"from": admin})
         strats.append(strat.address)
 
     # 0 active strategies

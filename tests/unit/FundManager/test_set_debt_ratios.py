@@ -32,7 +32,7 @@ def test_set_debt_ratios(
     for i in range(k):
         strat = TestStrategy.deploy(fundManager, token, {"from": admin})
         fundManager.approveStrategy(strat, {"from": admin})
-        fundManager.addStrategyToQueue(strat, 1, {"from": keeper})
+        fundManager.addStrategyToQueue(strat, 1, 0, 0, {"from": keeper})
         strats.append(strat.address)
 
     # total debt ratio > max
