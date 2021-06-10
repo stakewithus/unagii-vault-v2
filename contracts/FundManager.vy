@@ -656,21 +656,20 @@ def repay(_amount: uint256) -> uint256:
     return diff
 
 
-# @external
-# def report(gain: uint256, loss: uint256):
-#     assert self.strategies[msg.sender].active, "!active"
-#     # can't have both gain and loss > 0
-#     assert (gain >= 0 and loss == 0) or (gain == 0 and loss >= 0), "gain and loss > 0"
-#     assert self.token.balanceOf(msg.sender) >= gain, "bal < gain"
+@external
+def report(gain: uint256, loss: uint256):
+    assert self.strategies[msg.sender].active, "!active"
+    # can't have both gain and loss > 0
+    assert (gain >= 0 and loss == 0) or (gain == 0 and loss >= 0), "gain and loss > 0"
 
-#     if gain > 0:
-#         # TODO: check total assets ?
-#         # TODO: diff?
-#         self._safeTransferFrom(self.token.address, msg.sender, self, gain)
-#     elif loss > 0:
-#         self._reportLoss(msg.sender, loss)
+    if gain > 0:
+        assert self.token.balanceOf(msg.sender) >= gain, "bal < gain"
+        self._safeTransferFrom(self.token.address, msg.sender, self, gain)
+    elif loss > 0:
+        self.strategies[msg.sender].debt -= loss
+        self.totalDebt -= loss
     
-#     log Report(msg.sender, gain, loss, self.strategies[msg.sender].debt)
+    log Report(msg.sender, gain, loss, self.strategies[msg.sender].debt)
 
 
 # TODO: migrate strategy
