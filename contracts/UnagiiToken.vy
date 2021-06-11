@@ -30,12 +30,12 @@ event Approval:
     value: uint256
 
 
-event SetNextAdmin:
-    admin: address
+event SetNextTimeLock:
+    timeLock: address
 
 
-event AcceptAdmin:
-    admin: address
+event AcceptTimeLock:
+    timeLock: address
 
 
 event SetMinter:
@@ -49,8 +49,8 @@ decimals: public(uint256)
 balanceOf: public(HashMap[address, uint256])
 allowance: public(HashMap[address, HashMap[address, uint256]])
 totalSupply: public(uint256)
-admin: public(address)
-nextAdmin: public(address)
+timeLock: public(address)
+nextTimeLock: public(address)
 minter: public(address)
 token: public(ERC20)
 lastBlock: public(HashMap[address, uint256])
@@ -60,7 +60,7 @@ lastBlock: public(HashMap[address, uint256])
 
 @external
 def __init__(token: address):
-    self.admin = msg.sender
+    self.timeLock = msg.sender
     self.token = ERC20(token)
     self.name = concat("unagii_", DetailedERC20(token).name(), "_v2")
     self.symbol = concat("u", DetailedERC20(token).symbol(), "v2")
@@ -69,37 +69,37 @@ def __init__(token: address):
 
 @external
 def setName(name: String[42]):
-    assert msg.sender == self.admin, "!admin"
+    assert msg.sender == self.timeLock, "!time lock"
     self.name = name
 
 
 @external
 def setSymbol(symbol: String[20]):
-    assert msg.sender == self.admin, "!admin"
+    assert msg.sender == self.timeLock, "!time lock"
     self.symbol = symbol
 
 
 @external
-def setNextAdmin(nextAdmin: address):
+def setNextTimeLock(nextTimeLock: address):
     """
-    @notice Set next admin
-    @param nextAdmin Address of next admin
+    @notice Set next time lock
+    @param nextTimeLock Address of next time lock
     """
-    assert msg.sender == self.admin, "!admin"
-    # allow next admin = zero address (cancel next admin)
-    self.nextAdmin = nextAdmin
-    log SetNextAdmin(nextAdmin)
+    assert msg.sender == self.timeLock, "!time lock"
+    # allow next time lock = zero address (cancel next time lock)
+    self.nextTimeLock = nextTimeLock
+    log SetNextTimeLock(nextTimeLock)
 
 
 @external
-def acceptAdmin():
+def acceptTimeLock():
     """
-    @notice Accept admin
-    @dev Only `nextAdmin` can claim admin
+    @notice Accept time lock
+    @dev Only `nextTimeLock` can claim time lock
     """
-    assert msg.sender == self.nextAdmin, "!next admin"
-    self.admin = msg.sender
-    log AcceptAdmin(msg.sender)
+    assert msg.sender == self.nextTimeLock, "!next time lock"
+    self.timeLock = msg.sender
+    log AcceptTimeLock(msg.sender)
 
 
 @external
@@ -108,7 +108,7 @@ def setMinter(minter: address):
     @notice Set minter
     @param minter Address of minter
     """
-    assert msg.sender == self.admin, "!admin"
+    assert msg.sender == self.timeLock, "!time lock"
     # allow minter = zero address
     self.minter = minter
     log SetMinter(minter)

@@ -2,12 +2,13 @@ import brownie
 import pytest
 
 
-def test_set_minter(uToken, admin, minter, user):
+def test_set_minter(uToken, minter, user):
     # not minter
-    with brownie.reverts("!admin"):
+    with brownie.reverts("!time lock"):
         uToken.setMinter(user, {"from": user})
 
-    tx = uToken.setMinter(user, {"from": admin})
+    timeLock = uToken.timeLock()
+
+    tx = uToken.setMinter(user, {"from": timeLock})
     assert uToken.minter() == user
-    assert len(tx.events) == 1
     assert tx.events["SetMinter"].values() == [user]
