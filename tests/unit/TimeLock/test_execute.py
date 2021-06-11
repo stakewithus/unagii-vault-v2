@@ -3,43 +3,43 @@ from brownie import ZERO_ADDRESS
 import pytest
 
 
-def test_execute(chain, timeLock, testTimeLock, admin):
+def test_execute(chain, timeLock, txTest, admin):
     value = 1
     # data = ""
-    data = testTimeLock.test.encode_input("0x1212")
+    data = txTest.test.encode_input("0x1212")
     delay = 24 * 3600
     nonce = 0
 
-    tx = timeLock.queue(testTimeLock, value, data, delay, nonce, {"from": admin})
+    tx = timeLock.queue(txTest, value, data, delay, nonce, {"from": admin})
 
     eta = tx.timestamp + delay
-    txHash = timeLock.getTxHash(testTimeLock, value, data, eta, nonce)
+    txHash = timeLock.getTxHash(txTest, value, data, eta, nonce)
 
     with brownie.reverts("eta < now"):
-        timeLock.execute(testTimeLock, value, data, eta, nonce, {"from": admin})
+        timeLock.execute(txTest, value, data, eta, nonce, {"from": admin})
 
     chain.sleep(delay)
 
     # test target.call fails
-    testTimeLock.setFail(True)
+    txTest.setFail(True)
 
     with brownie.reverts("tx failed"):
         timeLock.execute(
-            testTimeLock, value, data, eta, nonce, {"from": admin, "value": value}
+            txTest, value, data, eta, nonce, {"from": admin, "value": value}
         )
 
-    testTimeLock.setFail(False)
+    txTest.setFail(False)
     tx = timeLock.execute(
-        testTimeLock, value, data, eta, nonce, {"from": admin, "value": value}
+        txTest, value, data, eta, nonce, {"from": admin, "value": value}
     )
 
-    assert testTimeLock.data() == "0x1212"
-    assert testTimeLock.value() == value
+    assert txTest.data() == "0x1212"
+    assert txTest.value() == value
     assert not timeLock.queued(txHash)
     assert len(tx.events) == 1
     assert tx.events["Log"].values() == [
         txHash,
-        testTimeLock,
+        txTest,
         value,
         data,
         eta,
@@ -49,15 +49,15 @@ def test_execute(chain, timeLock, testTimeLock, admin):
 
     # test expired
     nonce += 1
-    tx = timeLock.queue(testTimeLock, value, data, delay, nonce, {"from": admin})
+    tx = timeLock.queue(txTest, value, data, delay, nonce, {"from": admin})
     eta = tx.timestamp + delay
-    txHash = timeLock.getTxHash(testTimeLock, value, data, eta, nonce)
+    txHash = timeLock.getTxHash(txTest, value, data, eta, nonce)
 
     chain.sleep(24 * 24 * 3600)
 
     with brownie.reverts("eta expired"):
         timeLock.execute(
-            testTimeLock, value, data, eta, nonce, {"from": admin, "value": value}
+            txTest, value, data, eta, nonce, {"from": admin, "value": value}
         )
 
 
