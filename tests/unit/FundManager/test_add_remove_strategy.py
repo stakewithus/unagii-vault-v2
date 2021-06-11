@@ -10,15 +10,17 @@ N = 5
 class StateMachine:
     i = strategy("uint256", max_value=N - 1)
 
-    def __init__(cls, accounts, fundManager, admin, keeper):
+    def __init__(cls, accounts, fundManager, admin):
         cls.accounts = accounts
         cls.fundManager = fundManager
+        cls.timeLock = fundManager.timeLock()
         cls.admin = admin
-        cls.keeper = keeper
         cls.strategies = []
         for i in range(N):
             cls.strategies.append(
-                TestStrategy.deploy(fundManager, fundManager.token(), {"from": admin})
+                TestStrategy.deploy(
+                    fundManager, fundManager.token(), {"from": cls.timeLock}
+                )
             )
 
     def setup(self):
@@ -31,7 +33,7 @@ class StateMachine:
         strat = self.fundManager.strategies(addr)
 
         if not strat["approved"]:
-            self.fundManager.approveStrategy(addr, {"from": self.admin})
+            self.fundManager.approveStrategy(addr, {"from": self.timeLock})
             self.approved[addr] = True
 
     def rule_revoke(self, i):
@@ -39,7 +41,7 @@ class StateMachine:
         strat = self.fundManager.strategies(addr)
 
         if strat["approved"] and not strat["active"]:
-            self.fundManager.revokeStrategy(addr, {"from": self.keeper})
+            self.fundManager.revokeStrategy(addr, {"from": self.admin})
             self.approved[addr] = False
 
     def rule_add(self, i):
@@ -47,7 +49,7 @@ class StateMachine:
         strat = self.fundManager.strategies(addr)
 
         if strat["approved"] and not strat["active"]:
-            self.fundManager.addStrategyToQueue(addr, 1, 2, 3, {"from": self.keeper})
+            self.fundManager.addStrategyToQueue(addr, 1, 2, 3, {"from": self.admin})
             self.active[addr] = True
             self.queue.append(addr)
 
@@ -56,7 +58,7 @@ class StateMachine:
         strat = self.fundManager.strategies(addr)
 
         if strat["approved"] and strat["active"]:
-            self.fundManager.removeStrategyFromQueue(addr, {"from": self.keeper})
+            self.fundManager.removeStrategyFromQueue(addr, {"from": self.admin})
             self.active[addr] = False
             self.queue.remove(addr)
 
@@ -77,5 +79,5 @@ class StateMachine:
         # print("active", self.active)
 
 
-def test_stateful(fundManager, accounts, admin, keeper, state_machine):
-    state_machine(StateMachine, accounts, fundManager, admin, keeper)
+def test_stateful(fundManager, accounts, admin, state_machine):
+    state_machine(StateMachine, accounts, fundManager, admin)

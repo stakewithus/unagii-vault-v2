@@ -2,15 +2,16 @@ import brownie
 from brownie import ZERO_ADDRESS
 
 
-def test_repay(fundManager, token, admin, keeper, testStrategy, user):
+def test_repay(fundManager, token, admin, testStrategy, user):
     strategy = testStrategy
+    timeLock = fundManager.timeLock()
 
     # revert if not approved strategy
     with brownie.reverts("!approved"):
         fundManager.repay(0, {"from": strategy})
 
-    fundManager.approveStrategy(strategy, {"from": admin})
-    fundManager.addStrategyToQueue(strategy, 1, 11, 22, {"from": keeper})
+    fundManager.approveStrategy(strategy, {"from": timeLock})
+    fundManager.addStrategyToQueue(strategy, 1, 11, 22, {"from": admin})
 
     token.mint(fundManager, 1000)
     token.mint(strategy, 1000)

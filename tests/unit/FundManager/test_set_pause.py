@@ -2,21 +2,22 @@ import brownie
 import pytest
 
 
-def test_set_pause(fundManager, admin, guardian, keeper, user):
+def test_set_pause(fundManager, admin, guardian, user):
     # not admin
     with brownie.reverts("!auth"):
         fundManager.setPause(True, {"from": user})
 
-    # admin can pause
-    tx = fundManager.setPause(True, {"from": admin})
+    timeLock = fundManager.timeLock()
+
+    # time lock can pause
+    tx = fundManager.setPause(True, {"from": timeLock})
     assert fundManager.paused()
-    assert len(tx.events) == 1
     assert tx.events["SetPause"].values() == [True]
 
-    # guardian can pause
-    tx = fundManager.setPause(False, {"from": guardian})
+    # admin can pause
+    fundManager.setPause(False, {"from": admin})
     assert not fundManager.paused()
 
-    # keeper can pause
-    tx = fundManager.setPause(True, {"from": keeper})
+    # guardian can pause
+    fundManager.setPause(True, {"from": guardian})
     assert fundManager.paused()

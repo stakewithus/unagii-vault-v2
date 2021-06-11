@@ -76,7 +76,6 @@ def test_withdraw(
     token,
     testVault,
     admin,
-    keeper,
     TestStrategy,
     k,
     debtRatios,
@@ -86,15 +85,16 @@ def test_withdraw(
     mint_amount,
 ):
     vault = testVault
+    timeLock = fundManager.timeLock()
 
     token.mint(fundManager, mint_amount)
 
     strats = []
     for i in range(k):
         strat = TestStrategy.deploy(fundManager, token, {"from": admin})
-        fundManager.approveStrategy(strat, {"from": admin})
+        fundManager.approveStrategy(strat, {"from": timeLock})
         fundManager.addStrategyToQueue(
-            strat, debtRatios[i], 0, 2 ** 256 - 1, {"from": keeper}
+            strat, debtRatios[i], 0, 2 ** 256 - 1, {"from": admin}
         )
         strats.append(strat)
 

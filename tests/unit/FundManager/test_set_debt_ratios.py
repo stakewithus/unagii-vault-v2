@@ -14,9 +14,9 @@ N = 20
         "uint256[]", min_value=0, max_value=100, min_length=N - 1, max_length=N - 1
     ),
 )
-def test_set_debt_ratios(
-    fundManager, admin, keeper, TestStrategy, token, user, k, rands
-):
+def test_set_debt_ratios(fundManager, admin, TestStrategy, token, user, k, rands):
+    timeLock = fundManager.timeLock()
+
     # not authorized
     with brownie.reverts("!auth"):
         debtRatios = [0 for i in range(N)]
@@ -26,13 +26,13 @@ def test_set_debt_ratios(
     with brownie.reverts("debt ratio != 0"):
         debtRatios = [0 for i in range(N)]
         debtRatios[1] = 1
-        fundManager.setDebtRatios(debtRatios, {"from": keeper})
+        fundManager.setDebtRatios(debtRatios, {"from": admin})
 
     strats = []
     for i in range(k):
         strat = TestStrategy.deploy(fundManager, token, {"from": admin})
-        fundManager.approveStrategy(strat, {"from": admin})
-        fundManager.addStrategyToQueue(strat, 1, 0, 0, {"from": keeper})
+        fundManager.approveStrategy(strat, {"from": timeLock})
+        fundManager.addStrategyToQueue(strat, 1, 0, 0, {"from": admin})
         strats.append(strat.address)
 
     # total debt ratio > max
@@ -40,12 +40,12 @@ def test_set_debt_ratios(
         with brownie.reverts("total > max"):
             debtRatios = [0 for i in range(N)]
             debtRatios[0] = 10001
-            fundManager.setDebtRatios(debtRatios, {"from": keeper})
+            fundManager.setDebtRatios(debtRatios, {"from": admin})
 
     debtRatios = [rands[i] if i < k else 0 for i in range(N)]
     totalDebtRatio = sum(debtRatios)
 
-    tx = fundManager.setDebtRatios(debtRatios, {"from": keeper})
+    tx = fundManager.setDebtRatios(debtRatios, {"from": admin})
 
     assert fundManager.totalDebtRatio() == totalDebtRatio
     assert tx.events["SetDebtRatios"].values() == [debtRatios]

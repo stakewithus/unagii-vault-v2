@@ -2,8 +2,9 @@ import brownie
 from brownie import ZERO_ADDRESS
 
 
-def test_borrow_from_vault(fundManager, token, testVault, admin, keeper, worker, user):
+def test_borrow_from_vault(fundManager, token, testVault, admin, worker, user):
     vault = testVault
+    timeLock = fundManager.timeLock()
 
     token.mint(vault, 1000)
 
@@ -16,18 +17,18 @@ def test_borrow_from_vault(fundManager, token, testVault, admin, keeper, worker,
     def snapshot():
         return {"token": {"fundManager": token.balanceOf(fundManager)}}
 
-    # admin can call
+    # time lock can call
     amount = 1
 
     before = snapshot()
-    tx = fundManager.borrowFromVault(amount, 1, {"from": admin})
+    tx = fundManager.borrowFromVault(amount, 1, {"from": timeLock})
     after = snapshot()
 
     borrowed = after["token"]["fundManager"] - before["token"]["fundManager"]
     assert tx.events["BorrowFromVault"].values() == [vault, amount, borrowed]
 
-    # keeper can call
-    fundManager.borrowFromVault(amount, 1, {"from": keeper})
+    # admin can call
+    fundManager.borrowFromVault(amount, 1, {"from": admin})
 
     # worker can call
     fundManager.borrowFromVault(amount, 1, {"from": worker})

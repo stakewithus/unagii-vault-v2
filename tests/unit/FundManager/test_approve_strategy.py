@@ -3,28 +3,29 @@ from brownie import ZERO_ADDRESS
 import pytest
 
 
-def test_approve_strategy(fundManager, token, admin, testStrategy, user):
+def test_approve_strategy(fundManager, token, testStrategy, user):
     strategy = testStrategy
+    timeLock = fundManager.timeLock()
 
     # revert if not time lock
-    with brownie.reverts("!admin"):
+    with brownie.reverts("!time lock"):
         fundManager.approveStrategy(strategy, {"from": user})
 
     # revert if strategy.fundManager != fundManager
     strategy.setFundManager(ZERO_ADDRESS)
     with brownie.reverts("strategy fund manager != this"):
-        fundManager.approveStrategy(strategy, {"from": admin})
+        fundManager.approveStrategy(strategy, {"from": timeLock})
 
     strategy.setFundManager(fundManager)
 
     # revert if strategy.token != token
     strategy.setToken(ZERO_ADDRESS)
     with brownie.reverts("strategy token != token"):
-        fundManager.approveStrategy(strategy, {"from": admin})
+        fundManager.approveStrategy(strategy, {"from": timeLock})
 
     strategy.setToken(token)
 
-    tx = fundManager.approveStrategy(strategy, {"from": admin})
+    tx = fundManager.approveStrategy(strategy, {"from": timeLock})
     strat = fundManager.strategies(strategy)
 
     assert strat["approved"]
@@ -39,4 +40,4 @@ def test_approve_strategy(fundManager, token, admin, testStrategy, user):
 
     # revert if approved
     with brownie.reverts("approved"):
-        fundManager.approveStrategy(strategy, {"from": admin})
+        fundManager.approveStrategy(strategy, {"from": timeLock})

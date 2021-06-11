@@ -3,11 +3,12 @@ from brownie import ZERO_ADDRESS
 import pytest
 
 
-def test_remove_strategy_from_queue(fundManager, admin, keeper, testStrategy, user):
+def test_remove_strategy_from_queue(fundManager, admin, testStrategy, user):
     strategy = testStrategy
+    timeLock = fundManager.timeLock()
 
-    fundManager.approveStrategy(strategy, {"from": admin})
-    fundManager.addStrategyToQueue(strategy, 123, 0, 0, {"from": keeper})
+    fundManager.approveStrategy(strategy, {"from": timeLock})
+    fundManager.addStrategyToQueue(strategy, 123, 0, 0, {"from": admin})
 
     # revert if not authorized
     with brownie.reverts("!auth"):
@@ -17,7 +18,7 @@ def test_remove_strategy_from_queue(fundManager, admin, keeper, testStrategy, us
         return {"totalDebtRatio": fundManager.totalDebtRatio()}
 
     before = snapshot()
-    tx = fundManager.removeStrategyFromQueue(strategy, {"from": keeper})
+    tx = fundManager.removeStrategyFromQueue(strategy, {"from": admin})
     after = snapshot()
 
     strat = fundManager.strategies(strategy)
@@ -32,4 +33,4 @@ def test_remove_strategy_from_queue(fundManager, admin, keeper, testStrategy, us
 
     # revert if not active
     with brownie.reverts("!active"):
-        fundManager.removeStrategyFromQueue(strategy, {"from": keeper})
+        fundManager.removeStrategyFromQueue(strategy, {"from": admin})

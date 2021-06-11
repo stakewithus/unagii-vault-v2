@@ -2,8 +2,9 @@ import brownie
 from brownie import ZERO_ADDRESS
 
 
-def test_borrow(fundManager, token, admin, keeper, guardian, testStrategy, user):
+def test_borrow(fundManager, token, admin, guardian, testStrategy, user):
     strategy = testStrategy
+    timeLock = fundManager.timeLock()
 
     # revert if paused
     fundManager.setPause(True, {"from": guardian})
@@ -17,7 +18,7 @@ def test_borrow(fundManager, token, admin, keeper, guardian, testStrategy, user)
     with brownie.reverts("!active"):
         fundManager.borrow(0, {"from": strategy})
 
-    fundManager.approveStrategy(strategy, {"from": admin})
+    fundManager.approveStrategy(strategy, {"from": timeLock})
     fundManager.addStrategyToQueue(strategy, 1, 11, 22, {"from": admin})
 
     # revert if borrow = 0

@@ -34,8 +34,10 @@ def swap(arr, i, j):
 @given(
     k=strategy("uint256", min_value=0, max_value=N - 1),
 )
-def test_set_queue(fundManager, token, admin, keeper, user, k):
-    # not admin
+def test_set_queue(fundManager, token, admin, user, k):
+    timeLock = fundManager.timeLock()
+
+    # not auth
     with brownie.reverts("!auth"):
         fundManager.setQueue(EMPTY, {"from": user})
 
@@ -43,7 +45,7 @@ def test_set_queue(fundManager, token, admin, keeper, user, k):
     strats = []
     for i in range(k):
         strat = TestStrategy.deploy(fundManager, token, {"from": admin})
-        fundManager.approveStrategy(strat, {"from": admin})
+        fundManager.approveStrategy(strat, {"from": timeLock})
         fundManager.addStrategyToQueue(strat, 1, 0, 0, {"from": admin})
         strats.append(strat.address)
 

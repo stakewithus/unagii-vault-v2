@@ -2,8 +2,9 @@ import brownie
 from brownie import ZERO_ADDRESS
 
 
-def test_set_min_max_borrow(fundManager, admin, keeper, testStrategy, user):
+def test_set_min_max_borrow(fundManager, admin, testStrategy, user):
     strategy = testStrategy
+    timeLock = fundManager.timeLock()
 
     # revert if not authorized
     with brownie.reverts("!auth"):
@@ -11,15 +12,15 @@ def test_set_min_max_borrow(fundManager, admin, keeper, testStrategy, user):
 
     # revert if not approved
     with brownie.reverts("!approved"):
-        fundManager.setMinMaxBorrow(strategy, 0, 0, {"from": keeper})
+        fundManager.setMinMaxBorrow(strategy, 0, 0, {"from": admin})
 
-    fundManager.approveStrategy(strategy, {"from": admin})
+    fundManager.approveStrategy(strategy, {"from": timeLock})
 
     # revert if min borrow > max borrow
     with brownie.reverts("min borrow > max borrow"):
-        fundManager.setMinMaxBorrow(strategy, 2, 1, {"from": keeper})
+        fundManager.setMinMaxBorrow(strategy, 2, 1, {"from": admin})
 
-    tx = fundManager.setMinMaxBorrow(strategy, 11, 22, {"from": keeper})
+    tx = fundManager.setMinMaxBorrow(strategy, 11, 22, {"from": admin})
 
     strat = fundManager.strategies(strategy)
 

@@ -41,20 +41,20 @@ struct Strategy:
     maxBorrow: uint256
 
 
-event SetNextAdmin:
-    nextAdmin: address
+event SetNextTimeLock:
+    nextTimeLock: address
 
 
-event AcceptAdmin:
+event AcceptTimeLock:
+    timeLock: address
+
+
+event SetAdmin:
     admin: address
 
 
 event SetGuardian:
     guardian: address
-
-
-event SetKeeper:
-    keeper: address
 
 
 event SetWorker:
@@ -154,11 +154,11 @@ event Report:
 
 vault: public(Vault)
 token: public(ERC20)
-# privileges - admin > keeper > guardian, worker
+# privileges - time lock >= admin >= guardian, worker
+timeLock: public(address)
+nextTimeLock: public(address)
 admin: public(address)
-nextAdmin: public(address)
 guardian: public(address)
-keeper: public(address)
 worker: public(address)
 
 paused: public(bool)
@@ -169,11 +169,11 @@ queue: public(address[MAX_QUEUE])
 
 
 @external
-def __init__(token: address, guardian: address, keeper: address, worker: address):
+def __init__(token: address, guardian: address, worker: address):
     self.token = ERC20(token)
+    self.timeLock = msg.sender
     self.admin = msg.sender
     self.guardian = guardian
-    self.keeper = keeper
     self.worker = worker
 
 
@@ -181,43 +181,43 @@ def __init__(token: address, guardian: address, keeper: address, worker: address
 
 
 @external
-def setNextAdmin(nextAdmin: address):
-    assert msg.sender == self.admin, "!admin"
-    self.nextAdmin = nextAdmin
-    log SetNextAdmin(nextAdmin)
+def setNextTimeLock(nextTimeLock: address):
+    assert msg.sender == self.timeLock, "!time lock"
+    self.nextTimeLock = nextTimeLock
+    log SetNextTimeLock(nextTimeLock)
 
 
 @external
-def acceptAdmin():
-    assert msg.sender == self.nextAdmin, "!next admin"
-    self.admin = msg.sender
-    log AcceptAdmin(msg.sender)
+def acceptTimeLock():
+    assert msg.sender == self.nextTimeLock, "!next time lock"
+    self.timeLock = msg.sender
+    log AcceptTimeLock(msg.sender)
+
+
+@external
+def setAdmin(admin: address):
+    assert msg.sender in [self.timeLock, self.admin], "!auth"
+    self.admin = admin
+    log SetAdmin(admin)
 
 
 @external
 def setGuardian(guardian: address):
-    assert msg.sender in [self.admin, self.keeper], "!auth"
+    assert msg.sender in [self.timeLock, self.admin], "!auth"
     self.guardian = guardian
     log SetGuardian(guardian)
 
 
 @external
-def setKeeper(keeper: address):
-    assert msg.sender in [self.admin, self.keeper], "!auth"
-    self.keeper = keeper
-    log SetKeeper(keeper)
-
-
-@external
 def setWorker(worker: address):
-    assert msg.sender in [self.admin, self.keeper], "!auth"
+    assert msg.sender in [self.timeLock, self.admin], "!auth"
     self.worker = worker
     log SetWorker(worker)
 
 
 @external
 def setPause(paused: bool):
-    assert msg.sender in [self.admin, self.keeper, self.guardian], "!auth"
+    assert msg.sender in [self.timeLock, self.admin, self.guardian], "!auth"
     self.paused = paused
     log SetPause(paused)
 
@@ -273,7 +273,7 @@ def _safeTransferFrom(
 # TODO: test migration
 @external
 def setVault(vault: address):
-    assert msg.sender == self.admin, "!admin"
+    assert msg.sender == self.timeLock, "!time lock"
     assert Vault(vault).token() == self.token.address, "vault token != token"
 
     if self.vault.address != ZERO_ADDRESS:
@@ -336,7 +336,7 @@ def _find(strategy: address) -> uint256:
 
 @external
 def approveStrategy(strategy: address):
-    assert msg.sender == self.admin, "!admin"
+    assert msg.sender == self.timeLock, "!time lock"
 
     assert not self.strategies[strategy].approved, "approved"
     assert IStrategy(strategy).fundManager() == self, "strategy fund manager != this"
@@ -357,8 +357,7 @@ def approveStrategy(strategy: address):
 
 @external
 def revokeStrategy(strategy: address):
-    # TODO: include guardian?
-    assert msg.sender in [self.admin, self.keeper, self.guardian], "!auth"
+    assert msg.sender in [self.timeLock, self.admin], "!auth"
     assert self.strategies[strategy].approved, "!approved"
     assert not self.strategies[strategy].active, "active"
 
@@ -371,7 +370,7 @@ def revokeStrategy(strategy: address):
 def addStrategyToQueue(
     strategy: address, debtRatio: uint256, minBorrow: uint256, maxBorrow: uint256
 ):
-    assert msg.sender in [self.admin, self.keeper], "!auth"
+    assert msg.sender in [self.timeLock, self.admin], "!auth"
     assert self.strategies[strategy].approved, "!approved"
     assert not self.strategies[strategy].active, "active"
     assert self.totalDebtRatio + debtRatio <= MAX_TOTAL_DEBT_RATIO, "ratio > max"
@@ -391,7 +390,7 @@ def addStrategyToQueue(
 @external
 def removeStrategyFromQueue(strategy: address):
     # TODO: include guardian?
-    assert msg.sender in [self.admin, self.keeper], "!auth"
+    assert msg.sender in [self.timeLock, self.admin], "!auth"
     assert self.strategies[strategy].active, "!active"
 
     self._remove(self._find(strategy))
@@ -404,7 +403,7 @@ def removeStrategyFromQueue(strategy: address):
 
 @external
 def setQueue(queue: address[MAX_QUEUE]):
-    assert msg.sender in [self.admin, self.keeper], "!auth"
+    assert msg.sender in [self.timeLock, self.admin], "!auth"
 
     # check no gaps in new queue
     zero: bool = False
@@ -447,7 +446,7 @@ def setQueue(queue: address[MAX_QUEUE]):
 
 @external
 def setDebtRatios(debtRatios: uint256[MAX_QUEUE]):
-    assert msg.sender in [self.admin, self.keeper], "!auth"
+    assert msg.sender in [self.timeLock, self.admin], "!auth"
 
     # check that we're only setting debt ratio on active strategy
     for i in range(MAX_QUEUE):
@@ -474,7 +473,7 @@ def setDebtRatios(debtRatios: uint256[MAX_QUEUE]):
 
 @external
 def setMinMaxBorrow(strategy: address, minBorrow: uint256, maxBorrow: uint256):
-    assert msg.sender in [self.admin, self.keeper], "!auth"
+    assert msg.sender in [self.timeLock, self.admin], "!auth"
     assert self.strategies[strategy].approved, "!approved"
     assert minBorrow <= maxBorrow, "min borrow > max borrow"
 
@@ -487,7 +486,7 @@ def setMinMaxBorrow(strategy: address, minBorrow: uint256, maxBorrow: uint256):
 # functions between Vault and this contract #
 @external
 def borrowFromVault(amount: uint256, _min: uint256):
-    assert msg.sender in [self.admin, self.keeper, self.worker], "!auth"
+    assert msg.sender in [self.timeLock, self.admin, self.worker], "!auth"
     # fails if vault not set
     borrowed: uint256 = self.vault.borrow(amount)
     assert borrowed >= _min, "borrowed < min"
@@ -497,7 +496,7 @@ def borrowFromVault(amount: uint256, _min: uint256):
 
 @external
 def repayVault(amount: uint256, _min: uint256):
-    assert msg.sender in [self.admin, self.keeper, self.worker], "!auth"
+    assert msg.sender in [self.timeLock, self.admin, self.worker], "!auth"
     # fails if vault not set
     # infinite approved in setVault()
     # TODO: accidentally repay with profit?
@@ -510,7 +509,7 @@ def repayVault(amount: uint256, _min: uint256):
 # _min and _max to protect against price manipulation
 @external
 def reportToVault(_min: uint256, _max: uint256):
-    assert msg.sender in [self.admin, self.keeper, self.worker], "!auth"
+    assert msg.sender in [self.timeLock, self.admin, self.worker], "!auth"
 
     total: uint256 = self._totalAssets()
     assert total >= _min and total <= _max, "total not in range"
@@ -734,6 +733,6 @@ def report(gain: uint256, loss: uint256):
 
 @external
 def sweep(token: address):
-    assert msg.sender in [self.admin, self.keeper], "!auth"
+    assert msg.sender in [self.timeLock, self.admin], "!auth"
     assert token != self.token.address, "protected"
     self._safeTransfer(token, msg.sender, ERC20(token).balanceOf(self))
