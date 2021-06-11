@@ -469,20 +469,24 @@ def setMinMaxBorrow(strategy: address, minBorrow: uint256, maxBorrow: uint256):
 
 # functions between Vault and this contract #
 @external
-def borrowFromVault(amount: uint256):
+def borrowFromVault(amount: uint256, _min: uint256):
     assert msg.sender in [self.admin, self.keeper, self.worker], "!auth"
     # fails if vault not set
     borrowed: uint256 = self.vault.borrow(amount)
+    assert borrowed >= _min, "borrowed < min"
+
     log BorrowFromVault(self.vault.address, amount, borrowed)
 
 
 @external
-def repayVault(amount: uint256):
+def repayVault(amount: uint256, _min: uint256):
     assert msg.sender in [self.admin, self.keeper, self.worker], "!auth"
     # fails if vault not set
     # infinite approved in setVault()
     # TODO: accidentally repay with profit?
     repaid: uint256 = self.vault.repay(amount)
+    assert repaid >= _min, "repaid < min"
+    
     log RepayVault(self.vault.address, amount, repaid)
 
 
