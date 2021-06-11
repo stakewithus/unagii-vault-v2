@@ -11,6 +11,7 @@ maxRepay: public(uint256)
 gain: public(uint256)
 loss: public(uint256)
 
+
 @external
 def __init__(token: address):
     self.token = ERC20(token)
