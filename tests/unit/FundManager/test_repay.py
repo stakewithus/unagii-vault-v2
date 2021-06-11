@@ -41,6 +41,7 @@ def test_repay(fundManager, token, admin, keeper, testStrategy, user):
     tx = fundManager.repay(amount, {"from": strategy})
     after = snapshot()
 
+    diff = after["token"]["fundManager"] - before["token"]["fundManager"]
     assert after["token"]["fundManager"] == before["token"]["fundManager"] + amount
     assert after["token"]["strategy"] == before["token"]["strategy"] - amount
     assert (
@@ -48,4 +49,4 @@ def test_repay(fundManager, token, admin, keeper, testStrategy, user):
     )
     assert after["fundManager"]["debt"] == before["fundManager"]["debt"] - amount
 
-    assert tx.events["Repay"].values() == [strategy, amount]
+    assert tx.events["Repay"].values() == [strategy, amount, diff]

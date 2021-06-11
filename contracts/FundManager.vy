@@ -531,19 +531,19 @@ def reportToVault():
 
 # functions between vault -> this contract -> strategies #
 @internal
-def _withdraw(_amount: uint256) -> uint256:
-    amount: uint256 = _amount
+def _withdraw(amount: uint256) -> uint256:
+    _amount: uint256 = amount
     totalLoss: uint256 = 0
     for strategy in self.queue:
         if strategy == ZERO_ADDRESS:
             break
 
         bal: uint256 = self.token.balanceOf(self)
-        if amount <= bal:
+        if _amount <= bal:
             break
 
         debt: uint256 = self.strategies[strategy].debt
-        need: uint256 = min(amount - bal, debt)
+        need: uint256 = min(_amount - bal, debt)
         if need == 0:
             continue
 
@@ -552,7 +552,7 @@ def _withdraw(_amount: uint256) -> uint256:
         diff = self.token.balanceOf(self) - diff
 
         if loss > 0:
-            amount -= loss
+            _amount -= loss
             totalLoss += loss
             self.strategies[strategy].debt -= loss
             self.totalDebt -= loss
@@ -574,9 +574,10 @@ def withdraw(amount: uint256) -> uint256:
     bal: uint256 = self.token.balanceOf(self)
     loss: uint256 = 0
     if _amount > bal:
-        loss = self._withdraw(_amount - bal)
+        # try to withdraw until balance of fund manager >= _amount
+        loss = self._withdraw(_amount)
         _amount = min(_amount - loss, self.token.balanceOf(self))
-    
+
     self._safeTransfer(self.token.address, msg.sender, _amount)
 
     log Withdraw(msg.sender, amount, _amount, loss)

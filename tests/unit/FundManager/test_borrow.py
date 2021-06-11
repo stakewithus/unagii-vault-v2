@@ -46,6 +46,7 @@ def test_borrow(fundManager, token, admin, keeper, guardian, testStrategy, user)
 
     strat = fundManager.strategies(strategy)
 
+    diff = before["token"]["fundManager"] - after["token"]["fundManager"]
     assert after["token"]["fundManager"] == before["token"]["fundManager"] - amount
     assert after["token"]["strategy"] == before["token"]["strategy"] + amount
     assert (
@@ -53,4 +54,4 @@ def test_borrow(fundManager, token, admin, keeper, guardian, testStrategy, user)
     )
     assert after["fundManager"]["debt"] == before["fundManager"]["debt"] + amount
 
-    assert tx.events["Borrow"].values() == [strategy, amount]
+    assert tx.events["Borrow"].values() == [strategy, amount, diff]

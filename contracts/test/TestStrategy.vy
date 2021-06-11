@@ -27,10 +27,13 @@ def deposit():
 
 @external
 def withdraw(amount: uint256) -> uint256:
-    self.token.transfer(self.fundManager, amount - self.loss)
-    if self.loss > 0:
-        TestToken(self.token.address).burn(self, self.loss)
-    return self.loss
+    loss: uint256 = min(amount, self.loss)
+
+    self.token.transfer(self.fundManager, amount - loss)
+    if loss > 0:
+        TestToken(self.token.address).burn(self, loss)
+
+    return loss
 
 @external
 def harvest():
