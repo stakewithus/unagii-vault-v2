@@ -46,19 +46,21 @@ def totalAssets() -> uint256:
 
 
 @external
-def deposit(amount: uint256):
+def deposit(amount: uint256, _min: uint256):
     assert msg.sender in [self.admin, self.worker], "!auth"
-    self.fundManager.borrow(amount)
+    borrowed:uint256 = self.fundManager.borrow(amount)
+    assert borrowed >= _min, "borrowed < min"
     # code to deposit into external DeFi here...
 
 
-# TODO: return loss?
+# call report after this tx to report any loss
 @external
-def repay(amount: uint256):
+def repay(amount: uint256, _min: uint256):
     assert msg.sender in [self.admin, self.worker], "!auth"
     # code to withdraw from external DeFi here...
     self.token.approve(self.fundManager.address, amount)
-    self.fundManager.repay(amount)
+    repaid: uint256 = self.fundManager.repay(amount)
+    assert repaid >= _min, "repaid < min"
 
 
 @external
@@ -82,8 +84,19 @@ def harvest():
 
 
 @external
-def report():
+def skim():
+    # withdraw profit from external DeFi
+    pass
+
+
+# _min, _max to protect against price manipulation
+@external
+def report(_min: uint256, _max: uint256):
+    assert msg.sender in [self.admin, self.worker], "!auth"
+
     total: uint256 = self._totalAssets()
+    assert total >= _min and total <= _max, "total not in range"
+
     gain: uint256 = 0
     loss: uint256 = 0
     debt: uint256 = self.fundManager.getDebt(self)
