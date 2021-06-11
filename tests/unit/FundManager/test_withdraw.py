@@ -98,8 +98,6 @@ def test_withdraw(
         )
         strats.append(strat)
 
-        token.approve(fundManager, 2 ** 256 - 1, {"from": strat})
-
     debts = []
     for i in range(k):
         strat = strats[i]
