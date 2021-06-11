@@ -486,15 +486,17 @@ def repayVault(amount: uint256, _min: uint256):
     # TODO: accidentally repay with profit?
     repaid: uint256 = self.vault.repay(amount)
     assert repaid >= _min, "repaid < min"
-    
+
     log RepayVault(self.vault.address, amount, repaid)
 
-
+# _min and _max to protect against price manipulation
 @external
-def reportToVault():
+def reportToVault(_min: uint256, _max: uint256):
     assert msg.sender in [self.admin, self.keeper, self.worker], "!auth"
 
     total: uint256 = self._totalAssets()
+    assert total >= _min and total <= _max, "total not in range"
+    
     debt: uint256 = self.vault.debt()
     gain: uint256 = 0
     loss: uint256 = 0
