@@ -2,12 +2,12 @@ import brownie
 import pytest
 
 
-def test_set_symbol(accounts, uToken):
-    admin = uToken.admin()
+def test_set_symbol(uToken, user):
+    timeLock = uToken.timeLock()
 
-    # not admin
-    with brownie.reverts("!admin"):
-        uToken.setSymbol("TEST123", {"from": accounts[1]})
+    # not time lock
+    with brownie.reverts("!time lock"):
+        uToken.setSymbol("TEST123", {"from": user})
 
-    uToken.setSymbol("TEST123", {"from": admin})
+    uToken.setSymbol("TEST123", {"from": timeLock})
     assert uToken.symbol() == "TEST123"
