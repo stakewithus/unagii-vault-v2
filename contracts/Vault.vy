@@ -432,7 +432,7 @@ def calcWithdraw(shares: uint256) -> uint256:
 # TODO: deposit log
 @external
 @nonreentrant("lock")
-def deposit(amount: uint256, minShares: uint256) -> uint256:
+def deposit(amount: uint256, _min: uint256) -> uint256:
     assert not self.paused, "paused"
     # TODO: test deposit / withdraw flash attack
     # TODO: test block delay
@@ -466,7 +466,7 @@ def deposit(amount: uint256, minShares: uint256) -> uint256:
     assert diff > 0, "diff = 0"
 
     shares: uint256 = self._calcSharesToMint(diff, totalSupply, freeFunds)
-    assert shares >= minShares, "shares < min"
+    assert shares >= _min, "shares < min"
 
     # TODO: test balanceOfVault <= ERC20.balanceOf(self)
     self.balanceOfVault += diff
