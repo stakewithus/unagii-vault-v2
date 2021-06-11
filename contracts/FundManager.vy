@@ -274,7 +274,6 @@ def _safeTransferFrom(
 @external
 def setVault(vault: address):
     assert msg.sender == self.admin, "!admin"
-    # TODO: check Vault.fundManager() == self?
     assert Vault(vault).token() == self.token.address, "vault token != token"
 
     if self.vault.address != ZERO_ADDRESS:
