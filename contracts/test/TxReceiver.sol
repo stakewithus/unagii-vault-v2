@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 pragma solidity ^0.8;
 
-contract TestTimeLock {
+contract TxReceiver {
     // test helper
     bytes public data;
     uint public value;
