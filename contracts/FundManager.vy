@@ -638,6 +638,12 @@ def calcOutstandingDebt(strategy: address) -> uint256:
 
 
 @external
+@view
+def getDebt(strategy: address) -> uint256:
+    return self.strategies[strategy].debt
+
+
+@external
 def borrow(amount: uint256) -> uint256:
     assert not self.paused, "paused"
     assert self.strategies[msg.sender].active, "!active"
