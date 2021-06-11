@@ -2,7 +2,9 @@ import brownie
 import pytest
 
 
-def test_set_min_reserve(vault, admin, keeper, user):
+def test_set_min_reserve(vault, admin, user):
+    timeLock = vault.timeLock()
+
     # not auth
     with brownie.reverts("!auth"):
         vault.setMinReserve(123, {"from": user})
@@ -11,10 +13,10 @@ def test_set_min_reserve(vault, admin, keeper, user):
     with brownie.reverts("min reserve > max"):
         vault.setMinReserve(10001, {"from": admin})
 
-    # admin
-    vault.setMinReserve(123, {"from": admin})
+    # time lock
+    vault.setMinReserve(123, {"from": timeLock})
     assert vault.minReserve() == 123
 
-    # keeper
-    vault.setMinReserve(321, {"from": keeper})
+    # admin
+    vault.setMinReserve(321, {"from": admin})
     assert vault.minReserve() == 321

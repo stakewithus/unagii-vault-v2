@@ -2,21 +2,22 @@ import brownie
 import pytest
 
 
-def test_set_pause(vault, admin, guardian, keeper, user):
-    # not admin
+def test_set_pause(vault, admin, guardian, user):
+    timeLock = vault.timeLock()
+
+    # not auth
     with brownie.reverts("!auth"):
         vault.setPause(True, {"from": user})
 
-    # admin can pause
-    tx = vault.setPause(True, {"from": admin})
+    # time lock can pause
+    tx = vault.setPause(True, {"from": timeLock})
     assert vault.paused()
-    assert len(tx.events) == 1
     assert tx.events["SetPause"].values() == [True]
 
-    # guardian can pause
-    tx = vault.setPause(False, {"from": guardian})
+    # admin can pause
+    tx = vault.setPause(False, {"from": admin})
     assert not vault.paused()
 
-    # keeper can pause
-    tx = vault.setPause(True, {"from": keeper})
+    # guardian can pause
+    vault.setPause(True, {"from": guardian})
     assert vault.paused()

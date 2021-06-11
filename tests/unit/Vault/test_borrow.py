@@ -7,7 +7,8 @@ import pytest
 @pytest.fixture(scope="function", autouse=True)
 def setup(fn_isolation, vault, token, admin, testFundManager, user):
     if vault.fundManager() != testFundManager.address:
-        vault.setFundManager(testFundManager, {"from": admin})
+        timeLock = vault.timeLock()
+        vault.setFundManager(testFundManager, {"from": timeLock})
 
 
 @given(

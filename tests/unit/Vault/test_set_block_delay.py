@@ -2,8 +2,10 @@ import brownie
 import pytest
 
 
-def test_set_block_delay(vault, admin, keeper, user):
-    # not admin
+def test_set_block_delay(vault, admin, user):
+    timeLock = vault.timeLock()
+
+    # not auth
     with brownie.reverts("!auth"):
         vault.setBlockDelay(123, {"from": user})
 
@@ -11,10 +13,10 @@ def test_set_block_delay(vault, admin, keeper, user):
     with brownie.reverts("delay = 0"):
         vault.setBlockDelay(0, {"from": admin})
 
-    # admin
-    vault.setBlockDelay(123, {"from": admin})
+    # time lock
+    vault.setBlockDelay(123, {"from": timeLock})
     assert vault.blockDelay() == 123
 
-    # keeper
-    vault.setBlockDelay(321, {"from": keeper})
+    # admin
+    vault.setBlockDelay(321, {"from": admin})
     assert vault.blockDelay() == 321

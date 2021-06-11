@@ -2,7 +2,9 @@ import brownie
 import pytest
 
 
-def test_force_update_balance_of_vault(vault, token, admin, keeper, user):
+def test_force_update_balance_of_vault(vault, token, admin, user):
+    timeLock = vault.timeLock()
+
     # not auth
     with brownie.reverts("!auth"):
         vault.forceUpdateBalanceOfVault({"from": user})
@@ -28,7 +30,7 @@ def test_force_update_balance_of_vault(vault, token, admin, keeper, user):
         }
 
     before = snapshot()
-    tx = vault.forceUpdateBalanceOfVault({"from": admin})
+    tx = vault.forceUpdateBalanceOfVault({"from": timeLock})
     after = snapshot()
 
     assert after["vault"]["balanceOfVault"] == before["token"]["vault"]
@@ -38,7 +40,7 @@ def test_force_update_balance_of_vault(vault, token, admin, keeper, user):
         after["vault"]["balanceOfVault"]
     ]
 
-    # keeper
+    # admin
     # force token balance of vault < balanceOfVault
     token.burn(vault, 1)
-    vault.forceUpdateBalanceOfVault({"from": keeper})
+    vault.forceUpdateBalanceOfVault({"from": admin})

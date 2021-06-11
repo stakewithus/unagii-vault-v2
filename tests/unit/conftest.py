@@ -5,11 +5,11 @@ from brownie import (
     UnagiiToken,
     TimeLock,
     FundManager,
-    TestTimeLock,
     TestToken,
     TestVault,
     TestFundManager,
     TestStrategy,
+    TxTest,
 )
 
 
@@ -24,7 +24,7 @@ def guardian(accounts):
 
 
 @pytest.fixture(scope="session")
-def keeper(accounts):
+def worker(accounts):
     yield accounts[2]
 
 
@@ -34,13 +34,8 @@ def minter(accounts):
 
 
 @pytest.fixture(scope="session")
-def worker(accounts):
-    yield accounts[4]
-
-
-@pytest.fixture(scope="session")
 def attacker(accounts):
-    yield accounts[5]
+    yield accounts[-2]
 
 
 @pytest.fixture(scope="session")
@@ -48,19 +43,10 @@ def user(accounts):
     yield accounts[-1]
 
 
+# Unagii contracts
 @pytest.fixture(scope="module")
 def timeLock(TimeLock, admin):
     yield TimeLock.deploy({"from": admin})
-
-
-@pytest.fixture(scope="module")
-def testTimeLock(TestTimeLock, admin):
-    yield TestTimeLock.deploy({"from": admin})
-
-
-@pytest.fixture(scope="module")
-def token(TestToken, admin):
-    yield TestToken.deploy("test", "TEST", 18, {"from": admin})
 
 
 @pytest.fixture(scope="module")
@@ -71,8 +57,8 @@ def uToken(UnagiiToken, token, admin, minter):
 
 
 @pytest.fixture(scope="module")
-def vault(Vault, token, uToken, admin, guardian, keeper):
-    vault = Vault.deploy(token, uToken, guardian, keeper, {"from": admin})
+def vault(Vault, token, uToken, admin, guardian):
+    vault = Vault.deploy(token, uToken, guardian, {"from": admin})
 
     uToken.setMinter(vault, {"from": admin})
 
@@ -82,8 +68,21 @@ def vault(Vault, token, uToken, admin, guardian, keeper):
 
 
 @pytest.fixture(scope="module")
-def testFundManager(TestFundManager, vault, token, admin):
-    yield TestFundManager.deploy(vault, token, {"from": admin})
+def fundManager(FundManager, testVault, token, admin, guardian, worker):
+    fundManager = FundManager.deploy(token, guardian, worker, {"from": admin})
+    fundManager.setVault(testVault, {"from": admin})
+    yield fundManager
+
+
+# test contracts
+@pytest.fixture(scope="module")
+def token(TestToken, admin):
+    yield TestToken.deploy("test", "TEST", 18, {"from": admin})
+
+
+@pytest.fixture(scope="module")
+def txTest(TxTest, admin):
+    yield TxTest.deploy({"from": admin})
 
 
 @pytest.fixture(scope="module")
@@ -92,10 +91,8 @@ def testVault(TestVault, token, admin):
 
 
 @pytest.fixture(scope="module")
-def fundManager(FundManager, testVault, token, admin, guardian, keeper, worker):
-    fundManager = FundManager.deploy(token, guardian, keeper, worker, {"from": admin})
-    fundManager.setVault(testVault, {"from": admin})
-    yield fundManager
+def testFundManager(TestFundManager, vault, token, admin):
+    yield TestFundManager.deploy(vault, token, {"from": admin})
 
 
 @pytest.fixture(scope="module")

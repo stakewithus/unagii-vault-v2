@@ -2,7 +2,9 @@ import brownie
 import pytest
 
 
-def test_skim(vault, token, admin, keeper, user):
+def test_skim(vault, token, admin, user):
+    timeLock = vault.timeLock()
+
     # not auth
     with brownie.reverts("!auth"):
         vault.skim({"from": user})
@@ -15,8 +17,8 @@ def test_skim(vault, token, admin, keeper, user):
         return {
             "vault": {"balanceOfVault": vault.balanceOfVault()},
             "token": {
+                "timeLock": token.balanceOf(timeLock),
                 "admin": token.balanceOf(admin),
-                "keeper": token.balanceOf(keeper),
                 "vault": token.balanceOf(vault),
             },
         }
@@ -30,11 +32,11 @@ def test_skim(vault, token, admin, keeper, user):
     assert after["vault"]["balanceOfVault"] == before["vault"]["balanceOfVault"]
     assert after["vault"]["balanceOfVault"] == after["token"]["vault"]
 
-    # keeper
+    # admin
     token.mint(vault, 1)
 
     before = snapshot()
-    vault.skim({"from": keeper})
+    vault.skim({"from": admin})
     after = snapshot()
 
-    assert after["token"]["keeper"] == before["token"]["keeper"] + 1
+    assert after["token"]["admin"] == before["token"]["admin"] + 1

@@ -2,7 +2,9 @@ import brownie
 import pytest
 
 
-def test_sweep(vault, token, TestToken, admin, keeper, user):
+def test_sweep(vault, token, TestToken, admin, user):
+    timeLock = vault.timeLock()
+
     anotherToken = TestToken.deploy("test", "TEST", 18, {"from": admin})
 
     # not auth
@@ -13,8 +15,8 @@ def test_sweep(vault, token, TestToken, admin, keeper, user):
     with brownie.reverts("protected"):
         vault.sweep(token, {"from": admin})
 
+    # time lock
+    vault.sweep(anotherToken, {"from": timeLock})
+
     # admin
     vault.sweep(anotherToken, {"from": admin})
-
-    # keeper
-    vault.sweep(anotherToken, {"from": keeper})

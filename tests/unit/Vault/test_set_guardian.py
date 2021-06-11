@@ -7,15 +7,16 @@ def setup(fn_isolation):
     pass
 
 
-def test_set_guardian_admin(vault, admin, user):
-    tx = vault.setGuardian(user, {"from": admin})
+def test_set_guardian_time_lock(vault, user):
+    timeLock = vault.timeLock()
+
+    tx = vault.setGuardian(user, {"from": timeLock})
     assert vault.guardian() == user
-    assert len(tx.events) == 1
     assert tx.events["SetGuardian"].values() == [user]
 
 
-def test_set_guardian_keeper(vault, keeper, user):
-    vault.setGuardian(user, {"from": keeper})
+def test_set_guardian_admin(vault, admin, user):
+    vault.setGuardian(user, {"from": admin})
     assert vault.guardian() == user
 
 
