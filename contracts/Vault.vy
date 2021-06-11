@@ -118,12 +118,7 @@ whitelist: public(HashMap[address, bool])
 
 
 @external
-def __init__(
-    token: address,
-    uToken: address,
-    guardian: address,
-    keeper: address
-):
+def __init__(token: address, uToken: address, guardian: address, keeper: address):
     self.admin = msg.sender
     self.guardian = guardian
     self.keeper = keeper

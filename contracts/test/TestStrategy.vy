@@ -48,7 +48,7 @@ def totalAssets() -> uint256:
 @external
 def deposit(amount: uint256, _min: uint256):
     assert msg.sender in [self.admin, self.worker], "!auth"
-    borrowed:uint256 = self.fundManager.borrow(amount)
+    borrowed: uint256 = self.fundManager.borrow(amount)
     assert borrowed >= _min, "borrowed < min"
     # code to deposit into external DeFi here...
 

@@ -60,29 +60,38 @@ event SetKeeper:
 event SetWorker:
     worker: address
 
+
 event SetPause:
     paused: bool
+
 
 event SetVault:
     vault: address
 
+
 event ApproveStrategy:
     strategy: indexed(address)
+
 
 event RevokeStrategy:
     strategy: indexed(address)
 
+
 event AddStrategyToQueue:
     strategy: indexed(address)
+
 
 event RemoveStrategyFromQueue:
     strategy: indexed(address)
 
+
 event SetQueue:
     queue: address[MAX_QUEUE]
 
+
 event SetDebtRatios:
     debtRatios: uint256[MAX_QUEUE]
+
 
 event SetMinMaxBorrow:
     strategy: indexed(address)
@@ -95,10 +104,12 @@ event BorrowFromVault:
     amount: uint256
     borrowed: uint256
 
+
 event RepayVault:
     vault: indexed(address)
     amount: uint256
     repaid: uint256
+
 
 event ReportToVault:
     vault: indexed(address)
@@ -107,11 +118,13 @@ event ReportToVault:
     gain: uint256
     loss: uint256
 
+
 event Withdraw:
     vault: indexed(address)
     amount: uint256
     actual: uint256
     loss: uint256
+
 
 event WithdrawStrategy:
     strategy: indexed(address)
@@ -119,21 +132,25 @@ event WithdrawStrategy:
     loss: uint256
     diff: uint256
 
+
 event Borrow:
     strategy: indexed(address)
     amount: uint256
     borrowed: uint256
+
 
 event Repay:
     strategy: indexed(address)
     amount: uint256
     repaid: uint256
 
+
 event Report:
     strategy: indexed(address)
     gain: uint256
     loss: uint256
     debt: uint256
+
 
 vault: public(Vault)
 token: public(ERC20)
@@ -152,19 +169,16 @@ queue: public(address[MAX_QUEUE])
 
 
 @external
-def __init__(
-    token: address,
-    guardian: address,
-    keeper: address,
-    worker: address
-):
+def __init__(token: address, guardian: address, keeper: address, worker: address):
     self.token = ERC20(token)
     self.admin = msg.sender
     self.guardian = guardian
     self.keeper = keeper
     self.worker = worker
 
+
 # TODO: migrate
+
 
 @external
 def setNextAdmin(nextAdmin: address):
@@ -277,13 +291,15 @@ def setVault(vault: address):
 def _totalAssets() -> uint256:
     return self.token.balanceOf(self) + self.totalDebt
 
+
 # TODO: test
 @external
 @view
 def totalAssets() -> uint256:
     return self._totalAssets()
 
-# array functions tested in test/Array.vy 
+
+# array functions tested in test/Array.vy
 @internal
 def _pack():
     arr: address[MAX_QUEUE] = empty(address[MAX_QUEUE])
@@ -334,7 +350,7 @@ def approveStrategy(strategy: address):
         debtRatio: 0,
         debt: 0,
         minBorrow: 0,
-        maxBorrow: 0
+        maxBorrow: 0,
     })
 
     log ApproveStrategy(strategy)
@@ -353,7 +369,9 @@ def revokeStrategy(strategy: address):
 
 
 @external
-def addStrategyToQueue(strategy: address, debtRatio: uint256, minBorrow: uint256, maxBorrow: uint256):
+def addStrategyToQueue(
+    strategy: address, debtRatio: uint256, minBorrow: uint256, maxBorrow: uint256
+):
     assert msg.sender in [self.admin, self.keeper], "!auth"
     assert self.strategies[strategy].approved, "!approved"
     assert not self.strategies[strategy].active, "active"
@@ -367,7 +385,7 @@ def addStrategyToQueue(strategy: address, debtRatio: uint256, minBorrow: uint256
     self.strategies[strategy].minBorrow = minBorrow
     self.strategies[strategy].maxBorrow = maxBorrow
     self.totalDebtRatio += debtRatio
-    
+
     log AddStrategyToQueue(strategy)
 
 
@@ -443,11 +461,11 @@ def setDebtRatios(debtRatios: uint256[MAX_QUEUE]):
         addr: address = self.queue[i]
         if addr == ZERO_ADDRESS:
             break
-        
+
         debtRatio: uint256 = debtRatios[i]
         self.strategies[addr].debtRatio = debtRatio
         totalDebtRatio += debtRatio
-    
+
     self.totalDebtRatio = totalDebtRatio
 
     assert self.totalDebtRatio <= MAX_TOTAL_DEBT_RATIO, "total > max"
@@ -458,7 +476,7 @@ def setDebtRatios(debtRatios: uint256[MAX_QUEUE]):
 @external
 def setMinMaxBorrow(strategy: address, minBorrow: uint256, maxBorrow: uint256):
     assert msg.sender in [self.admin, self.keeper], "!auth"
-    assert self.strategies[strategy].approved, "!approved" 
+    assert self.strategies[strategy].approved, "!approved"
     assert minBorrow <= maxBorrow, "min borrow > max borrow"
 
     self.strategies[strategy].minBorrow = minBorrow
@@ -489,6 +507,7 @@ def repayVault(amount: uint256, _min: uint256):
 
     log RepayVault(self.vault.address, amount, repaid)
 
+
 # _min and _max to protect against price manipulation
 @external
 def reportToVault(_min: uint256, _max: uint256):
@@ -496,7 +515,7 @@ def reportToVault(_min: uint256, _max: uint256):
 
     total: uint256 = self._totalAssets()
     assert total >= _min and total <= _max, "total not in range"
-    
+
     debt: uint256 = self.vault.debt()
     gain: uint256 = 0
     loss: uint256 = 0
@@ -575,7 +594,7 @@ def _withdraw(amount: uint256) -> uint256:
 def withdraw(amount: uint256) -> uint256:
     assert msg.sender == self.vault.address, "!vault"
     assert amount > 0, "withdraw = 0"
-    
+
     _amount: uint256 = amount
     bal: uint256 = self.token.balanceOf(self)
     loss: uint256 = 0
@@ -599,7 +618,9 @@ def _calcMaxBorrow(strategy: address) -> uint256:
         return 0
 
     # TODO: test with multiple strategies
-    limit: uint256 = self.strategies[strategy].debtRatio * self._totalAssets() / self.totalDebtRatio
+    limit: uint256 = (
+        self.strategies[strategy].debtRatio * self._totalAssets() / self.totalDebtRatio
+    )
     debt: uint256 = self.strategies[strategy].debt
 
     if debt >= limit:
@@ -627,7 +648,9 @@ def _calcOutstandingDebt(strategy: address) -> uint256:
         return self.strategies[strategy].debt
 
     # TODO: test debtRatio = 0 and debtRatio > 0
-    limit: uint256 = self.strategies[strategy].debtRatio * self._totalAssets() / self.totalDebtRatio
+    limit: uint256 = (
+        self.strategies[strategy].debtRatio * self._totalAssets() / self.totalDebtRatio
+    )
     debt: uint256 = self.strategies[strategy].debt
 
     if debt <= limit:
@@ -703,7 +726,7 @@ def report(gain: uint256, loss: uint256):
     elif loss > 0:
         self.strategies[msg.sender].debt -= loss
         self.totalDebt -= loss
-    
+
     log Report(msg.sender, gain, loss, self.strategies[msg.sender].debt)
 
 
