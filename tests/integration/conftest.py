@@ -16,18 +16,13 @@ def admin(accounts):
 
 
 @pytest.fixture(scope="session")
-def keeper(accounts):
-    yield accounts[2]
-
-
-@pytest.fixture(scope="session")
 def guardian(accounts):
     yield accounts[1]
 
 
 @pytest.fixture(scope="session")
 def worker(accounts):
-    yield accounts[3]
+    yield accounts[2]
 
 
 @pytest.fixture(scope="session")
@@ -57,38 +52,46 @@ def uToken(UnagiiToken, token, admin):
 
 
 @pytest.fixture(scope="module")
-def vault(Vault, token, uToken, admin, guardian, keeper):
-    vault = Vault.deploy(token, uToken, guardian, keeper, {"from": admin})
+def vault(Vault, token, uToken, admin, guardian):
+    vault = Vault.deploy(token, uToken, guardian, {"from": admin})
     yield vault
 
 
 @pytest.fixture(scope="module")
-def fundManager(FundManager, testVault, token, admin, guardian, keeper, worker):
-    fundManager = FundManager.deploy(token, guardian, keeper, worker, {"from": admin})
+def fundManager(FundManager, token, admin, guardian, worker):
+    fundManager = FundManager.deploy(token, guardian, worker, {"from": admin})
     yield fundManager
 
 
+# time lock delay
+DELAY = 24 * 3600
+
+
 @pytest.fixture(scope="module")
-def setup(chain):
+def setup(chain, uToken, vault, timeLock, fundManager, admin):
     # uToken - set minter to vault
     uToken.setMinter(vault, {"from": admin})
 
-    # uToken - set admin to time lock
-    uToken.setNextAdmin(timeLock, {"from": admin})
+    # uToken - set next time lock
+    uToken.setNextTimeLock(timeLock, {"from": admin})
 
-    timeLock.queue(uToken, "accept admin")
-    chain.sleep(24 * 3600)
-    timeLock.exec(uToken, "accept admin")
+    data = uToken.acceptTimeLock.encode_input()
+    tx = timeLock.queue(uToken, 0, data, DELAY, 0, {"from": admin})
+    eta = tx.timestamp + DELAY
+    chain.sleep(DELAY)
+    timeLock.execute(uToken, 0, data, eta, 0, {"from": admin})
 
     # fund manager - set vault
     fundManager.setVault(vault, {"from": admin})
 
-    # fund manager - set admin to time lock
-    fundManager.setNextAdmin(timeLock, {"from": admin})
+    # fund manager - set time lock
+    fundManager.setNextTimeLock(timeLock, {"from": admin})
 
-    timeLock.queue(fundManager, "accept admin")
-    chain.sleep(24 * 3600)
-    timeLock.exec(fundManager, "accept admin")
+    data = fundManager.acceptTimeLock.encode_input()
+    tx = timeLock.queue(fundManager, 0, data, DELAY, 0, {"from": admin})
+    eta = tx.timestamp + DELAY
+    chain.sleep(DELAY)
+    timeLock.execute(fundManager, 0, data, eta, 0, {"from": admin})
 
     # vault - set fund manager
     vault.setFundManager(fundManager, {"from": admin})
@@ -98,8 +101,10 @@ def setup(chain):
     vault.setDepositLimit(2 ** 256 - 1, {"from": admin})
 
     # vault - set admin to time lock
-    vault.setNextAdmin(timeLock, {"from": admin})
+    vault.setNextTimeLock(timeLock, {"from": admin})
 
-    timeLock.queue(vault, "accept admin")
-    chain.sleep(24 * 3600)
-    timeLock.exec(vault, "accept admin")
+    data = vault.acceptTimeLock.encode_input()
+    tx = timeLock.queue(vault, 0, data, DELAY, 0, {"from": admin})
+    eta = tx.timestamp + DELAY
+    chain.sleep(DELAY)
+    timeLock.execute(vault, 0, data, eta, 0, {"from": admin})
