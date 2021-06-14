@@ -14,19 +14,19 @@ class StateMachine:
         pass
 
     def invariant(self):
-        # test totalAssets
-        # test debt
-        # test calc locked profit
-        # test free funds
-        # test balance of vault
-        # test deposit
-        # test withdraw
-        # test withdraw from strats
-        # test withdraw shares to burn
-        # test available to invest
-        # test borrow
-        # test repay
-        # test report
+        # TODO: test totalAssets
+        # TODO: test debt
+        # TODO: test calc locked profit
+        # TODO: test free funds
+        # TODO: test balance of vault
+        # TODO: test deposit
+        # TODO: test withdraw
+        # TODO: test withdraw from strats
+        # TODO: test withdraw shares to burn
+        # TODO: test available to invest
+        # TODO: test borrow
+        # TODO: test repay
+        # TODO: test report
         pass
 
 
