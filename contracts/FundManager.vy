@@ -612,29 +612,6 @@ def calcMaxBorrow(strategy: address) -> uint256:
     return self._calcMaxBorrow(strategy)
 
 
-# @internal
-# @view
-# def _calcOutstandingDebt(strategy: address) -> uint256:
-#     if self.paused or self.totalDebtRatio == 0:
-#         return self.strategies[strategy].debt
-
-#     limit: uint256 = (
-#         self.strategies[strategy].debtRatio * self._totalAssets() / self.totalDebtRatio
-#     )
-#     debt: uint256 = self.strategies[strategy].debt
-
-#     if debt <= limit:
-#         return 0
-#     else:
-#         return debt - limit
-
-
-# # TODO: remove?
-# @external
-# @view
-# def calcOutstandingDebt(strategy: address) -> uint256:
-
-
 @external
 @view
 def getDebt(strategy: address) -> uint256:
@@ -693,32 +670,6 @@ def report(gain: uint256, loss: uint256):
         self.totalDebt -= loss
 
     log Report(msg.sender, gain, loss, self.strategies[msg.sender].debt)
-
-
-# @external
-# def pull(strategy: address, amount: uint256, maxLoss: uint256, _min: uint256):
-#     assert msg.sender in [self.timeLock, self.admin, self.guardian], "!auth"
-#     assert self.strategies[strategy].approved, "!approved"
-
-#     diff: uint256 = self.token.balanceOf(self)
-#     loss: uint256 = IStrategy(strategy).withdraw(amount)
-#     diff = self.token.balanceOf(self) - diff
-
-#     assert loss <= maxLoss, "loss > max"
-#     assert diff >= _min, "diff < min"
-
-#     if loss > 0:
-#         self.strategies[strategy].debt -= loss
-#         self.totalDebt -= loss
-
-#     if self.strategies[strategy].debt > diff:
-#         self.strategies[strategy].debt -= diff
-#         self.totalDebt -= diff
-#     else:
-#         self.totalDebt -= self.strategies[strategy].debt
-#         self.strategies[strategy].debt = 0
-    
-#     log Pull(strategy, amount, loss, diff)
 
 
 # TODO: migrate strategy
