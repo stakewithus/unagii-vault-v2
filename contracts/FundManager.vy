@@ -28,7 +28,6 @@ interface IStrategy:
 
 
 MAX_QUEUE: constant(uint256) = 20
-MAX_TOTAL_DEBT_RATIO: constant(uint256) = 10000
 
 
 struct Strategy:
@@ -163,6 +162,7 @@ worker: public(address)
 
 paused: public(bool)
 totalDebt: public(uint256)
+MAX_TOTAL_DEBT_RATIO: constant(uint256) = 10000
 totalDebtRatio: public(uint256)
 strategies: public(HashMap[address, Strategy])
 queue: public(address[MAX_QUEUE])
