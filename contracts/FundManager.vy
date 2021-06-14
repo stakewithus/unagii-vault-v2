@@ -291,7 +291,6 @@ def _totalAssets() -> uint256:
     return self.token.balanceOf(self) + self.totalDebt
 
 
-# TODO: test
 @external
 @view
 def totalAssets() -> uint256:
@@ -498,7 +497,6 @@ def repayVault(amount: uint256, _min: uint256):
     assert msg.sender in [self.timeLock, self.admin, self.worker], "!auth"
     # fails if vault not set
     # infinite approved in setVault()
-    # TODO: accidentally repay with profit?
     repaid: uint256 = self.vault.repay(amount)
     assert repaid >= _min, "repaid < min"
 
@@ -518,7 +516,6 @@ def reportToVault(_min: uint256, _max: uint256):
     loss: uint256 = 0
 
     if total > debt:
-        # TODO: if bal part of debt?
         gain = min(total - debt, self.token.balanceOf(self))
     else:
         loss = debt - total
@@ -619,7 +616,6 @@ def _calcOutstandingDebt(strategy: address) -> uint256:
     if self.paused or self.totalDebtRatio == 0:
         return self.strategies[strategy].debt
 
-    # TODO: test debtRatio = 0 and debtRatio > 0
     limit: uint256 = (
         self.strategies[strategy].debtRatio * self._totalAssets() / self.totalDebtRatio
     )
@@ -631,7 +627,7 @@ def _calcOutstandingDebt(strategy: address) -> uint256:
         return debt - limit
 
 
-# TODO: test? remove?
+# TODO: remove?
 @external
 @view
 def calcOutstandingDebt(strategy: address) -> uint256:
