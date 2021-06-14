@@ -58,7 +58,7 @@ N = 5  # max active strategies
 
 @given(
     # number of active strategies
-    k=strategy("uint256", min_value=0, max_value=N - 1),
+    k=strategy("uint256", min_value=0, max_value=N),
     debtRatios=strategy(
         "uint256[]", min_value=1, max_value=100, min_length=N, max_length=N
     ),

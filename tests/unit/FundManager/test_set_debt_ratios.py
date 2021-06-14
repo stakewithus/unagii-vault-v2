@@ -8,11 +8,9 @@ N = 20
 
 @given(
     # number of active strategies
-    k=strategy("uint256", min_value=0, max_value=N - 1),
+    k=strategy("uint256", min_value=0, max_value=N),
     # random numbers for debt ratios
-    rands=strategy(
-        "uint256[]", min_value=0, max_value=100, min_length=N - 1, max_length=N - 1
-    ),
+    rands=strategy("uint256[]", min_value=0, max_value=100, min_length=N, max_length=N),
 )
 def test_set_debt_ratios(fundManager, admin, TestStrategy, token, user, k, rands):
     timeLock = fundManager.timeLock()

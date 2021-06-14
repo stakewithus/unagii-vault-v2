@@ -32,7 +32,8 @@ def swap(arr, i, j):
 
 
 @given(
-    k=strategy("uint256", min_value=0, max_value=N - 1),
+    # number of active strategies
+    k=strategy("uint256", min_value=0, max_value=N),
 )
 def test_set_queue(fundManager, token, admin, user, k):
     timeLock = fundManager.timeLock()

@@ -590,7 +590,7 @@ def _calcMaxBorrow(strategy: address) -> uint256:
     if self.paused or self.totalDebtRatio == 0:
         return 0
 
-    # TODO: test with multiple strategies
+    # strategy debtRatio > 0 only if strategy is active
     limit: uint256 = (
         self.strategies[strategy].debtRatio * self._totalAssets() / self.totalDebtRatio
     )
@@ -607,7 +607,6 @@ def _calcMaxBorrow(strategy: address) -> uint256:
         return min(available, self.strategies[strategy].maxBorrow)
 
 
-# TODO: test
 @external
 @view
 def calcMaxBorrow(strategy: address) -> uint256:
