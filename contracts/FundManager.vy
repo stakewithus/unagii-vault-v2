@@ -389,8 +389,7 @@ def addStrategyToQueue(
 
 @external
 def removeStrategyFromQueue(strategy: address):
-    # TODO: include guardian?
-    assert msg.sender in [self.timeLock, self.admin], "!auth"
+    assert msg.sender in [self.timeLock, self.admin, self.guardian], "!auth"
     assert self.strategies[strategy].active, "!active"
 
     self._remove(self._find(strategy))
@@ -526,30 +525,6 @@ def reportToVault(_min: uint256, _max: uint256):
 
     self.vault.report(gain, loss)
     log ReportToVault(self.vault.address, total, debt, gain, loss)
-
-
-# TODO: remove?
-# @internal
-# def _reportLoss(strategy: address, loss: uint256):
-#     debt: uint256 = self.strategies[strategy].debt
-#     assert loss <= debt, "loss > debt"
-
-#     dr: uint256 = 0 # change in debt ratio
-#     # if self.totalDebtRatio != 0:
-#     #     # l = loss
-#     #     # D = total debt
-#     #     # x = ratio of loss
-#     #     # R = total debt ratio
-#     #     # l / D = x / R
-#     #     dr = min(
-#     #         loss * self.totalDebtRatio / self.totalDebt,
-#     #         self.strategies[strategy].debtRatio,
-#     #     )
-#     self.strategies[strategy].totalLoss += loss
-#     self.strategies[strategy].debt -= loss
-#     self.totalDebt -= loss
-#     self.strategies[strategy].debtRatio -= dr
-#     # self.totalDebtRatio -= dr
 
 
 # functions between vault -> this contract -> strategies #
@@ -694,8 +669,6 @@ def borrow(amount: uint256) -> uint256:
 def repay(amount: uint256) -> uint256:
     assert self.strategies[msg.sender].approved, "!approved"
 
-    # TODO: remove?
-    # debt: uint256 = self._calcOutstandingDebt(msg.sender)
     _amount: uint256 = min(amount, self.strategies[msg.sender].debt)
     assert _amount > 0, "repay = 0"
 
