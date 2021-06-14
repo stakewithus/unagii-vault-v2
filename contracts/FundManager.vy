@@ -635,16 +635,10 @@ def calcMaxBorrow(strategy: address) -> uint256:
 # def calcOutstandingDebt(strategy: address) -> uint256:
 
 
-@internal
-@view
-def _calcMaxRepay(strategy: address) -> uint256:
-    return self.strategies[strategy].debt
-
-
 @external
 @view
-def calcMaxRepay(strategy: address) -> uint256:
-    return self._calcMaxRepay(strategy)
+def getDebt(strategy: address) -> uint256:
+    return self.strategies[strategy].debt
 
 
 @external
@@ -670,7 +664,7 @@ def borrow(amount: uint256) -> uint256:
 def repay(amount: uint256) -> uint256:
     assert self.strategies[msg.sender].approved, "!approved"
 
-    _amount: uint256 = min(amount, self._calcMaxRepay(msg.sender))
+    _amount: uint256 = min(amount, self.strategies[msg.sender].debt)
     assert _amount > 0, "repay = 0"
 
     diff: uint256 = self.token.balanceOf(self)
