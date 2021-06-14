@@ -618,6 +618,14 @@ def report(gain: uint256, loss: uint256):
         # free funds = bal + debt + gain - (locked profit + gain)
         self.debt += gain
         self.lockedProfit = lockedProfit + gain
+
+        # TODO: use this code?
+        # diff: uint256 = self.token.balanceOf(self)
+        # self._safeTransferFrom(self.token.address, msg.sender, self, gain)
+        # diff = self.token.balanceOf(self) - diff
+
+        # self.balanceOfVault += diff
+        # self.lockedProfit = lockedProfit + diff
     elif loss > 0:
         # free funds = bal + debt - loss - (locked profit - loss)
         self.debt -= loss
@@ -632,6 +640,8 @@ def report(gain: uint256, loss: uint256):
     # log updated debt and lockedProfit
     log Report(msg.sender, self.debt, gain, loss, self.lockedProfit)
 
+
+# TODO: pull
 
 @external
 def forceUpdateBalanceOfVault():
