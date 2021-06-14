@@ -520,7 +520,9 @@ def reportToVault(_min: uint256, _max: uint256):
     else:
         loss = debt - total
 
-    self.vault.report(gain, loss)
+    if gain > 0 or loss > 0:
+        self.vault.report(gain, loss)
+
     log ReportToVault(self.vault.address, total, debt, gain, loss)
 
 
