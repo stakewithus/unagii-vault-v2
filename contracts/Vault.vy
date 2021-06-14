@@ -292,7 +292,6 @@ def _totalAssets() -> uint256:
     return self.balanceOfVault + self.debt
 
 
-# TODO: test
 @external
 @view
 def totalAssets() -> uint256:
@@ -313,7 +312,6 @@ def _calcLockedProfit() -> uint256:
         return 0
 
 
-# TODO: test
 @external
 @view
 def calcLockedProfit() -> uint256:
@@ -326,7 +324,6 @@ def _calcFreeFunds() -> uint256:
     return self._totalAssets() - self._calcLockedProfit()
 
 
-# TODO: test
 @external
 @view
 def calcFreeFunds() -> uint256:
@@ -357,7 +354,6 @@ def _calcSharesToMint(
     return amount * totalSupply / freeFunds
 
 
-# TODO: test
 @external
 @view
 def calcSharesToMint(amount: uint256) -> uint256:
@@ -388,7 +384,6 @@ def _calcSharesToBurn(
     return amount * totalSupply / freeFunds
 
 
-# TODO: test
 @external
 @view
 def calcSharesToBurn(amount: uint256) -> uint256:
@@ -417,7 +412,6 @@ def _calcWithdraw(shares: uint256, totalSupply: uint256, freeFunds: uint256) -> 
     return shares * freeFunds / totalSupply
 
 
-# TODO: test
 @external
 @view
 def calcWithdraw(shares: uint256) -> uint256:
@@ -433,8 +427,7 @@ def deposit(amount: uint256, _min: uint256) -> uint256:
     # TODO: test block delay
     # TODO: test whitelist
     assert (
-        self.whitelist[msg.sender]
-        or block.number >= self.uToken.lastBlock(msg.sender) + self.blockDelay
+        self.whitelist[msg.sender] or block.number >= self.uToken.lastBlock(msg.sender) + self.blockDelay
     ), "block < delay"
 
     _amount: uint256 = min(amount, self.token.balanceOf(msg.sender))
@@ -463,11 +456,9 @@ def deposit(amount: uint256, _min: uint256) -> uint256:
     shares: uint256 = self._calcSharesToMint(diff, totalSupply, freeFunds)
     assert shares >= _min, "shares < min"
 
-    # TODO: test balanceOfVault <= ERC20.balanceOf(self)
     self.balanceOfVault += diff
     self.uToken.mint(msg.sender, shares)
 
-    # TODO: test
     assert self.token.balanceOf(self) >= self.balanceOfVault, "bal < vault"
 
     return shares
@@ -489,10 +480,8 @@ def withdraw(shares: uint256, _min: uint256) -> uint256:
     assert _shares > 0, "shares = 0"
 
     totalSupply: uint256 = self.uToken.totalSupply()
-    # TODO: test calcWithdraw, calcFreeFunds
     amount: uint256 = self._calcWithdraw(_shares, totalSupply, self._calcFreeFunds())
 
-    # TODO: test
     if amount > self.balanceOfVault:
         diff: uint256 = self.token.balanceOf(self)
         loss: uint256 = self.fundManager.withdraw(amount - self.balanceOfVault)
@@ -507,7 +496,6 @@ def withdraw(shares: uint256, _min: uint256) -> uint256:
 
         if amount > self.balanceOfVault:
             amount = self.balanceOfVault
-            # TODO: test
             _shares = self._calcSharesToBurn(
                 amount + loss, totalSupply, self._calcFreeFunds()
             )
@@ -525,10 +513,8 @@ def withdraw(shares: uint256, _min: uint256) -> uint256:
         diff = amount
 
     assert diff >= _min, "diff < min"
-    # TODO: test balanceOfVault <= ERC20.balanceOf(self)
     self.balanceOfVault -= amount
 
-    # TODO: test
     assert self.token.balanceOf(self) >= self.balanceOfVault, "bal < vault"
 
     return diff
@@ -551,7 +537,6 @@ def _calcAvailableToInvest() -> uint256:
     return 0
 
 
-# TODO: test
 @external
 def calcAvailableToInvest() -> uint256:
     return self._calcAvailableToInvest()
@@ -562,7 +547,6 @@ def borrow(amount: uint256) -> uint256:
     assert not self.paused, "paused"
     assert msg.sender == self.fundManager.address, "!fund manager"
 
-    # TODO: test _calcAvailableToInvest
     available: uint256 = self._calcAvailableToInvest()
     _amount: uint256 = min(amount, available)
     assert _amount > 0, "borrow = 0"
@@ -573,7 +557,6 @@ def borrow(amount: uint256) -> uint256:
     # include fee on trasfer to debt
     self.debt += _amount
 
-    # TODO: test
     assert self.token.balanceOf(self) >= self.balanceOfVault, "bal < vault"
 
     log Borrow(msg.sender, amount, _amount)
@@ -596,7 +579,6 @@ def repay(amount: uint256) -> uint256:
     # exclude fee on transfer from debt payment
     self.debt -= diff
 
-    # TODO: test
     assert self.token.balanceOf(self) >= self.balanceOfVault, "bal < vault"
 
     log Repay(msg.sender, amount, diff)
@@ -640,8 +622,6 @@ def report(gain: uint256, loss: uint256):
     # log updated debt and lockedProfit
     log Report(msg.sender, self.debt, gain, loss, self.lockedProfit)
 
-
-# TODO: pull
 
 @external
 def forceUpdateBalanceOfVault():
