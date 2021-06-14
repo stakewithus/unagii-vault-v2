@@ -697,6 +697,31 @@ def report(gain: uint256, loss: uint256):
     log Report(msg.sender, gain, loss, self.strategies[msg.sender].debt)
 
 
+# TODO: test? remove?
+# @external
+# def pull(strategy: address, amount: uint256, maxLoss: uint256, _min: uint256):
+#     assert msg.sender in [self.timeLock, self.admin, self.guardian], "!auth"
+#     assert self.strategies[strategy].approved, "!approved"
+
+#     diff: uint256 = self.token.balanceOf(self)
+#     loss: uint256 = IStrategy(strategy).withdraw(amount)
+#     diff = self.token.balanceOf(self) - diff
+
+#     assert loss <= maxLoss, "loss > max"
+#     assert diff >= _min, "diff < min"
+
+#     if loss > 0:
+#         self.strategies[strategy].debt -= loss
+#         self.totalDebt -= loss
+
+#     if self.strategies[strategy].debt > diff:
+#         self.strategies[strategy].debt -= diff
+#         self.totalDebt -= diff
+#     else:
+#         self.totalDebt -= self.strategies[strategy].debt
+#         self.strategies[strategy].debt = 0
+
+
 # TODO: migrate strategy
 
 
