@@ -633,13 +633,18 @@ def calcMaxBorrow(strategy: address) -> uint256:
 # @external
 # @view
 # def calcOutstandingDebt(strategy: address) -> uint256:
-#     return self._calcOutstandingDebt(strategy)
+
+
+@internal
+@view
+def _calcMaxRepay(strategy: address) -> uint256:
+    return self.strategies[strategy].debt
 
 
 @external
 @view
-def getDebt(strategy: address) -> uint256:
-    return self.strategies[strategy].debt
+def calcMaxRepay(strategy: address) -> uint256:
+    return self._calcMaxRepay(strategy)
 
 
 @external
@@ -647,8 +652,7 @@ def borrow(amount: uint256) -> uint256:
     assert not self.paused, "paused"
     assert self.strategies[msg.sender].active, "!active"
 
-    available: uint256 = self._calcMaxBorrow(msg.sender)
-    _amount: uint256 = min(amount, available)
+    _amount: uint256 = min(amount, self._calcMaxBorrow(msg.sender))
     assert _amount > 0, "borrow = 0"
 
     self._safeTransfer(self.token.address, msg.sender, _amount)
@@ -666,7 +670,7 @@ def borrow(amount: uint256) -> uint256:
 def repay(amount: uint256) -> uint256:
     assert self.strategies[msg.sender].approved, "!approved"
 
-    _amount: uint256 = min(amount, self.strategies[msg.sender].debt)
+    _amount: uint256 = min(amount, self._calcMaxRepay(msg.sender))
     assert _amount > 0, "repay = 0"
 
     diff: uint256 = self.token.balanceOf(self)
