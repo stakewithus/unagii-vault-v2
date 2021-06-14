@@ -111,6 +111,13 @@ def report(_min: uint256, _max: uint256):
     if gain > 0 or loss > 0:
         self.fundManager.report(gain, loss)
 
+# TODO: batch?
+# harvest
+# skim
+# calc gain and loss
+# report
+# borrow or repay
+
 
 ### test helpers ###
 @external
