@@ -601,7 +601,7 @@ def report(gain: uint256, loss: uint256):
         self.debt += gain
         self.lockedProfit = lockedProfit + gain
 
-        # TODO: use this code?
+        # TODO: use this code???
         # diff: uint256 = self.token.balanceOf(self)
         # self._safeTransferFrom(self.token.address, msg.sender, self, gain)
         # diff = self.token.balanceOf(self) - diff
