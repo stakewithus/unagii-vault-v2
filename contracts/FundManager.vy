@@ -692,7 +692,6 @@ def report(gain: uint256, loss: uint256):
     assert (gain >= 0 and loss == 0) or (gain == 0 and loss >= 0), "gain and loss > 0"
 
     if gain > 0:
-        assert self.token.balanceOf(msg.sender) >= gain, "bal < gain"
         self._safeTransferFrom(self.token.address, msg.sender, self, gain)
     elif loss > 0:
         self.strategies[msg.sender].debt -= loss

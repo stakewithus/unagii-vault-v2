@@ -18,7 +18,7 @@ def test_report(fundManager, token, admin, testStrategy, user):
         fundManager.report(1, 1, {"from": strategy})
 
     # revert if token balance < gain
-    with brownie.reverts("bal < gain"):
+    with brownie.reverts():
         fundManager.report(1, 0, {"from": strategy})
 
     # gain > 0
