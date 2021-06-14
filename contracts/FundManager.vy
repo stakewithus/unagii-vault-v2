@@ -612,28 +612,28 @@ def calcMaxBorrow(strategy: address) -> uint256:
     return self._calcMaxBorrow(strategy)
 
 
-@internal
-@view
-def _calcOutstandingDebt(strategy: address) -> uint256:
-    if self.paused or self.totalDebtRatio == 0:
-        return self.strategies[strategy].debt
+# @internal
+# @view
+# def _calcOutstandingDebt(strategy: address) -> uint256:
+#     if self.paused or self.totalDebtRatio == 0:
+#         return self.strategies[strategy].debt
 
-    limit: uint256 = (
-        self.strategies[strategy].debtRatio * self._totalAssets() / self.totalDebtRatio
-    )
-    debt: uint256 = self.strategies[strategy].debt
+#     limit: uint256 = (
+#         self.strategies[strategy].debtRatio * self._totalAssets() / self.totalDebtRatio
+#     )
+#     debt: uint256 = self.strategies[strategy].debt
 
-    if debt <= limit:
-        return 0
-    else:
-        return debt - limit
+#     if debt <= limit:
+#         return 0
+#     else:
+#         return debt - limit
 
 
-# TODO: remove?
-@external
-@view
-def calcOutstandingDebt(strategy: address) -> uint256:
-    return self._calcOutstandingDebt(strategy)
+# # TODO: remove?
+# @external
+# @view
+# def calcOutstandingDebt(strategy: address) -> uint256:
+#     return self._calcOutstandingDebt(strategy)
 
 
 @external
