@@ -697,7 +697,6 @@ def report(gain: uint256, loss: uint256):
     log Report(msg.sender, gain, loss, self.strategies[msg.sender].debt)
 
 
-# TODO: test? remove?
 # @external
 # def pull(strategy: address, amount: uint256, maxLoss: uint256, _min: uint256):
 #     assert msg.sender in [self.timeLock, self.admin, self.guardian], "!auth"
@@ -720,6 +719,8 @@ def report(gain: uint256, loss: uint256):
 #     else:
 #         self.totalDebt -= self.strategies[strategy].debt
 #         self.strategies[strategy].debt = 0
+    
+#     log Pull(strategy, amount, loss, diff)
 
 
 # TODO: migrate strategy
