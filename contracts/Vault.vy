@@ -9,7 +9,7 @@
 from vyper.interfaces import ERC20
 
 # TODO: comment
-
+# TODO: gas optimize
 
 interface DetailedERC20:
     def decimals() -> uint256: view
@@ -513,7 +513,7 @@ def withdraw(shares: uint256, _min: uint256) -> uint256:
         diff = amount
 
     assert diff >= _min, "diff < min"
-    self.balanceOfVault -= amount
+    self.balanceOfVault -= diff
 
     assert self.token.balanceOf(self) >= self.balanceOfVault, "bal < vault"
 

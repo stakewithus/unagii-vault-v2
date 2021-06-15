@@ -5,6 +5,8 @@
 @author stakewith.us
 @license AGPL-3.0-or-later
 """
+# TODO: comment
+# TODO: gas optimize
 
 from vyper.interfaces import ERC20
 

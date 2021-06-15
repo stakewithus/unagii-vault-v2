@@ -9,6 +9,7 @@
 from vyper.interfaces import ERC20
 
 # TODO: comment
+# TODO: gas optimize
 
 
 interface Vault:

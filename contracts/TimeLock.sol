@@ -2,6 +2,8 @@
 pragma solidity 0.8.4;
 
 // TODO: stable solidity version
+// TODO: comment
+// TODO: gas optimize
 
 contract TimeLock {
     enum State {
