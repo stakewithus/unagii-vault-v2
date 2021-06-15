@@ -36,7 +36,6 @@ interface FundManager:
     def withdraw(amount: uint256) -> uint256: nonpayable
 
 
-MAX_MIN_RESERVE: constant(uint256) = 10000
 
 
 event SetNextTimeLock:
@@ -105,6 +104,7 @@ paused: public(bool)
 depositLimit: public(uint256)
 balanceOfVault: public(uint256)
 debt: public(uint256)  # debt to users (amount borrowed by fund manager)
+MAX_MIN_RESERVE: constant(uint256) = 10000
 minReserve: public(uint256)
 lastReport: public(uint256)
 lockedProfit: public(uint256)
