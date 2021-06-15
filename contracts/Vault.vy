@@ -311,7 +311,7 @@ def _calcLockedProfit() -> uint256:
     else:
         return 0
 
-
+# TODO: test
 @external
 @view
 def calcLockedProfit() -> uint256:
@@ -324,6 +324,7 @@ def _calcFreeFunds() -> uint256:
     return self._totalAssets() - self._calcLockedProfit()
 
 
+# TODO: test
 @external
 @view
 def calcFreeFunds() -> uint256:
@@ -354,6 +355,7 @@ def _calcSharesToMint(
     return amount * totalSupply / freeFunds
 
 
+# TODO: test
 @external
 @view
 def calcSharesToMint(amount: uint256) -> uint256:
@@ -384,6 +386,7 @@ def _calcSharesToBurn(
     return amount * totalSupply / freeFunds
 
 
+# TODO: test
 @external
 @view
 def calcSharesToBurn(amount: uint256) -> uint256:
@@ -412,6 +415,7 @@ def _calcWithdraw(shares: uint256, totalSupply: uint256, freeFunds: uint256) -> 
     return shares * freeFunds / totalSupply
 
 
+# TODO: test
 @external
 @view
 def calcWithdraw(shares: uint256) -> uint256:
@@ -534,6 +538,7 @@ def _calcAvailableToInvest() -> uint256:
     return 0
 
 
+# TODO: test
 @external
 @view
 def calcAvailableToInvest() -> uint256:

@@ -292,6 +292,7 @@ def _totalAssets() -> uint256:
     return self.token.balanceOf(self) + self.totalDebt
 
 
+# TODO: test
 @external
 @view
 def totalAssets() -> uint256:
@@ -608,6 +609,7 @@ def _calcMaxBorrow(strategy: address) -> uint256:
         return min(available, self.strategies[strategy].maxBorrow)
 
 
+# TODO: test
 @external
 @view
 def calcMaxBorrow(strategy: address) -> uint256:
