@@ -528,7 +528,6 @@ def _calcAvailableToInvest() -> uint256:
     return 0
 
 
-# TODO: test
 @external
 @view
 def calcAvailableToInvest() -> uint256:
