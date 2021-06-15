@@ -535,6 +535,7 @@ def _calcAvailableToInvest() -> uint256:
 
 
 @external
+@view
 def calcAvailableToInvest() -> uint256:
     return self._calcAvailableToInvest()
 
