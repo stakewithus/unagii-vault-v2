@@ -108,7 +108,7 @@ MAX_MIN_RESERVE: constant(uint256) = 10000
 minReserve: public(uint256)
 lastReport: public(uint256)
 lockedProfit: public(uint256)
-DEGRADATION_COEFFICIENT: constant(uint256) = 10 ** 18
+MAX_DEGRADATION: constant(uint256) = 10 ** 18
 lockedProfitDegradation: public(uint256)
 
 blockDelay: public(uint256)
@@ -132,7 +132,7 @@ def __init__(token: address, uToken: address, guardian: address):
     self.lastReport = block.timestamp
     self.minReserve = 500 # 5% of free funds
     # 6 hours
-    self.lockedProfitDegradation = convert(DEGRADATION_COEFFICIENT / 21600, uint256)
+    self.lockedProfitDegradation = convert(MAX_DEGRADATION / 21600, uint256)
 
 
 # TODO: migrate to new vault
@@ -223,7 +223,7 @@ def setMinReserve(minReserve: uint256):
 @external
 def setLockedProfitDegradation(degradation: uint256):
     assert msg.sender in [self.timeLock, self.admin], "!auth"
-    assert degradation <= DEGRADATION_COEFFICIENT, "degradation > max"
+    assert degradation <= MAX_DEGRADATION, "degradation > max"
     self.lockedProfitDegradation = degradation
 
 
@@ -305,9 +305,9 @@ def _calcLockedProfit() -> uint256:
         block.timestamp - self.lastReport
     ) * self.lockedProfitDegradation
 
-    if lockedFundsRatio < DEGRADATION_COEFFICIENT:
+    if lockedFundsRatio < MAX_DEGRADATION:
         lockedProfit: uint256 = self.lockedProfit
-        return lockedProfit - lockedFundsRatio * lockedProfit / DEGRADATION_COEFFICIENT
+        return lockedProfit - lockedFundsRatio * lockedProfit / MAX_DEGRADATION
     else:
         return 0
 
@@ -324,7 +324,6 @@ def _calcFreeFunds() -> uint256:
     return self._totalAssets() - self._calcLockedProfit()
 
 
-# TODO: test
 @external
 @view
 def calcFreeFunds() -> uint256:
