@@ -130,7 +130,7 @@ def __init__(token: address, uToken: address, guardian: address):
     self.paused = True
     self.blockDelay = 1
     self.lastReport = block.timestamp
-    self.minReserve = 500
+    self.minReserve = 500 # 5% of free funds
     # 6 hours
     self.lockedProfitDegradation = convert(DEGRADATION_COEFFICIENT / 21600, uint256)
 
