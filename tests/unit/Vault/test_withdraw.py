@@ -11,16 +11,18 @@ def setup(fn_isolation, vault, token, admin, user):
     vault.deposit(1000, 1, {"from": user})
 
 
-def test_withdraw_fee_on_transfer(vault, admin, token, uToken, user):
-    # test diff = 0
+def test_withdraw_zero_shares(vault, user):
+    with brownie.reverts("shares = 0"):
+        vault.withdraw(0, 0, {"from": user})
+
+
+def test_withdraw_min(vault, user):
+    with brownie.reverts("amount < min"):
+        vault.withdraw(1, 1000, {"from": user})
+
+
+def test_withdraw_fee_on_transfer(vault, token, uToken, user):
     shares = 123
-    fee = 2 ** 256 - 1
-    token.setFeeOnTransfer(fee)
-    vault.setFeeOnTransfer(True, {"from": admin})
-
-    with brownie.reverts("diff < min"):
-        vault.withdraw(shares, 1, {"from": user})
-
     fee = 1
     token.setFeeOnTransfer(fee)
 
@@ -41,16 +43,6 @@ def test_withdraw_fee_on_transfer(vault, admin, token, uToken, user):
     )
 
 
-def test_withdraw_zero_shares(vault, user):
-    with brownie.reverts("shares = 0"):
-        vault.withdraw(0, 0, {"from": user})
-
-
-def test_withdraw_min(vault, user):
-    with brownie.reverts("diff < min"):
-        vault.withdraw(1, 1000, {"from": user})
-
-
 @given(
     deposit_amount=strategy("uint256", min_value=1, max_value=2 ** 128 - 1),
     shares=strategy("uint256", min_value=1, max_value=2 ** 128 - 1),
@@ -60,8 +52,6 @@ def test_withdraw(vault, token, uToken, user, deposit_amount, shares):
     token.mint(user, deposit_amount)
     token.approve(vault, deposit_amount, {"from": user})
     vault.deposit(deposit_amount, 1, {"from": user})
-
-    _shares = min(shares, uToken.balanceOf(user))
 
     def snapshot():
         return {

@@ -353,7 +353,6 @@ def _calcSharesToMint(
     return amount * totalSupply / freeFunds
 
 
-# TODO: test
 @external
 @view
 def calcSharesToMint(amount: uint256) -> uint256:
@@ -384,7 +383,6 @@ def _calcSharesToBurn(
     return amount * totalSupply / freeFunds
 
 
-# TODO: test
 @external
 @view
 def calcSharesToBurn(amount: uint256) -> uint256:
@@ -413,7 +411,6 @@ def _calcWithdraw(shares: uint256, totalSupply: uint256, freeFunds: uint256) -> 
     return shares * freeFunds / totalSupply
 
 
-# TODO: test
 @external
 @view
 def calcWithdraw(shares: uint256) -> uint256:
@@ -438,7 +435,6 @@ def deposit(amount: uint256, _min: uint256) -> uint256:
     assert self._totalAssets() + _amount <= self.depositLimit, "deposit limit"
 
     totalSupply: uint256 = self.uToken.totalSupply()
-    # TODO: test free funds
     freeFunds: uint256 = self._calcFreeFunds()
 
     # amount of tokens that this vault received
@@ -455,6 +451,7 @@ def deposit(amount: uint256, _min: uint256) -> uint256:
 
     assert diff > 0, "diff = 0"
 
+    # calculate with free funds before deposit
     shares: uint256 = self._calcSharesToMint(diff, totalSupply, freeFunds)
     assert shares >= _min, "shares < min"
 
@@ -504,22 +501,15 @@ def withdraw(shares: uint256, _min: uint256) -> uint256:
 
     self.uToken.burn(msg.sender, _shares)
 
-    # amount of tokens msg.sender received
-    diff: uint256 = 0
-    if self.feeOnTransfer:
-        diff = self.token.balanceOf(msg.sender)
-        self._safeTransfer(self.token.address, msg.sender, amount)
-        diff = self.token.balanceOf(msg.sender) - diff
-    else:
-        self._safeTransfer(self.token.address, msg.sender, amount)
-        diff = amount
+    assert amount >= _min, "amount < min"
+    self.balanceOfVault -= amount
 
-    assert diff >= _min, "diff < min"
-    self.balanceOfVault -= diff
+    self._safeTransfer(self.token.address, msg.sender, amount)
 
     assert self.token.balanceOf(self) >= self.balanceOfVault, "bal < vault"
 
-    return diff
+    # actual amount receive may be less if fee on transfer
+    return amount
 
 
 @internal
