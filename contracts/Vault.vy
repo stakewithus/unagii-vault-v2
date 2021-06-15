@@ -523,10 +523,7 @@ def withdraw(shares: uint256, _min: uint256) -> uint256:
 @internal
 @view
 def _calcAvailableToInvest() -> uint256:
-    if self.paused:
-        return 0
-
-    if self.fundManager.address == ZERO_ADDRESS:
+    if self.paused or self.fundManager.address == ZERO_ADDRESS:
         return 0
 
     freeFunds: uint256 = self._calcFreeFunds()
