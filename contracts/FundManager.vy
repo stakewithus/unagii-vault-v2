@@ -517,7 +517,8 @@ def reportToVault(_min: uint256, _max: uint256):
     loss: uint256 = 0
 
     if total > debt:
-        gain = min(total - debt, self.token.balanceOf(self))
+        # token.balanceOf(self) = total - self.totalDebt
+        gain = min(total - debt, total - self.totalDebt)
     else:
         loss = debt - total
 
