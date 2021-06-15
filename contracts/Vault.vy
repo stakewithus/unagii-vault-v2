@@ -527,10 +527,10 @@ def _calcAvailableToInvest() -> uint256:
         return 0
 
     freeFunds: uint256 = self._calcFreeFunds()
-    minReserve: uint256 = freeFunds * self.minReserve / MAX_MIN_RESERVE
+    minBal: uint256 = freeFunds * self.minReserve / MAX_MIN_RESERVE
 
-    if self.balanceOfVault > minReserve:
-        return self.balanceOfVault - minReserve
+    if self.balanceOfVault > minBal:
+        return self.balanceOfVault - minBal
     return 0
 
 
