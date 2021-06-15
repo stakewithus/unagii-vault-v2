@@ -102,6 +102,8 @@ admin: public(address)
 
 paused: public(bool)
 depositLimit: public(uint256)
+# token balance of vault tracked internally to protect against share dilution
+# from sending tokens directly to this contract
 balanceOfVault: public(uint256)
 debt: public(uint256)  # debt to users (amount borrowed by fund manager)
 MAX_MIN_RESERVE: constant(uint256) = 10000
