@@ -51,7 +51,7 @@ def test_report(vault, token, testFundManager, user, debt, gain, loss):
     assert after["token"]["fundManager"] == before["token"]["fundManager"]
     assert after["vault"]["balanceOfVault"] == before["vault"]["balanceOfVault"]
     assert after["vault"]["debt"] == before["vault"]["debt"] + gain
-    assert after["vault"]["lockedProfit"] > before["vault"]["lockedProfit"]
+    assert after["vault"]["lockedProfit"] >= before["vault"]["lockedProfit"] + gain
 
     assert vault.lastReport() == tx.timestamp
 
