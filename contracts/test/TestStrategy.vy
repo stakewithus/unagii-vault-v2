@@ -11,8 +11,7 @@ interface FundManager:
 
 
 interface TestToken:
-    def burn(_from: address, amount: uint256):
-        nonpayable
+    def burn(_from: address, amount: uint256): nonpayable
 
 
 admin: public(address)
