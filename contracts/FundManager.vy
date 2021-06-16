@@ -531,7 +531,7 @@ def reportToVault(_min: uint256, _max: uint256):
 
 # functions between vault -> this contract -> strategies #
 @internal
-def _withdraw(amount: uint256) -> uint256:
+def _withdrawUpTo(amount: uint256) -> uint256:
     _amount: uint256 = amount
     totalLoss: uint256 = 0
     for strategy in self.queue:
@@ -539,7 +539,7 @@ def _withdraw(amount: uint256) -> uint256:
             break
 
         bal: uint256 = self.token.balanceOf(self)
-        if _amount <= bal:
+        if bal >= _amount:
             break
 
         debt: uint256 = self.strategies[strategy].debt
@@ -547,9 +547,10 @@ def _withdraw(amount: uint256) -> uint256:
         if need == 0:
             continue
 
-        diff: uint256 = self.token.balanceOf(self)
         loss: uint256 = IStrategy(strategy).withdraw(need)
-        diff = self.token.balanceOf(self) - diff
+        diff: uint256 = self.token.balanceOf(self) - bal
+
+        assert loss + diff <= need, "loss + diff > need"
 
         if loss > 0:
             _amount -= loss
@@ -568,15 +569,33 @@ def _withdraw(amount: uint256) -> uint256:
 @external
 def withdraw(amount: uint256) -> uint256:
     assert msg.sender == self.vault.address, "!vault"
-    assert amount > 0, "withdraw = 0"
 
-    _amount: uint256 = amount
-    bal: uint256 = self.token.balanceOf(self)
+    total: uint256 = self._totalAssets()
+    _max: uint256 = min(amount, total) # max withdraw amount
+    _amount: uint256 = _max # amount to withdraw, decreases with loss > 0
+    assert _amount > 0, "withdraw = 0"
+
+    debt: uint256 = self.vault.debt()
+
     loss: uint256 = 0
+    if debt > total:
+        # debt > total can occur when strategies reported losses to this contract
+        # but this contract has not reported losses back to vault
+        # can't lose more than withdraw amount
+        loss = min(debt - total, _amount)
+        _amount -= loss
+
+    # token.balanceOf(self) = total - totalDebt
+    bal: uint256 = total - self.totalDebt
     if _amount > bal:
         # try to withdraw until balance of fund manager >= _amount
-        loss = self._withdraw(_amount)
-        _amount = min(_amount - loss, self.token.balanceOf(self))
+        # additional loss from withdrawing from strategies
+        _loss: uint256 = self._withdrawUpTo(_amount)
+        loss += _loss
+        _amount -= _loss
+        _amount = min(_amount, self.token.balanceOf(self))
+    
+    assert _amount + loss <= _max, "amount + loss > max"
 
     self._safeTransfer(self.token.address, msg.sender, _amount)
 

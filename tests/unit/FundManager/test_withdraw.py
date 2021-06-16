@@ -24,12 +24,12 @@ def test_withdraw_zero(fundManager, testVault):
     withdraw_amount=strategy("uint256", exclude=0),
     mint_amount=strategy("uint256", exclude=0),
 )
-def test_withdraw_amount_lte_balance_in_vault(
+def test_withdraw_amount_lte_balance_in_fund_manager(
     fundManager, token, testVault, withdraw_amount, mint_amount
 ):
     vault = testVault
 
-    # amount <= balance in vault
+    # amount <= balance in fund manager
     def snapshot():
         return {
             "token": {
