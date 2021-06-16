@@ -2,8 +2,16 @@
 
 from vyper.interfaces import ERC20
 
+
+interface TestToken:
+    def burn(_from: address, amount: uint256): nonpayable
+
+
 vault: public(address)
 token: public(ERC20)
+
+# test helper
+loss: public(uint256)
 
 
 @external
@@ -12,6 +20,20 @@ def __init__(vault: address, token: address):
     self.token = ERC20(token)
 
 
+@external
+def withdraw(amount: uint256) -> uint256:
+    self.token.approve(msg.sender, amount)
+
+    loss: uint256 = min(amount, self.loss)
+
+    self.token.transfer(self.vault, amount - loss)
+    if loss > 0:
+        TestToken(self.token.address).burn(self, loss)
+
+    return loss
+
+
+### test helpers ###
 @external
 def setVault(vault: address):
     self.vault = vault
@@ -23,6 +45,5 @@ def setToken(token: address):
 
 
 @external
-@view
-def totalAssets() -> uint256:
-    return self.token.balanceOf(self)
+def setLoss(loss: uint256):
+    self.loss = loss
