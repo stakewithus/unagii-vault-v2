@@ -365,36 +365,6 @@ def calcSharesToMint(amount: uint256) -> uint256:
 
 @internal
 @pure
-def _calcSharesToBurn(
-    amount: uint256, totalSupply: uint256, freeFunds: uint256
-) -> uint256:
-    # s = shares to burn
-    # T = total shares before burn
-    # a = withdraw amount
-    # P = total amount of underlying token in vault + fund manager
-    # s / (T - s) = a / (P - a), (constraints T >= s, P >= a)
-    # sP = aT
-    # a = 0               | burn s = 0
-    # a > 0, T = 0, P = 0 | invalid (violates constraint P >= a)
-    # a > 0, T = 0, P > 0 | burn s = 0
-    # a > 0, T > 0, P = 0 | invalid (violates constraint P >= a)
-    # a > 0, T > 0, P > 0 | burn s = aT / P
-    if amount == 0:
-        return 0
-    # reverts if free funds = 0
-    return amount * totalSupply / freeFunds
-
-
-@external
-@view
-def calcSharesToBurn(amount: uint256) -> uint256:
-    return self._calcSharesToBurn(
-        amount, self.uToken.totalSupply(), self._calcFreeFunds()
-    )
-
-
-@internal
-@pure
 def _calcWithdraw(shares: uint256, totalSupply: uint256, freeFunds: uint256) -> uint256:
     # s = shares
     # T = total supply of shares
@@ -484,9 +454,13 @@ def withdraw(shares: uint256, _min: uint256) -> uint256:
     amount: uint256 = self._calcWithdraw(_shares, totalSupply, self._calcFreeFunds())
 
     if amount > self.balanceOfVault:
+        need: uint256 = amount - self.balanceOfVault
+
         diff: uint256 = self.token.balanceOf(self)
-        loss: uint256 = self.fundManager.withdraw(amount - self.balanceOfVault)
+        loss: uint256 = self.fundManager.withdraw(need)
         diff = self.token.balanceOf(self) - diff
+
+        assert loss + diff <= need, "loss + diff > need"
 
         if loss > 0:
             amount -= loss
@@ -497,9 +471,6 @@ def withdraw(shares: uint256, _min: uint256) -> uint256:
 
         if amount > self.balanceOfVault:
             amount = self.balanceOfVault
-            _shares = self._calcSharesToBurn(
-                amount + loss, totalSupply, self._calcFreeFunds()
-            )
 
     self.uToken.burn(msg.sender, _shares)
 
