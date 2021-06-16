@@ -481,7 +481,7 @@ def withdraw(shares: uint256, _min: uint256) -> uint256:
 
     assert self.token.balanceOf(self) >= self.balanceOfVault, "bal < vault"
 
-    # actual amount receive may be less if fee on transfer
+    # actual amount received by msg.sender may be less if fee on transfer
     return amount
 
 

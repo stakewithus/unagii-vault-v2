@@ -29,7 +29,8 @@ def withdraw(amount: uint256) -> uint256:
     if loss > 0:
         TestToken(self.token.address).burn(self, loss)
 
-    return loss
+    # return loss > amount to simulate a bug
+    return self.loss
 
 
 ### test helpers ###
