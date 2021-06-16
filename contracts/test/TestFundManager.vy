@@ -18,12 +18,11 @@ loss: public(uint256)
 def __init__(vault: address, token: address):
     self.vault = vault
     self.token = ERC20(token)
+    self.token.approve(vault, MAX_UINT256)
 
 
 @external
 def withdraw(amount: uint256) -> uint256:
-    self.token.approve(msg.sender, amount)
-
     loss: uint256 = min(amount, self.loss)
 
     self.token.transfer(self.vault, amount - loss)
