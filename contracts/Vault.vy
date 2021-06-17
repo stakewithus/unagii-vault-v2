@@ -33,9 +33,8 @@ interface Vault:
 interface FundManager:
     def vault() -> address: view
     def token() -> address: view
+    # returns loss = debt - total assets in fund manager
     def withdraw(amount: uint256) -> uint256: nonpayable
-
-
 
 
 event SetNextTimeLock:
@@ -397,8 +396,10 @@ def deposit(amount: uint256, _min: uint256) -> uint256:
     # TODO: test deposit / withdraw flash attack
     # TODO: test block delay
     # TODO: test whitelist
+    # TODO: remove?
     assert (
-        self.whitelist[msg.sender] or block.number >= self.uToken.lastBlock(msg.sender) + self.blockDelay
+        block.number >= self.uToken.lastBlock(msg.sender) + self.blockDelay
+        or self.whitelist[msg.sender]
     ), "block < delay"
 
     _amount: uint256 = min(amount, self.token.balanceOf(msg.sender))
@@ -443,8 +444,8 @@ def withdraw(shares: uint256, _min: uint256) -> uint256:
     # TODO: test flash deposit / withdraw
     # TODO: test whitelist
     assert (
-        self.whitelist[msg.sender]
-        or block.number >= self.uToken.lastBlock(msg.sender) + self.blockDelay
+        block.number >= self.uToken.lastBlock(msg.sender) + self.blockDelay
+        or self.whitelist[msg.sender]
     ), "block < delay"
 
     _shares: uint256 = min(shares, self.uToken.balanceOf(msg.sender))
@@ -454,15 +455,13 @@ def withdraw(shares: uint256, _min: uint256) -> uint256:
     amount: uint256 = self._calcWithdraw(_shares, totalSupply, self._calcFreeFunds())
 
     if amount > self.balanceOfVault:
-        need: uint256 = amount - self.balanceOfVault
-
         diff: uint256 = self.token.balanceOf(self)
-        loss: uint256 = self.fundManager.withdraw(need)
+        # loss must be <= debt
+        loss: uint256 = self.fundManager.withdraw(amount - self.balanceOfVault)
         diff = self.token.balanceOf(self) - diff
 
-        assert loss + diff <= need, "loss + diff > need"
-
         if loss > 0:
+            # msg.sender must cover all of loss
             amount -= loss
             self.debt -= loss
 

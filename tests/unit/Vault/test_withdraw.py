@@ -49,7 +49,7 @@ def test_withdraw_fee_on_transfer(vault, token, uToken, user):
     shares=strategy("uint256", min_value=1),
     user=strategy("address", exclude=ZERO_ADDRESS),
 )
-def test_withdraw(vault, token, uToken, user, deposit_amount, shares):
+def test_withdraw_no_loss(vault, token, uToken, user, deposit_amount, shares):
     token.mint(user, deposit_amount)
     token.approve(vault, deposit_amount, {"from": user})
     vault.deposit(deposit_amount, 1, {"from": user})
@@ -80,6 +80,7 @@ def test_withdraw(vault, token, uToken, user, deposit_amount, shares):
 
     diff = after["token"]["user"] - before["token"]["user"]
     assert diff == calc
+    assert after["token"]["user"] == before["token"]["user"] + diff
     assert after["token"]["vault"] == before["token"]["vault"] - diff
 
     assert after["vault"]["totalAssets"] == before["vault"]["totalAssets"] - diff
@@ -97,7 +98,7 @@ def test_withdraw(vault, token, uToken, user, deposit_amount, shares):
     shares=strategy("uint256", min_value=1),
     user=strategy("address", exclude=ZERO_ADDRESS),
 )
-def test_withdraw_from_fund_manager(
+def test_withdraw_maybe_loss(
     vault, testFundManager, token, uToken, user, admin, deposit_amount, loss, shares
 ):
     fundManager = testFundManager
@@ -111,24 +112,12 @@ def test_withdraw_from_fund_manager(
 
     vault.borrow(2 ** 256 - 1, {"from": fundManager})
 
-    fundManager.setLoss(2 ** 256 - 1)
-
-    calc = vault.calcWithdraw(uToken.balanceOf(user))
-    bal = vault.balanceOfVault()
-    if calc > bal:
-        with brownie.reverts("loss + diff > need"):
-            vault.withdraw(2 ** 256 - 1, 0, {"from": user})
-
     _shares = min(shares, uToken.balanceOf(user))
     calc = vault.calcWithdraw(_shares)
     bal = token.balanceOf(vault)
+    debt = vault.debt()
 
-    _loss = 0
-    if calc > bal:
-        # max loss from fund manager
-        _loss = calc - bal
-    _loss = min(_loss, loss)
-
+    _loss = min(calc, debt, loss)
     fundManager.setLoss(_loss)
 
     def snapshot():
@@ -150,16 +139,28 @@ def test_withdraw_from_fund_manager(
 
     diff = after["token"]["user"] - before["token"]["user"]
 
-    assert after["token"]["vault"] == after["vault"]["balanceOfVault"]
+    # withdrew from fund manager
+    if calc > bal:
+        assert diff == calc - _loss
+        assert after["vault"]["totalAssets"] == before["vault"]["totalAssets"] - calc
 
-    if calc >= bal:
-        assert diff + _loss == calc
-        assert (
-            after["vault"]["totalAssets"]
-            == before["vault"]["totalAssets"] - diff - _loss
-        )
-        assert after["vault"]["balanceOfVault"] == 0
-        after["vault"]["debt"] == before["vault"]["debt"] - (calc - bal)
+        # loss is greater than or equal to amount to withdraw from fund manager
+        if _loss >= calc - bal:
+            # some transferred from vault
+            assert (
+                after["vault"]["balanceOfVault"]
+                == before["vault"]["balanceOfVault"] - diff
+            )
+            # 0 transferred from fund manager
+            assert after["vault"]["debt"] == before["vault"]["debt"] - _loss
+        else:
+            # all losses are paid from fund manager
+            # all transferred from vault
+            assert (
+                after["vault"]["balanceOfVault"]
+                == before["vault"]["balanceOfVault"] - bal
+            )
+            assert after["vault"]["debt"] == before["vault"]["debt"] - (calc - bal)
     else:
         assert diff == calc
         assert after["vault"]["totalAssets"] == before["vault"]["totalAssets"] - diff
@@ -167,3 +168,5 @@ def test_withdraw_from_fund_manager(
             after["vault"]["balanceOfVault"] == before["vault"]["balanceOfVault"] - diff
         )
         assert after["vault"]["debt"] == before["vault"]["debt"]
+
+    assert after["token"]["vault"] == after["vault"]["balanceOfVault"]
