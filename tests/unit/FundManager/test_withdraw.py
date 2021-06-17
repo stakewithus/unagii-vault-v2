@@ -10,7 +10,6 @@ def setup(fn_isolation):
 
 
 def test_withdraw_not_vault(fundManager, user):
-    print(user, fundManager.vault())
     with brownie.reverts("!vault"):
         fundManager.withdraw(0, {"from": user})
 
@@ -23,9 +22,10 @@ def test_withdraw_zero(fundManager, testVault):
 @given(
     withdraw_amount=strategy("uint256", exclude=0),
     mint_amount=strategy("uint256", exclude=0),
+    debt=strategy("uint256"),
 )
 def test_withdraw_amount_lte_balance_in_fund_manager(
-    fundManager, token, testVault, withdraw_amount, mint_amount
+    fundManager, token, testVault, withdraw_amount, mint_amount, debt
 ):
     vault = testVault
 
@@ -41,13 +41,19 @@ def test_withdraw_amount_lte_balance_in_fund_manager(
 
     token.mint(fundManager, mint_amount)
 
+    total = fundManager.totalAssets()
+    vault.setDebt(debt)
+    loss = 0
+    if debt > total:
+        loss = debt - total
+
     amount = min(withdraw_amount, mint_amount)
 
     before = snapshot()
     tx = fundManager.withdraw(amount, {"from": vault})
     after = snapshot()
 
-    assert tx.events["Withdraw"].values() == [vault, amount, amount, 0]
+    assert tx.events["Withdraw"].values() == [vault, amount, amount, loss]
     assert after["token"]["vault"] == before["token"]["vault"] + amount
     assert after["token"]["fundManager"] == before["token"]["fundManager"] - amount
     assert after["fundManager"]["totalDebt"] == before["fundManager"]["totalDebt"]
@@ -68,6 +74,7 @@ N = 5  # max active strategies
     losses=strategy(
         "uint256[]", min_value=1, max_value=2 ** 256 - 1, min_length=N, max_length=N
     ),
+    debt=strategy("uint256"),
     withdraw_amount=strategy("uint256", min_value=1),
     mint_amount=strategy("uint256", min_value=1, max_value=2 ** 128),
 )
@@ -81,6 +88,7 @@ def test_withdraw(
     debtRatios,
     borrows,
     losses,
+    debt,
     withdraw_amount,
     mint_amount,
 ):
@@ -99,13 +107,18 @@ def test_withdraw(
         strats.append(strat)
 
     debts = []
+    _withdraw_amount = withdraw_amount  # make sure withdraw amount >= losses
     for i in range(k):
         strat = strats[i]
         borrow = min(fundManager.calcMaxBorrow(strat), borrows[i])
         if borrow > 0:
             fundManager.borrow(borrow, {"from": strat})
-            strat.setLoss(min(losses[i], token.balanceOf(strat)))
+            loss = min(losses[i], borrow, _withdraw_amount)
+            _withdraw_amount -= loss
+            strat.setLoss(loss)
         debts.append(borrow)
+
+    vault.setDebt(debt)
 
     def snapshot():
         return {
@@ -123,34 +136,30 @@ def test_withdraw(
         }
 
     total = fundManager.totalAssets()
+    amount = min(withdraw_amount, total)
 
     before = snapshot()
-    tx = fundManager.withdraw(withdraw_amount, {"from": vault})
+    fundManager.withdraw(withdraw_amount, {"from": vault})
     after = snapshot()
 
-    amount = min(withdraw_amount, total)
-    diff = after["token"]["vault"] - before["token"]["vault"]
-    loss = amount - diff
-
-    assert tx.events["Withdraw"].values() == [vault, withdraw_amount, diff, loss]
-
     if amount <= before["token"]["fundManager"]:
-        assert loss == 0
         # amount was only withdrawn from fund manager (not strategies)
-        assert after["token"]["fundManager"] == before["token"]["fundManager"] - amount
-        assert after["fundManager"]["totalDebt"] == before["fundManager"]["totalDebt"]
         assert (
             after["fundManager"]["totalAssets"]
             == before["fundManager"]["totalAssets"] - amount
         )
+        assert after["token"]["fundManager"] == before["token"]["fundManager"] - amount
+        assert after["fundManager"]["totalDebt"] == before["fundManager"]["totalDebt"]
     else:
+        # total assets after <= before - amount
+        # since there may be losses
+        assert (
+            after["fundManager"]["totalAssets"]
+            <= before["fundManager"]["totalAssets"] - amount
+        )
         assert after["token"]["fundManager"] == 0
         amount_from_strats = amount - before["token"]["fundManager"]
         assert (
             after["fundManager"]["totalDebt"]
-            == before["fundManager"]["totalDebt"] - amount_from_strats
-        )
-        assert (
-            after["fundManager"]["totalAssets"]
-            == before["fundManager"]["totalAssets"] - amount
+            <= before["fundManager"]["totalDebt"] - amount_from_strats
         )

@@ -74,7 +74,7 @@ def withdraw(amount: uint256) -> uint256:
     if loss > 0:
         TestToken(self.token.address).burn(self, loss)
 
-    return loss
+    return self.loss
 
 
 @external
