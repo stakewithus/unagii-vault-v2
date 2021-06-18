@@ -311,6 +311,7 @@ def _calcLockedProfit() -> uint256:
     else:
         return 0
 
+
 @external
 @view
 def calcLockedProfit() -> uint256:
