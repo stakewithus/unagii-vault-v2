@@ -685,6 +685,7 @@ def report(gain: uint256, loss: uint256):
 
     log Report(msg.sender, gain, loss, self.strategies[msg.sender].debt)
 
+# TODO: batch
 
 # TODO: migrate strategy
 
