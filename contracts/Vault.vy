@@ -150,20 +150,6 @@ def __init__(token: address, uToken: address, guardian: address):
 # u.transferFrom(v1, v2, bal of v1, {from: v2})
 # update balance in vault and debt?
 
-# @external
-# def setNextMinter(vault: address):
-#     # TODO: pause?
-#     assert msg.sender == self.timeLock, "!time lock"
-#     assert vault != self, "new vault = current"
-
-#     # vault = ZERO_ADDRESS means cancel next minter
-#     if vault != ZERO_ADDRESS:
-#         assert Vault(vault).token() == self.token.address, "vault token != token"
-#         assert Vault(vault).uToken() == self.uToken.address, "vault uToken != uToken"
-
-#     # this will fail if self != minter
-#     self.uToken.setNextMinter(vault)
-
 
 @external
 def setNextTimeLock(nextTimeLock: address):
