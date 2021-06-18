@@ -7,6 +7,7 @@ from brownie import (
     FundManager,
     TestToken,
     TestStrategy,
+    TestFlash,
 )
 
 
@@ -63,6 +64,12 @@ def fundManager(FundManager, token, admin, guardian, worker):
     yield fundManager
 
 
+@pytest.fixture(scope="module")
+def flash(TestFlash, token, uToken, vault, attacker):
+    flash = TestFlash.deploy(token, uToken, vault, {"from": attacker})
+    yield flash
+
+
 # time lock delay
 DELAY = 24 * 3600
 
@@ -110,7 +117,6 @@ def setup(chain, uToken, vault, timeLock, fundManager, admin):
     timeLock.execute(vault, 0, data, eta, 0, {"from": admin})
 
 
-# TODO: test vault <---> uToken
 # TODO: test vault migration
 # TODO: test fund manager migration
 # TODO: test strategy migration
