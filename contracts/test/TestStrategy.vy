@@ -11,7 +11,8 @@ interface FundManager:
 
 
 interface TestToken:
-    def burn(_from: address, amount: uint256): nonpayable
+    def burn(_from: address, amount: uint256):
+        nonpayable
 
 
 admin: public(address)
@@ -109,6 +110,7 @@ def report(_min: uint256, _max: uint256):
 
     if gain > 0 or loss > 0:
         self.fundManager.report(gain, loss)
+
 
 # TODO: batch?
 # harvest

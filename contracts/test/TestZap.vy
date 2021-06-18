@@ -3,6 +3,7 @@
 
 from vyper.interfaces import ERC20
 
+
 interface Vault:
     def deposit(amount: uint256, _min: uint256) -> uint256: nonpayable
     def withdraw(shares: uint256, _min: uint256) -> uint256: nonpayable

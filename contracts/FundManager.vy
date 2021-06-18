@@ -344,15 +344,17 @@ def approveStrategy(strategy: address):
     assert IStrategy(strategy).fundManager() == self, "strategy fund manager != this"
     assert IStrategy(strategy).token() == self.token.address, "strategy token != token"
 
-    self.strategies[strategy] = Strategy({
-        approved: True,
-        active: False,
-        activated: False,
-        debtRatio: 0,
-        debt: 0,
-        minBorrow: 0,
-        maxBorrow: 0,
-    })
+    self.strategies[strategy] = Strategy(
+        {
+            approved: True,
+            active: False,
+            activated: False,
+            debtRatio: 0,
+            debt: 0,
+            minBorrow: 0,
+            maxBorrow: 0,
+        }
+    )
 
     log ApproveStrategy(strategy)
 
@@ -586,10 +588,10 @@ def withdraw(amount: uint256) -> uint256:
         # try to withdraw until balance of fund manager >= _amount
         loss += self._withdraw(_amount)
         _amount = min(_amount, self.token.balanceOf(self))
-    
+
     if _amount > 0:
         self._safeTransfer(self.token.address, msg.sender, _amount)
- 
+
     log Withdraw(msg.sender, amount, _amount, loss)
 
     return loss
@@ -684,6 +686,7 @@ def report(gain: uint256, loss: uint256):
         self.totalDebt -= loss
 
     log Report(msg.sender, gain, loss, self.strategies[msg.sender].debt)
+
 
 # TODO: batch
 

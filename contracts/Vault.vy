@@ -11,6 +11,7 @@ from vyper.interfaces import ERC20
 # TODO: comment
 # TODO: gas optimize
 
+
 interface DetailedERC20:
     def decimals() -> uint256: view
 
@@ -144,7 +145,7 @@ def __init__(token: address, uToken: address, guardian: address):
     self.paused = True
     self.blockDelay = 1
     self.lastReport = block.timestamp
-    self.minReserve = 500 # 5% of free funds
+    self.minReserve = 500  # 5% of free funds
     # 6 hours
     self.lockedProfitDegradation = convert(MAX_DEGRADATION / 21600, uint256)
 

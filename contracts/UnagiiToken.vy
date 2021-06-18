@@ -166,7 +166,7 @@ def decreaseAllowance(spender: address, amount: uint256) -> bool:
     return True
 
 
-# TODO: permit?
+# TODO: permit
 
 
 @external
