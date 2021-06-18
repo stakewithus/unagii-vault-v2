@@ -8,6 +8,7 @@ from brownie import (
     TestToken,
     TestStrategy,
     TestFlash,
+    TestZap,
 )
 
 
@@ -68,6 +69,12 @@ def fundManager(FundManager, token, admin, guardian, worker):
 def flash(TestFlash, token, uToken, vault, attacker):
     flash = TestFlash.deploy(token, uToken, vault, {"from": attacker})
     yield flash
+
+
+@pytest.fixture(scope="module")
+def zap(TestZap, token, uToken, vault, admin):
+    zap = TestZap.deploy(token, uToken, vault, {"from": admin})
+    yield zap
 
 
 # time lock delay

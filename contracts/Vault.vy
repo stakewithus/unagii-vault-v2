@@ -392,9 +392,6 @@ def calcWithdraw(shares: uint256) -> uint256:
 @nonreentrant("lock")
 def deposit(amount: uint256, _min: uint256) -> uint256:
     assert not self.paused, "paused"
-    # TODO: test whitelist
-    # TODO: zap / swap
-    # TODO: remove?
     assert (
         block.number >= self.uToken.lastBlock(msg.sender) + self.blockDelay
         or self.whitelist[msg.sender]
@@ -439,9 +436,6 @@ def deposit(amount: uint256, _min: uint256) -> uint256:
 @external
 @nonreentrant("lock")
 def withdraw(shares: uint256, _min: uint256) -> uint256:
-    # TODO: smart contract cannot transferFrom and then withdraw?
-    # TODO: zap / swap
-    # TODO: test whitelist
     assert (
         block.number >= self.uToken.lastBlock(msg.sender) + self.blockDelay
         or self.whitelist[msg.sender]
