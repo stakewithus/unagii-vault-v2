@@ -75,8 +75,10 @@ def test_withdraw_no_loss(vault, token, uToken, user, deposit_amount, shares):
     calc = vault.calcWithdraw(_shares)
 
     before = snapshot()
-    vault.withdraw(shares, 1, {"from": user})
+    tx = vault.withdraw(shares, 1, {"from": user})
     after = snapshot()
+
+    assert tx.events["Withdraw"].values() == [user, _shares, calc]
 
     diff = after["token"]["user"] - before["token"]["user"]
     assert diff == calc

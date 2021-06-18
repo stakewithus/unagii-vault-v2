@@ -86,9 +86,14 @@ def test_deposit(vault, token, uToken, user, amount):
     token.mint(user, amount)
     token.approve(vault, amount, {"from": user})
 
+    # calculate shares to be minted
+    calc = vault.calcSharesToMint(amount)
+
     before = snapshot()
-    vault.deposit(amount, 1, {"from": user})
+    tx = vault.deposit(amount, 1, {"from": user})
     after = snapshot()
+
+    assert tx.events["Deposit"].values() == [user, amount, amount, calc]
 
     # token balances
     assert after["token"]["balance"]["user"] == (

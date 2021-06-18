@@ -66,6 +66,19 @@ event SetWhitelist:
     approved: bool
 
 
+event Deposit:
+    sender: indexed(address)
+    amount: uint256
+    diff: uint256
+    shares: uint256
+
+
+event Withdraw:
+    owner: indexed(address)
+    shares: uint256
+    amount: uint256
+
+
 event Borrow:
     fundManager: indexed(address)
     amount: uint256
@@ -374,7 +387,6 @@ def calcWithdraw(shares: uint256) -> uint256:
     return self._calcWithdraw(shares, self.uToken.totalSupply(), self._calcFreeFunds())
 
 
-# TODO: deposit log
 @external
 @nonreentrant("lock")
 def deposit(amount: uint256, _min: uint256) -> uint256:
@@ -418,10 +430,11 @@ def deposit(amount: uint256, _min: uint256) -> uint256:
 
     assert self.token.balanceOf(self) >= self.balanceOfVault, "bal < vault"
 
+    log Deposit(msg.sender, _amount, diff, shares)
+
     return shares
 
 
-# TODO: withdraw log
 @external
 @nonreentrant("lock")
 def withdraw(shares: uint256, _min: uint256) -> uint256:
@@ -464,6 +477,8 @@ def withdraw(shares: uint256, _min: uint256) -> uint256:
     self._safeTransfer(self.token.address, msg.sender, amount)
 
     assert self.token.balanceOf(self) >= self.balanceOfVault, "bal < vault"
+
+    log Withdraw(msg.sender, _shares, amount)
 
     # actual amount received by msg.sender may be less if fee on transfer
     return amount
