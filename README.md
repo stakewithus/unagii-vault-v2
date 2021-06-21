@@ -13,6 +13,7 @@ pip install vyper==0.2.12
 pip install eth-brownie
 pip install black
 pip install blackadder
+pip install slither-analyzer
 
 cp .env.sample .env
 
@@ -25,4 +26,11 @@ npm i
 black --check --include "(tests|scripts)" .
 # format vyper
 blackadder --fast --include '\.vy$' contracts
+
+# select solc compiler
+solc-select install 0.8.4
+solc-select use 0.8.4
+
+# slither
+slither contracts/Contract.sol
 ```
