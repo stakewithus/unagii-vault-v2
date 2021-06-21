@@ -10,6 +10,7 @@ from brownie import (
     TestFundManager,
     TestStrategy,
     TxTest,
+    ZERO_ADDRESS,
 )
 
 
@@ -58,7 +59,7 @@ def uToken(UnagiiToken, token, admin, minter):
 
 @pytest.fixture(scope="module")
 def vault(Vault, token, uToken, admin, guardian):
-    vault = Vault.deploy(token, uToken, guardian, {"from": admin})
+    vault = Vault.deploy(token, uToken, guardian, ZERO_ADDRESS, {"from": admin})
 
     uToken.setMinter(vault, {"from": admin})
 
