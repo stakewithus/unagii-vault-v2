@@ -17,6 +17,7 @@ interface DetailedERC20:
 
 
 interface UnagiiToken:
+    def minter() -> address: view
     def token() -> address: view
     def decimals() -> uint256: view
     def totalSupply() -> uint256: view
@@ -26,9 +27,12 @@ interface UnagiiToken:
     def lastBlock(owner: address) -> uint256: view
 
 
+# used for migrating to new Vault contract
 interface Vault:
-    def uToken() -> address: view
     def token() -> address: view
+    def uToken() -> address: view
+    def fundManager() -> address: view
+    def initialize(): nonpayable
 
 
 interface FundManager:
@@ -131,9 +135,11 @@ blockDelay: public(uint256)
 feeOnTransfer: public(bool)
 whitelist: public(HashMap[address, bool])
 
+oldVault: public(Vault)
+
 
 @external
-def __init__(token: address, uToken: address, guardian: address):
+def __init__(token: address, uToken: address, guardian: address, oldVault: address):
     self.timeLock = msg.sender
     self.admin = msg.sender
     self.guardian = guardian
@@ -149,8 +155,26 @@ def __init__(token: address, uToken: address, guardian: address):
     # 6 hours
     self.lockedProfitDegradation = convert(MAX_DEGRADATION / 21600, uint256)
 
+    if oldVault != ZERO_ADDRESS:
+        self.oldVault = Vault(oldVault)
 
-# TODO: migrate to new vault
+
+
+# @external
+# def initialize():
+#     assert msg.sender == self.oldVault, "!old vault"
+#     assert not self.initialized, "!initialized"
+
+#     self._safeTransferFrom
+
+#     self.balanceOfVault = Vault(old).balanceOfVault()
+#     self.debt = Vault(old).debt()
+#     self.lockedProfit = Vault(old).lockedProfit()
+#     self.lastReport = Vault(old).lastReport()
+
+#     self.initiliazed = True
+
+
 # t = token token
 # ut = unagi token
 # v1 = vault 1
@@ -169,11 +193,37 @@ def __init__(token: address, uToken: address, guardian: address):
 # 8. v2 copy states from v1      | v2
 #    - balanceOfVault (fot?)     |
 #    - debt                      |
-#    - locked profit?            |
+#    - locked profit             |
+#    - last report               |
 # 9. v1 set state = 0            | v1
 #    - balanceOfVault            |
 #    - debt                      |
-#    - locked profit?            |
+#    - locked profit             |
+
+
+# @external
+# def migrate(vault: address):
+#     assert msg.sender == self.timeLock, "!time lock"
+#     assert self.paused, "!paused"
+
+#     assert Vault(vault).token() == self.token.address, "token"
+#     assert Vault(vault).uToken() == self.uToken.address, "uToken"
+#     # minter is set to new vault
+#     assert self.uToken.minter() == vault, "minter"
+#     # new vault's fund manager is set to current fund manager
+#     assert Vault(vault).fundManager() == self.fundManager.address, "fund manager"
+#     # fund manager's vault is set to new vault
+#     assert self.fundManager.vault() == vault, "fund manager vault"
+
+#     bal: uint256 = self.token.balanceOf(self)
+#     assert self.balanceOfVault >= bal, "bal < vault"
+
+#     self._safeApprove(self.token.address, vault, bal)
+#     Vault(vault).initialize()
+
+#     self.balanceOfVault = 0
+#     self.debt = 0
+#     self.lockedProfit = 0
 
 
 @external
