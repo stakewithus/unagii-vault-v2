@@ -57,8 +57,6 @@ minter: public(address)
 token: public(ERC20)
 lastBlock: public(HashMap[address, uint256])
 
-# TODO: comment
-
 
 @external
 def __init__(token: address):
