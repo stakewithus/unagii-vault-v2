@@ -33,6 +33,10 @@ interface Vault:
     def uToken() -> address: view
     def fundManager() -> address: view
     def initialize(): nonpayable
+    def balanceOfVault() -> uint256: view
+    def debt() -> uint256: view
+    def lockedProfit() -> uint256: view
+    def lastReport() -> uint256: view
 
 
 interface FundManager:
@@ -107,6 +111,7 @@ event Report:
 event ForceUpdateBalanceOfVault:
     balanceOfVault: uint256
 
+initialized: public(bool)
 
 token: public(ERC20)
 uToken: public(UnagiiToken)
@@ -150,29 +155,104 @@ def __init__(token: address, uToken: address, guardian: address, oldVault: addre
 
     self.paused = True
     self.blockDelay = 1
-    self.lastReport = block.timestamp
     self.minReserve = 500  # 5% of free funds
     # 6 hours
     self.lockedProfitDegradation = convert(MAX_DEGRADATION / 21600, uint256)
 
     if oldVault != ZERO_ADDRESS:
         self.oldVault = Vault(oldVault)
+        assert self.oldVault.token() == token, "old vault token != token"
+        assert self.oldVault.uToken() == uToken, "old vault uToken != uToken"
 
 
+@internal
+def _safeApprove(token: address, spender: address, amount: uint256):
+    res: Bytes[32] = raw_call(
+        token,
+        concat(
+            method_id("approve(address,uint256)"),
+            convert(spender, bytes32),
+            convert(amount, bytes32),
+        ),
+        max_outsize=32,
+    )
+    if len(res) > 0:
+        assert convert(res, bool), "approve failed"
 
-# @external
-# def initialize():
-#     assert msg.sender == self.oldVault, "!old vault"
-#     assert not self.initialized, "!initialized"
 
-#     self._safeTransferFrom
+@internal
+def _safeTransfer(token: address, receiver: address, amount: uint256):
+    res: Bytes[32] = raw_call(
+        token,
+        concat(
+            method_id("transfer(address,uint256)"),
+            convert(receiver, bytes32),
+            convert(amount, bytes32),
+        ),
+        max_outsize=32,
+    )
+    if len(res) > 0:
+        assert convert(res, bool), "transfer failed"
 
-#     self.balanceOfVault = Vault(old).balanceOfVault()
-#     self.debt = Vault(old).debt()
-#     self.lockedProfit = Vault(old).lockedProfit()
-#     self.lastReport = Vault(old).lastReport()
 
-#     self.initiliazed = True
+@internal
+def _safeTransferFrom(
+    token: address, owner: address, receiver: address, amount: uint256
+):
+    res: Bytes[32] = raw_call(
+        token,
+        concat(
+            method_id("transferFrom(address,address,uint256)"),
+            convert(owner, bytes32),
+            convert(receiver, bytes32),
+            convert(amount, bytes32),
+        ),
+        max_outsize=32,
+    )
+    if len(res) > 0:
+        assert convert(res, bool), "transferFrom failed"
+
+
+# TODO: integration test migration
+@external
+def setFundManager(fundManager: address):
+    assert msg.sender == self.timeLock, "!time lock"
+
+    assert FundManager(fundManager).vault() == self, "fund manager vault != vault"
+    assert (
+        FundManager(fundManager).token() == self.token.address
+    ), "fund manager token != token"
+
+    self.fundManager = FundManager(fundManager)
+    log SetFundManager(fundManager)
+
+
+@external
+def initialize():
+    assert not self.initialized, "!initialized"
+    assert self.paused, "!paused"
+
+    if self.oldVault.address == ZERO_ADDRESS:
+        assert msg.sender in [self.timeLock, self.admin], "!auth"
+        self.lastReport = block.timestamp
+    else:
+        assert msg.sender == self.oldVault.address, "!old vault"
+
+        assert self.uToken.minter() == self, "!minter"
+        assert self.fundManager.address == self.oldVault.fundManager(), "fund manager mismatch"
+
+        bal: uint256 = self.token.balanceOf(self.oldVault.address)
+        balOfVault: uint256 = self.oldVault.balanceOfVault()
+        assert bal >= balOfVault, "bal < vault"
+
+        self._safeTransferFrom(self.token.address, self.oldVault.address, self, bal)
+
+        self.balanceOfVault = balOfVault
+        self.debt = self.oldVault.debt()
+        self.lockedProfit = self.oldVault.lockedProfit()
+        self.lastReport = self.oldVault.lastReport()
+
+    self.initialized = True
 
 
 # t = token token
@@ -186,8 +266,8 @@ def __init__(token: address, uToken: address, guardian: address, oldVault: addre
 # 1. v2.pause()                  | admin
 # 2. v1.pause()                  | admin
 # 3. ut.setMinter(v2)            | time lock
-# 4. v2.setFundManager(f)        | time lock
-# 5. f.setVault(v2)              | time lock
+# 4. f.setVault(v2)              | time lock
+# 5. v2.setFundManager(f)        | time lock
 # 6. t.approve(v2, bal)          | v1
 # 7. t.transferFrom(v1, v2, bal) | v2
 # 8. v2 copy states from v1      | v2
@@ -195,35 +275,36 @@ def __init__(token: address, uToken: address, guardian: address, oldVault: addre
 #    - debt                      |
 #    - locked profit             |
 #    - last report               |
-# 9. v1 set state = 0            | v1
+# 9. v1 set state = 0 ?          | v1
 #    - balanceOfVault            |
 #    - debt                      |
 #    - locked profit             |
 
 
-# @external
-# def migrate(vault: address):
-#     assert msg.sender == self.timeLock, "!time lock"
-#     assert self.paused, "!paused"
+@external
+def migrate(vault: address):
+    assert msg.sender == self.timeLock, "!time lock"
+    assert self.paused, "!paused"
 
-#     assert Vault(vault).token() == self.token.address, "token"
-#     assert Vault(vault).uToken() == self.uToken.address, "uToken"
-#     # minter is set to new vault
-#     assert self.uToken.minter() == vault, "minter"
-#     # new vault's fund manager is set to current fund manager
-#     assert Vault(vault).fundManager() == self.fundManager.address, "fund manager"
-#     # fund manager's vault is set to new vault
-#     assert self.fundManager.vault() == vault, "fund manager vault"
+    assert Vault(vault).token() == self.token.address, "token"
+    assert Vault(vault).uToken() == self.uToken.address, "uToken"
+    # minter is set to new vault
+    assert self.uToken.minter() == vault, "minter"
+    # new vault's fund manager is set to current fund manager
+    assert Vault(vault).fundManager() == self.fundManager.address, "fund manager"
+    # fund manager's vault is set to new vault
+    assert self.fundManager.vault() == vault, "fund manager vault"
 
-#     bal: uint256 = self.token.balanceOf(self)
-#     assert self.balanceOfVault >= bal, "bal < vault"
+    bal: uint256 = self.token.balanceOf(self)
+    assert bal >= self.balanceOfVault, "bal < vault"
 
-#     self._safeApprove(self.token.address, vault, bal)
-#     Vault(vault).initialize()
+    self._safeApprove(self.token.address, vault, bal)
+    Vault(vault).initialize()
 
-#     self.balanceOfVault = 0
-#     self.debt = 0
-#     self.lockedProfit = 0
+    # TODO: clear state?
+    # self.balanceOfVault = 0
+    # self.debt = 0
+    # self.lockedProfit = 0
 
 
 @external
@@ -252,20 +333,6 @@ def setGuardian(guardian: address):
     assert msg.sender in [self.timeLock, self.admin], "!auth"
     self.guardian = guardian
     log SetGuardian(guardian)
-
-
-# TODO: integration test migration
-@external
-def setFundManager(fundManager: address):
-    assert msg.sender == self.timeLock, "!time lock"
-
-    assert FundManager(fundManager).vault() == self, "fund manager vault != vault"
-    assert (
-        FundManager(fundManager).token() == self.token.address
-    ), "fund manager token != token"
-
-    self.fundManager = FundManager(fundManager)
-    log SetFundManager(fundManager)
 
 
 @external
@@ -313,39 +380,6 @@ def setWhitelist(addr: address, approved: bool):
     assert msg.sender in [self.timeLock, self.admin], "!auth"
     self.whitelist[addr] = approved
     log SetWhitelist(addr, approved)
-
-
-@internal
-def _safeTransfer(token: address, receiver: address, amount: uint256):
-    res: Bytes[32] = raw_call(
-        token,
-        concat(
-            method_id("transfer(address,uint256)"),
-            convert(receiver, bytes32),
-            convert(amount, bytes32),
-        ),
-        max_outsize=32,
-    )
-    if len(res) > 0:
-        assert convert(res, bool), "transfer failed"
-
-
-@internal
-def _safeTransferFrom(
-    token: address, owner: address, receiver: address, amount: uint256
-):
-    res: Bytes[32] = raw_call(
-        token,
-        concat(
-            method_id("transferFrom(address,address,uint256)"),
-            convert(owner, bytes32),
-            convert(receiver, bytes32),
-            convert(amount, bytes32),
-        ),
-        max_outsize=32,
-    )
-    if len(res) > 0:
-        assert convert(res, bool), "transferFrom failed"
 
 
 @internal
