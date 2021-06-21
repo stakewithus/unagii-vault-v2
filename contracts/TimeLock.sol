@@ -42,17 +42,34 @@ contract TimeLock {
         _;
     }
 
+    /*
+    @notice Set next admin
+    @param _nextAdmin Address of next admin
+    */
     function setNextAdmin(address _nextAdmin) external onlyAdmin {
         nextAdmin = _nextAdmin;
         emit SetNextAdmin(_nextAdmin);
     }
 
+    /*
+    @notice Set admin to msg.sender
+    @dev Only next admin can call
+    */
     function acceptAdmin() external {
         require(msg.sender == nextAdmin, "!next admin");
         admin = msg.sender;
         emit AcceptAdmin(msg.sender);
     }
 
+    /*
+    @notice Compute transaction hash from inputs
+    @param target Address to call
+    @param value Amount of ETH to send
+    @param data Data to send to `target`
+    @param eta Execute Transaction After - Timestamp after which transaction can be executed
+    @param nonce Nonce to create unique tx hash
+    @dev Returns keccak256 hash computed from inputs
+    */
     function _getTxHash(
         address target,
         uint value,
@@ -73,6 +90,14 @@ contract TimeLock {
         return _getTxHash(target, value, data, eta, nonce);
     }
 
+    /*
+    @notice Queue a transaction to be executed after `delay`
+    @param target Address to call
+    @param value Amount of ETH to send
+    @param data Data to send to `target`
+    @param delay Minimum amount of seconds to wait before transcation can be executed
+    @param nonce Nonce to create unique tx hash
+    */
     function _queue(
         address target,
         uint value,
@@ -81,6 +106,7 @@ contract TimeLock {
         uint nonce
     ) private {
         require(delay >= MIN_DELAY, "delay < min");
+        require(delay <= MAX_DELAY, "delay > max");
 
         // execute time after
         uint eta = block.timestamp + delay;
@@ -93,14 +119,6 @@ contract TimeLock {
         emit Log(txHash, target, value, data, eta, nonce, State.Queued);
     }
 
-    /*
-    @notice Queue transaction
-    @param target Address of contract or account to call
-    @param value Ether value to send
-    @param data Data to send to `target`
-    @param delay Time in seconds to wait after this tx
-    @param nonce In case there is a need execute same tx multiple times
-    */
     function queue(
         address target,
         uint value,
@@ -111,13 +129,16 @@ contract TimeLock {
         _queue(target, value, data, delay, nonce);
     }
 
+    /*
+    @notice Batch queue transactions
+    */
     function batchQueue(
         address[] calldata targets,
         uint[] calldata values,
         bytes[] calldata data,
         uint[] calldata delays,
         uint[] calldata nonces
-    ) external onlyAdmin returns (bytes32[] memory) {
+    ) external onlyAdmin {
         require(targets.length > 0, "targets.length = 0");
         require(values.length == targets.length, "values.length != targets.length");
         require(data.length == targets.length, "data.length != targets.length");
@@ -129,6 +150,15 @@ contract TimeLock {
         }
     }
 
+    /*
+    @notice Executed transaction
+    @param target Address to call
+    @param value Amount of ETH to send
+    @param data Data to send to `target`
+    @param eta Execute Transaction After - Timestamp after which transaction can be executed
+    @param nonce Nonce to create unique tx hash
+    @dev `eta` must be greater than or equal to `block.timestamp`
+    */
     function _execute(
         address target,
         uint value,
@@ -160,6 +190,9 @@ contract TimeLock {
         _execute(target, value, data, eta, nonce);
     }
 
+    /*
+    @notice Batch executed transactions
+    */
     function batchExecute(
         address[] calldata targets,
         uint[] calldata values,
@@ -178,6 +211,14 @@ contract TimeLock {
         }
     }
 
+    /*
+    @notice Cancel transaction
+    @param target Address to call
+    @param value Amount of ETH to send
+    @param data Data to send to `target`
+    @param eta Execute Transaction After - Timestamp after which transaction can be executed
+    @param nonce Nonce to create unique tx hash
+    */
     function cancel(
         address target,
         uint value,
