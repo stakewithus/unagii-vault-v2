@@ -151,18 +151,29 @@ def __init__(token: address, uToken: address, guardian: address):
 
 
 # TODO: migrate to new vault
-
-# u = token token
+# t = token token
 # ut = unagi token
 # v1 = vault 1
 # v2 = vault 2
+# f = fund manager
 
-# v2.pause
-# v1.pause
-# ut.setMinter(v2)
-# u.approve(v2, bal of v1, {from: v1})
-# u.transferFrom(v1, v2, bal of v1, {from: v2})
-# update balance in vault and debt?
+# action                         | caller
+# ----------------------------------------
+# 1. v2.pause()                  | admin
+# 2. v1.pause()                  | admin
+# 3. ut.setMinter(v2)            | time lock
+# 4. v2.setFundManager(f)        | time lock
+# 5. f.setVault(v2)              | time lock
+# 6. t.approve(v2, bal)          | v1
+# 7. t.transferFrom(v1, v2, bal) | v2
+# 8. v2 copy states from v1      | v2
+#    - balanceOfVault (fot?)     |
+#    - debt                      |
+#    - locked profit?            |
+# 9. v1 set state = 0            | v1
+#    - balanceOfVault            |
+#    - debt                      |
+#    - locked profit?            |
 
 
 @external
