@@ -27,3 +27,8 @@ def test_queue_not_admin(timeLock, user):
 def test_queue_min_delay(timeLock, admin):
     with brownie.reverts("delay < min"):
         timeLock.queue(ZERO_ADDRESS, 0, "", 0, 0, {"from": admin})
+
+
+def test_queue_max_delay(timeLock, admin):
+    with brownie.reverts("delay > max"):
+        timeLock.queue(ZERO_ADDRESS, 0, "", 30 * 24 * 3600 + 1, 0, {"from": admin})

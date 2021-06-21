@@ -199,7 +199,7 @@ contract TimeLock {
         bytes[] calldata data,
         uint[] calldata etas,
         uint[] calldata nonces
-    ) external onlyAdmin returns (bytes32[] memory) {
+    ) external payable onlyAdmin {
         require(targets.length > 0, "targets.length = 0");
         require(values.length == targets.length, "values.length != targets.length");
         require(data.length == targets.length, "data.length != targets.length");
