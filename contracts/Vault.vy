@@ -261,13 +261,14 @@ def initialize():
 
     self.state = LIVE
 
-
+# Migration steps from this vault to new vault
+#
 # t = token token
 # ut = unagi token
 # v1 = vault 1
 # v2 = vault 2
 # f = fund manager
-
+#
 # action                         | caller
 # ----------------------------------------
 # 1. v2.setPause(true)           | admin
