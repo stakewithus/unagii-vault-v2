@@ -153,6 +153,11 @@ event Report:
     debt: uint256
 
 
+event MigrateStrategy:
+    oldVersion: indexed(address)
+    newVersion: indexed(address)
+
+
 vault: public(Vault)
 token: public(ERC20)
 # privileges - time lock >= admin >= guardian, worker
@@ -692,7 +697,38 @@ def report(gain: uint256, loss: uint256):
 
 # TODO: batch
 
-# TODO: migrate strategy
+
+@external
+def migrateStrategy(oldStrat: address, newStrat: address):
+    assert msg.sender in [self.timeLock, self.admin], "!auth"
+    assert self.strategies[oldStrat].active, "old !active"
+    assert self.strategies[newStrat].approved, "new !approved"
+    assert not self.strategies[newStrat].activated, "activated"
+
+    strat: Strategy = self.strategies[oldStrat]
+
+    self.strategies[newStrat] = Strategy({
+        approved: True,
+        active: True,
+        activated: True,
+        debtRatio: strat.debtRatio,
+        debt: strat.debt,
+        minBorrow: strat.minBorrow,
+        maxBorrow: strat.maxBorrow,
+    })
+
+    self.strategies[oldStrat].active = False
+    self.strategies[oldStrat].debtRatio = 0
+    self.strategies[oldStrat].debt = 0
+    self.strategies[oldStrat].minBorrow = 0
+    self.strategies[oldStrat].maxBorrow = 0
+
+    # find and replace strategy
+    i: uint256 = self._find(oldStrat)
+    self.queue[i] = newStrat
+
+    IStrategy(oldStrat).migrate(newStrat)
+    log MigrateStrategy(oldStrat, newStrat)
 
 
 @external

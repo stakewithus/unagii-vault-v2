@@ -11,8 +11,11 @@ interface FundManager:
 
 
 interface TestToken:
-    def burn(_from: address, amount: uint256):
-        nonpayable
+    def burn(_from: address, amount: uint256): nonpayable
+
+
+interface Strategy:
+    def fundManager() -> address: view 
 
 
 admin: public(address)
@@ -118,6 +121,14 @@ def report(_min: uint256, _max: uint256):
 # calc gain and loss
 # report
 # borrow or repay
+
+@external
+def migrate(newStrategy: address):
+    assert msg.sender == self.fundManager.address, "!fund manager"
+    assert Strategy(newStrategy).fundManager() == self.fundManager.address, "new strategy fund manager != fund manager"
+
+    # should be approve / transfer for real strategies
+    self.token.transfer(newStrategy, self.token.balanceOf(self))
 
 
 ### test helpers ###
