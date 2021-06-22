@@ -111,14 +111,8 @@ event Report:
 event ForceUpdateBalanceOfVault:
     balanceOfVault: uint256
 
-# state transitions
-# NOT_INITIALIZED ---> LIVE <---> PAUSED ---> DEAD
-NOT_INITIALIZED: constant(uint256) = 0
-LIVE: constant(uint256) = 1
-PAUSED: constant(uint256) = 2
-DEAD: constant(uint256) = 3
-
-state: public(uint256)
+paused: public(bool)
+initialized: public(bool)
 
 token: public(ERC20)
 uToken: public(UnagiiToken)
@@ -159,6 +153,7 @@ def __init__(token: address, uToken: address, guardian: address, oldVault: addre
 
     assert self.uToken.token() == self.token.address, "uToken.token != token"
 
+    self.paused = True
     self.blockDelay = 1
     self.minReserve = 500  # 5% of free funds
     # 6 hours
@@ -234,7 +229,7 @@ def setFundManager(fundManager: address):
 
 @external
 def initialize():
-    assert self.state == NOT_INITIALIZED, "initialized"
+    assert not self.initialized, "initialized"
 
     if self.oldVault.address == ZERO_ADDRESS:
         assert msg.sender in [self.timeLock, self.admin], "!auth"
@@ -257,7 +252,7 @@ def initialize():
         self.lockedProfit = self.oldVault.lockedProfit()
         self.lastReport = self.oldVault.lastReport()
 
-    self.state = LIVE
+    self.initialized = True
 
 # Migration steps from this vault to new vault
 #
@@ -290,7 +285,7 @@ def initialize():
 @external
 def migrate(vault: address):
     assert msg.sender == self.timeLock, "!time lock"
-    assert self.state == PAUSED, "!paused"
+    assert self.paused, "!paused"
 
     assert Vault(vault).token() == self.token.address, "token"
     assert Vault(vault).uToken() == self.uToken.address, "uToken"
@@ -312,8 +307,6 @@ def migrate(vault: address):
     # self.balanceOfVault = 0
     # self.debt = 0
     # self.lockedProfit = 0
-
-    self.state = DEAD
 
 
 @external
@@ -347,11 +340,7 @@ def setGuardian(guardian: address):
 @external
 def setPause(paused: bool):
     assert msg.sender in [self.timeLock, self.admin, self.guardian], "!auth"
-    assert self.state in [LIVE, PAUSED], "!state"
-    if paused:
-        self.state = PAUSED
-    else:
-        self.state = LIVE
+    self.paused = paused
     log SetPause(paused)
 
 
@@ -500,7 +489,7 @@ def calcWithdraw(shares: uint256) -> uint256:
 @external
 @nonreentrant("lock")
 def deposit(amount: uint256, _min: uint256) -> uint256:
-    assert self.state == LIVE, "!live"
+    assert not self.paused, "paused"
     assert (
         block.number >= self.uToken.lastBlock(msg.sender) + self.blockDelay
         or self.whitelist[msg.sender]
@@ -591,7 +580,7 @@ def withdraw(shares: uint256, _min: uint256) -> uint256:
 @internal
 @view
 def _calcAvailableToInvest() -> uint256:
-    if self.state != LIVE or self.fundManager.address == ZERO_ADDRESS:
+    if self.paused or self.fundManager.address == ZERO_ADDRESS:
         return 0
 
     freeFunds: uint256 = self._calcFreeFunds()
@@ -610,7 +599,7 @@ def calcAvailableToInvest() -> uint256:
 
 @external
 def borrow(amount: uint256) -> uint256:
-    assert self.state == LIVE, "!live"
+    assert not self.paused, "paused"
     assert msg.sender == self.fundManager.address, "!fund manager"
 
     available: uint256 = self._calcAvailableToInvest()
@@ -632,7 +621,7 @@ def borrow(amount: uint256) -> uint256:
 
 @external
 def repay(amount: uint256) -> uint256:
-    assert self.state in [LIVE, PAUSED], "!state"
+    assert self.initialized, "!initialized"
     assert msg.sender == self.fundManager.address, "!fund manager"
 
     _amount: uint256 = min(amount, self.debt)
@@ -655,7 +644,7 @@ def repay(amount: uint256) -> uint256:
 
 @external
 def report(gain: uint256, loss: uint256):
-    assert self.state in [LIVE, PAUSED], "!state"
+    assert self.initialized, "!initialized"
     assert msg.sender == self.fundManager.address, "!fund manager"
     # can't have both gain and loss > 0
     assert (gain >= 0 and loss == 0) or (gain == 0 and loss >= 0), "gain and loss > 0"
@@ -685,7 +674,7 @@ def report(gain: uint256, loss: uint256):
 
 @external
 def forceUpdateBalanceOfVault():
-    assert self.state in [LIVE, PAUSED], "!state"
+    assert self.initialized, "!initialized"
     assert msg.sender in [self.timeLock, self.admin], "!auth"
     bal: uint256 = self.token.balanceOf(self)
     assert bal < self.balanceOfVault, "bal >= vault"
