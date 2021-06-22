@@ -29,6 +29,7 @@ interface UnagiiToken:
 
 # used for migrating to new Vault contract
 interface Vault:
+    def oldVault() -> address: view
     def token() -> address: view
     def uToken() -> address: view
     def fundManager() -> address: view
@@ -141,6 +142,9 @@ feeOnTransfer: public(bool)
 whitelist: public(HashMap[address, bool])
 
 oldVault: public(Vault)
+# constants used for protection when migrating vault funds
+MIN_OLD_BAL: constant(uint256) = 9990
+MAX_MIN_OLD_BAL: constant(uint256) = 10000
 
 
 @external
@@ -151,7 +155,7 @@ def __init__(token: address, uToken: address, guardian: address, oldVault: addre
     self.token = ERC20(token)
     self.uToken = UnagiiToken(uToken)
 
-    assert self.uToken.token() == self.token.address, "uToken.token != token"
+    assert self.uToken.token() == self.token.address, "uToken token != token"
 
     self.paused = True
     self.blockDelay = 1
@@ -213,20 +217,6 @@ def _safeTransferFrom(
         assert convert(res, bool), "transferFrom failed"
 
 
-# TODO: integration test migration
-@external
-def setFundManager(fundManager: address):
-    assert msg.sender == self.timeLock, "!time lock"
-
-    assert FundManager(fundManager).vault() == self, "fund manager vault != vault"
-    assert (
-        FundManager(fundManager).token() == self.token.address
-    ), "fund manager token != token"
-
-    self.fundManager = FundManager(fundManager)
-    log SetFundManager(fundManager)
-
-
 @external
 def initialize():
     assert not self.initialized, "initialized"
@@ -237,22 +227,30 @@ def initialize():
     else:
         assert msg.sender == self.oldVault.address, "!old vault"
 
-        assert self.uToken.minter() == self, "minter != vault"
-        # assert self.fundManager.address == self.oldVault.fundManager(), "fund manager"
+        assert self.uToken.minter() == self, "minter != self"
+
+        assert self.fundManager.address == self.oldVault.fundManager(), "fund manager != old vault fund manager"
+        if self.fundManager.address != ZERO_ADDRESS:
+            assert self.fundManager.vault() == self, "fund manager vault != self"
 
         bal: uint256 = self.token.balanceOf(self.oldVault.address)
         balOfVault: uint256 = self.oldVault.balanceOfVault()
         assert bal >= balOfVault, "bal < vault"
 
+        diff: uint256 = self.token.balanceOf(self)
         self._safeTransferFrom(self.token.address, self.oldVault.address, self, bal)
+        diff = self.token.balanceOf(self) - diff
 
-        # transferred amount <= balOfVault if fee on transfer
-        self.balanceOfVault = balOfVault
+        # diff may be <= balOfVault if fee on transfer
+        assert diff >= balOfVault * MIN_OLD_BAL / MAX_MIN_OLD_BAL, "diff < min"
+
+        self.balanceOfVault = min(balOfVault, diff)
         self.debt = self.oldVault.debt()
         self.lockedProfit = self.oldVault.lockedProfit()
         self.lastReport = self.oldVault.lastReport()
 
     self.initialized = True
+
 
 # Migration steps from this vault to new vault
 #
@@ -272,11 +270,11 @@ def initialize():
 # 6. t.approve(v2, bal)          | v1
 # 7. t.transferFrom(v1, v2, bal) | v2
 # 8. v2 copy states from v1      | v2
-#    - balanceOfVault (fot?)     |
+#    - balanceOfVault            |
 #    - debt                      |
 #    - locked profit             |
 #    - last report               |
-# 9. v1 set state = 0 ?          | v1
+# 9. v1 set state = 0            | v1
 #    - balanceOfVault            |
 #    - debt                      |
 #    - locked profit             |
@@ -335,6 +333,20 @@ def setGuardian(guardian: address):
     assert msg.sender in [self.timeLock, self.admin], "!auth"
     self.guardian = guardian
     log SetGuardian(guardian)
+
+
+# TODO: integration test migration
+@external
+def setFundManager(fundManager: address):
+    assert msg.sender == self.timeLock, "!time lock"
+
+    assert FundManager(fundManager).vault() == self, "fund manager vault != self"
+    assert (
+        FundManager(fundManager).token() == self.token.address
+    ), "fund manager token != token"
+
+    self.fundManager = FundManager(fundManager)
+    log SetFundManager(fundManager)
 
 
 @external
