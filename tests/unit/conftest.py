@@ -65,6 +65,8 @@ def vault(Vault, token, uToken, admin, guardian):
 
     vault.setPause(False, {"from": admin})
     vault.setDepositLimit(2 ** 256 - 1, {"from": admin})
+
+    vault.initialize({"from": admin})
     yield vault
 
 

@@ -47,6 +47,13 @@ interface FundManager:
     def withdraw(amount: uint256) -> uint256: nonpayable
 
 
+event Migrate:
+    vault: address
+    balanceOfVault: uint256
+    debt: uint256
+    lockedProfit: uint256
+
+
 event SetNextTimeLock:
     nextTimeLock: address
 
@@ -279,32 +286,36 @@ def initialize():
 #    - debt                      |
 #    - locked profit             |
 
-
+# TODO: integration test (time lock)
 @external
 def migrate(vault: address):
     assert msg.sender == self.timeLock, "!time lock"
+    assert self.initialized, "!initialized"
     assert self.paused, "!paused"
 
-    assert Vault(vault).token() == self.token.address, "token"
-    assert Vault(vault).uToken() == self.uToken.address, "uToken"
+    assert Vault(vault).token() == self.token.address, "new vault token != token"
+    assert Vault(vault).uToken() == self.uToken.address, "new vault uToken != uToken"
     # minter is set to new vault
-    assert self.uToken.minter() == vault, "minter"
+    assert self.uToken.minter() == vault, "minter != new vault"
     # new vault's fund manager is set to current fund manager
-    assert Vault(vault).fundManager() == self.fundManager.address, "fund manager"
+    assert Vault(vault).fundManager() == self.fundManager.address, "new vault fund manager != fund manager"
     if self.fundManager.address != ZERO_ADDRESS:
         # fund manager's vault is set to new vault
-        assert self.fundManager.vault() == vault, "fund manager vault"
+        assert self.fundManager.vault() == vault, "fund manager vault != new vault"
 
     bal: uint256 = self.token.balanceOf(self)
     assert bal >= self.balanceOfVault, "bal < vault"
 
+    assert Vault(vault).oldVault() == self, "old vault != self"
+
     self._safeApprove(self.token.address, vault, bal)
     Vault(vault).initialize()
 
-    # TODO: clear state?
-    # self.balanceOfVault = 0
-    # self.debt = 0
-    # self.lockedProfit = 0
+    log Migrate(vault, self.balanceOfVault, self.debt, self.lockedProfit)
+
+    self.balanceOfVault = 0
+    self.debt = 0
+    self.lockedProfit = 0
 
 
 @external
