@@ -197,7 +197,7 @@ queue: public(address[MAX_QUEUE])
 OLD_MAX_QUEUE: constant(uint256) = 20  # must be <= MAX_QUEUE
 oldFundManager: public(FundManager)
 
-# TODO: test
+
 @external
 def __init__(
     token: address, guardian: address, worker: address, oldFundManager: address

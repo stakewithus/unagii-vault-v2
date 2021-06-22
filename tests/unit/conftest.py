@@ -76,6 +76,7 @@ def fundManager(FundManager, testVault, token, admin, guardian, worker):
         token, guardian, worker, ZERO_ADDRESS, {"from": admin}
     )
     fundManager.setVault(testVault, {"from": admin})
+    fundManager.initialize({"from": admin})
     yield fundManager
 
 
