@@ -27,6 +27,16 @@ interface IStrategy:
     def migrate(newVersion: address): nonpayable
 
 
+interface FundManager:
+    def token() -> address: view
+    def vault() -> address: view
+    def totalDebt() -> uint256: view
+    def totalDebtRatio() -> uint256: view
+    def queue(i: uint256) -> address: view
+    def strategies(addr: address) -> (bool, bool, bool, uint256, uint256, uint256, uint256): view
+    def initialize(): nonpayable
+
+
 MAX_QUEUE: constant(uint256) = 20
 
 
@@ -153,8 +163,15 @@ event Report:
 
 
 event MigrateStrategy:
-    oldVersion: indexed(address)
-    newVersion: indexed(address)
+    oldStrategy: indexed(address)
+    newStrategy: indexed(address)
+
+
+event Migrate:
+    fundManager: address 
+    bal: uint256
+    totalDebt: uint256
+    totalDebtRatio: uint256
 
 paused: public(bool)
 initialized: public(bool)
@@ -174,93 +191,21 @@ totalDebtRatio: public(uint256)
 strategies: public(HashMap[address, Strategy])
 queue: public(address[MAX_QUEUE])
 
+OLD_MAX_QUEUE: constant(uint256) = 20 # must be <= MAX_QUEUE
+oldFundManager: public(FundManager)
+
 
 @external
-def __init__(token: address, guardian: address, worker: address):
+def __init__(token: address, guardian: address, worker: address, oldFundManager: address):
     self.token = ERC20(token)
     self.timeLock = msg.sender
     self.admin = msg.sender
     self.guardian = guardian
     self.worker = worker
 
-
-# Migration steps to new fund manager
-#
-# t = token token
-# v = vault
-# f1 = fund manager 1
-# f2 = fund manager 2
-# strats = active strategies of f1
-#
-# action                         | caller
-# ----------------------------------------
-# 1. f2.setPause(true)           | admin
-# 2. f2.setVault(v)              | time lock
-# 3. f1.setPause(true)           | admin
-# 4. for s in strats             | 
-#      s.setFundManager(f2)      | time lock
-# 5. t.approve(f2, bal)          | f1
-# 6. t.transferFrom(f1, f2, bal) | f2
-# 7. f2 copy states from f1      | f2
-#    - totalDebt                 |
-#    - totalDebtRatio            |
-#    - queue                     |
-#    - active strategy params    |
-# 8. f1 reset state              | f1
-#    - totalDebt                 |
-#    - totalDebtRatio            |
-#    - queue                     |
-#    - active strategy params    |
-# 9. v.setFundManager(f2)        | time lock
-
-
-# TODO: integration test
-@external
-def migrate(fundManager: address):
-    pass
-
-
-@external
-def setNextTimeLock(nextTimeLock: address):
-    assert msg.sender == self.timeLock, "!time lock"
-    self.nextTimeLock = nextTimeLock
-    log SetNextTimeLock(nextTimeLock)
-
-
-@external
-def acceptTimeLock():
-    assert msg.sender == self.nextTimeLock, "!next time lock"
-    self.timeLock = msg.sender
-    log AcceptTimeLock(msg.sender)
-
-
-@external
-def setAdmin(admin: address):
-    assert msg.sender in [self.timeLock, self.admin], "!auth"
-    self.admin = admin
-    log SetAdmin(admin)
-
-
-@external
-def setGuardian(guardian: address):
-    assert msg.sender in [self.timeLock, self.admin], "!auth"
-    self.guardian = guardian
-    log SetGuardian(guardian)
-
-
-@external
-def setWorker(worker: address):
-    assert msg.sender in [self.timeLock, self.admin], "!auth"
-    self.worker = worker
-    log SetWorker(worker)
-
-
-@external
-def setPause(paused: bool):
-    assert msg.sender in [self.timeLock, self.admin, self.guardian], "!auth"
-    self.paused = paused
-    log SetPause(paused)
-
+    if oldFundManager != ZERO_ADDRESS:
+        self.oldFundManager = FundManager(oldFundManager)
+        assert self.oldFundManager.token() == token, "old fund manager token != token"
 
 @internal
 def _safeApprove(token: address, spender: address, amount: uint256):
@@ -308,6 +253,154 @@ def _safeTransferFrom(
     )
     if len(res) > 0:
         assert convert(res, bool), "transferFrom failed"
+
+# TODO: test
+@external
+def initialize():
+    assert not self.initialized, "initialized"
+    
+    if self.oldFundManager.address == ZERO_ADDRESS:
+        assert msg.sender in [self.timeLock, self.admin], "!auth"
+    else:
+        assert msg.sender == self.oldFundManager.address, "!old fund manager"
+
+        assert self.vault.address == self.oldFundManager.vault(), "old fund manager vault != vault"
+
+        bal: uint256 = self.token.balanceOf(self.oldFundManager.address)
+        self._safeTransferFrom(self.token.address, self.oldFundManager.address, self, bal)
+
+        self.totalDebt = self.oldFundManager.totalDebt()
+        self.totalDebtRatio = self.oldFundManager.totalDebtRatio()
+
+        for i in range(OLD_MAX_QUEUE):
+            addr: address = self.oldFundManager.queue(i)
+
+            assert IStrategy(addr).fundManager() == self, "strategy fund manager != self"
+
+            approved: bool = False
+            active: bool = False
+            activated: bool = False
+            debtRatio: uint256 = 0
+            debt: uint256 = 0
+            minBorrow: uint256 = 0
+            maxBorrow: uint256 = 0
+            (approved, active, activated, debtRatio, debt, minBorrow, maxBorrow) = self.oldFundManager.strategies(addr)
+            assert approved, "!approved"
+            assert active, "!active"
+            assert activated, "!activated"
+
+            self.queue[i] = addr
+            self.strategies[addr] = Strategy({
+                approved: True,
+                active: True,
+                activated: True,
+                debtRatio: debtRatio,
+                debt: debt,
+                minBorrow: minBorrow,
+                maxBorrow: maxBorrow,
+            })
+
+    self.initialized = True
+
+# Migration steps to new fund manager
+#
+# t = token token
+# v = vault
+# f1 = fund manager 1
+# f2 = fund manager 2
+# strats = active strategies of f1
+#
+# action                         | caller
+# ----------------------------------------
+# 1. f2.setPause(true)           | admin
+# 2. f2.setVault(v)              | time lock
+# 3. f1.setPause(true)           | admin
+# 4. for s in strats             | 
+#      s.setFundManager(f2)      | time lock
+# 5. t.approve(f2, bal)          | f1
+# 6. t.transferFrom(f1, f2, bal) | f2
+# 7. f2 copy states from f1      | f2
+#    - totalDebt                 |
+#    - totalDebtRatio            |
+#    - queue                     |
+#    - active strategy params    |
+# 8. f1 reset state              | f1
+#    - totalDebt                 |
+#    - active strategy debt      |
+# 9. v.setFundManager(f2)        | time lock
+
+
+# TODO: integration test
+@external
+def migrate(fundManager: address):
+    assert msg.sender == self.timeLock, "!time lock"
+    assert self.initialized, "!initialized"
+    assert self.paused, "!paused"
+
+    assert FundManager(fundManager).token() == self.token.address, "new fund manager token != token"
+    assert FundManager(fundManager).vault() == self.vault.address, "new fund manager vault != vault"
+
+    for strat in self.queue:
+        if strat == ZERO_ADDRESS:
+            break
+        assert IStrategy(strat).fundManager() == fundManager, "strat fund manager != new fund manager"
+    
+    bal: uint256 = self.token.balanceOf(self)
+    self._safeApprove(self.token.address, fundManager, bal)
+    FundManager(fundManager).initialize()
+
+    assert self.token.balanceOf(self) == 0, "bal != 0"
+
+    log Migrate(fundManager, bal, self.totalDebt, self.totalDebtRatio)
+
+    self.totalDebt = 0
+
+    for strat in self.queue:
+        if strat == ZERO_ADDRESS:
+            break 
+        self.strategies[strat].debt = 0
+
+
+@external
+def setNextTimeLock(nextTimeLock: address):
+    assert msg.sender == self.timeLock, "!time lock"
+    self.nextTimeLock = nextTimeLock
+    log SetNextTimeLock(nextTimeLock)
+
+
+@external
+def acceptTimeLock():
+    assert msg.sender == self.nextTimeLock, "!next time lock"
+    self.timeLock = msg.sender
+    log AcceptTimeLock(msg.sender)
+
+
+@external
+def setAdmin(admin: address):
+    assert msg.sender in [self.timeLock, self.admin], "!auth"
+    self.admin = admin
+    log SetAdmin(admin)
+
+
+@external
+def setGuardian(guardian: address):
+    assert msg.sender in [self.timeLock, self.admin], "!auth"
+    self.guardian = guardian
+    log SetGuardian(guardian)
+
+
+@external
+def setWorker(worker: address):
+    assert msg.sender in [self.timeLock, self.admin], "!auth"
+    self.worker = worker
+    log SetWorker(worker)
+
+
+@external
+def setPause(paused: bool):
+    assert msg.sender in [self.timeLock, self.admin, self.guardian], "!auth"
+    self.paused = paused
+    log SetPause(paused)
 
 
 @external
@@ -526,6 +619,7 @@ def setMinMaxBorrow(strategy: address, minBorrow: uint256, maxBorrow: uint256):
 # functions between Vault and this contract #
 @external
 def borrowFromVault(amount: uint256, _min: uint256):
+    assert self.initialized, "!initialized"
     assert msg.sender in [self.timeLock, self.admin, self.worker], "!auth"
     # fails if vault not set
     borrowed: uint256 = self.vault.borrow(amount)
@@ -536,6 +630,7 @@ def borrowFromVault(amount: uint256, _min: uint256):
 
 @external
 def repayVault(amount: uint256, _min: uint256):
+    assert self.initialized, "!initialized"
     assert msg.sender in [self.timeLock, self.admin, self.worker], "!auth"
     # fails if vault not set
     # infinite approved in setVault()
@@ -548,6 +643,7 @@ def repayVault(amount: uint256, _min: uint256):
 # _min and _max to protect against price manipulation
 @external
 def reportToVault(_min: uint256, _max: uint256):
+    assert self.initialized, "!initialized"
     assert msg.sender in [self.timeLock, self.admin, self.worker], "!auth"
 
     total: uint256 = self._totalAssets()
@@ -607,6 +703,7 @@ def _withdraw(amount: uint256) -> uint256:
 
 @external
 def withdraw(amount: uint256) -> uint256:
+    assert self.initialized, "!initialized"
     assert msg.sender == self.vault.address, "!vault"
 
     total: uint256 = self._totalAssets()
@@ -638,7 +735,7 @@ def withdraw(amount: uint256) -> uint256:
 @internal
 @view
 def _calcMaxBorrow(strategy: address) -> uint256:
-    if self.paused or self.totalDebtRatio == 0:
+    if (not self.initialized) or self.paused or self.totalDebtRatio == 0:
         return 0
 
     # strategy debtRatio > 0 only if strategy is active
@@ -673,6 +770,7 @@ def getDebt(strategy: address) -> uint256:
 
 @external
 def borrow(amount: uint256) -> uint256:
+    assert self.initialized, "!initialized"
     assert not self.paused, "paused"
     assert self.strategies[msg.sender].active, "!active"
 
@@ -692,6 +790,7 @@ def borrow(amount: uint256) -> uint256:
 
 @external
 def repay(amount: uint256) -> uint256:
+    assert self.initialized, "!initialized"
     assert self.strategies[msg.sender].approved, "!approved"
 
     _amount: uint256 = min(amount, self.strategies[msg.sender].debt)
@@ -712,6 +811,7 @@ def repay(amount: uint256) -> uint256:
 
 @external
 def report(gain: uint256, loss: uint256):
+    assert self.initialized, "!initialized"
     assert self.strategies[msg.sender].active, "!active"
     # can't have both gain and loss > 0
     assert (gain >= 0 and loss == 0) or (gain == 0 and loss >= 0), "gain and loss > 0"
@@ -730,6 +830,7 @@ def report(gain: uint256, loss: uint256):
 
 @external
 def migrateStrategy(oldStrat: address, newStrat: address):
+    assert self.initialized, "!initialized"
     assert msg.sender in [self.timeLock, self.admin], "!auth"
     assert self.strategies[oldStrat].active, "old !active"
     assert self.strategies[newStrat].approved, "new !approved"
