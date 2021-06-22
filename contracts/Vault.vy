@@ -316,6 +316,8 @@ def migrate(vault: address):
     self._safeApprove(self.token.address, vault, bal)
     Vault(vault).initialize()
 
+    assert self.token.balanceOf(self) == 0, "bal != 0"
+
     log Migrate(vault, self.balanceOfVault, self.debt, self.lockedProfit)
 
     self.balanceOfVault = 0
