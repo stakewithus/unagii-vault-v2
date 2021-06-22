@@ -119,6 +119,7 @@ event Report:
 event ForceUpdateBalanceOfVault:
     balanceOfVault: uint256
 
+
 paused: public(bool)
 initialized: public(bool)
 
@@ -236,7 +237,9 @@ def initialize():
 
         assert self.uToken.minter() == self, "minter != self"
 
-        assert self.fundManager.address == self.oldVault.fundManager(), "fund manager != old vault fund manager"
+        assert (
+            self.fundManager.address == self.oldVault.fundManager()
+        ), "fund manager != old vault fund manager"
         if self.fundManager.address != ZERO_ADDRESS:
             assert self.fundManager.vault() == self, "fund manager vault != self"
 
@@ -298,7 +301,9 @@ def migrate(vault: address):
     # minter is set to new vault
     assert self.uToken.minter() == vault, "minter != new vault"
     # new vault's fund manager is set to current fund manager
-    assert Vault(vault).fundManager() == self.fundManager.address, "new vault fund manager != fund manager"
+    assert (
+        Vault(vault).fundManager() == self.fundManager.address
+    ), "new vault fund manager != fund manager"
     if self.fundManager.address != ZERO_ADDRESS:
         # fund manager's vault is set to new vault
         assert self.fundManager.vault() == vault, "fund manager vault != new vault"
@@ -605,7 +610,11 @@ def withdraw(shares: uint256, _min: uint256) -> uint256:
 @internal
 @view
 def _calcAvailableToInvest() -> uint256:
-    if (not self.initialized) or self.paused or self.fundManager.address == ZERO_ADDRESS:
+    if (
+        (not self.initialized)
+        or self.paused
+        or self.fundManager.address == ZERO_ADDRESS
+    ):
         return 0
 
     freeFunds: uint256 = self._calcFreeFunds()
