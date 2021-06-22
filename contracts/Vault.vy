@@ -512,6 +512,7 @@ def calcWithdraw(shares: uint256) -> uint256:
 @external
 @nonreentrant("lock")
 def deposit(amount: uint256, _min: uint256) -> uint256:
+    assert self.initialized, "!initialized"
     assert not self.paused, "paused"
     assert (
         block.number >= self.uToken.lastBlock(msg.sender) + self.blockDelay
@@ -557,6 +558,7 @@ def deposit(amount: uint256, _min: uint256) -> uint256:
 @external
 @nonreentrant("lock")
 def withdraw(shares: uint256, _min: uint256) -> uint256:
+    assert self.initialized, "!initialized"
     assert (
         block.number >= self.uToken.lastBlock(msg.sender) + self.blockDelay
         or self.whitelist[msg.sender]
@@ -603,7 +605,7 @@ def withdraw(shares: uint256, _min: uint256) -> uint256:
 @internal
 @view
 def _calcAvailableToInvest() -> uint256:
-    if self.paused or self.fundManager.address == ZERO_ADDRESS:
+    if (not self.initialized) or self.paused or self.fundManager.address == ZERO_ADDRESS:
         return 0
 
     freeFunds: uint256 = self._calcFreeFunds()
@@ -622,6 +624,7 @@ def calcAvailableToInvest() -> uint256:
 
 @external
 def borrow(amount: uint256) -> uint256:
+    assert self.initialized, "!initialized"
     assert not self.paused, "paused"
     assert msg.sender == self.fundManager.address, "!fund manager"
 

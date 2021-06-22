@@ -25,6 +25,8 @@ def test_initialize_old_vault(
     vault = Vault.deploy(token, uToken, guardian, oldVault, {"from": admin})
 
     # set old vault balance > 0
+    oldVault.initialize({"from": admin})
+
     uToken.setMinter(oldVault, {"from": uToken.timeLock()})
     oldVault.setPause(False, {"from": admin})
     oldVault.setDepositLimit(2 ** 256 - 1, {"from": admin})

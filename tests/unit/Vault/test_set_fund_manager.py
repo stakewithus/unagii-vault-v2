@@ -16,7 +16,7 @@ def test_set_fund_manager(vault, token, testFundManager, admin, user):
 
     # use user's address
     testFundManager.setVault(user, {"from": admin})
-    with brownie.reverts("fund manager vault != vault"):
+    with brownie.reverts("fund manager vault != self"):
         vault.setFundManager(testFundManager, {"from": timeLock})
     testFundManager.setVault(vault, {"from": admin})
 
