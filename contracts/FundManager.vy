@@ -33,7 +33,9 @@ interface FundManager:
     def totalDebt() -> uint256: view
     def totalDebtRatio() -> uint256: view
     def queue(i: uint256) -> address: view
-    def strategies(addr: address) -> (bool, bool, bool, uint256, uint256, uint256, uint256): view
+    def strategies(
+        addr: address,
+    ) -> (bool, bool, bool, uint256, uint256, uint256, uint256): view
     def initialize(): nonpayable
 
 
@@ -168,10 +170,11 @@ event MigrateStrategy:
 
 
 event Migrate:
-    fundManager: address 
+    fundManager: address
     bal: uint256
     totalDebt: uint256
     totalDebtRatio: uint256
+
 
 paused: public(bool)
 initialized: public(bool)
@@ -191,12 +194,14 @@ totalDebtRatio: public(uint256)
 strategies: public(HashMap[address, Strategy])
 queue: public(address[MAX_QUEUE])
 
-OLD_MAX_QUEUE: constant(uint256) = 20 # must be <= MAX_QUEUE
+OLD_MAX_QUEUE: constant(uint256) = 20  # must be <= MAX_QUEUE
 oldFundManager: public(FundManager)
 
 
 @external
-def __init__(token: address, guardian: address, worker: address, oldFundManager: address):
+def __init__(
+    token: address, guardian: address, worker: address, oldFundManager: address
+):
     self.token = ERC20(token)
     self.timeLock = msg.sender
     self.admin = msg.sender
@@ -206,6 +211,7 @@ def __init__(token: address, guardian: address, worker: address, oldFundManager:
     if oldFundManager != ZERO_ADDRESS:
         self.oldFundManager = FundManager(oldFundManager)
         assert self.oldFundManager.token() == token, "old fund manager token != token"
+
 
 @internal
 def _safeApprove(token: address, spender: address, amount: uint256):
@@ -254,20 +260,25 @@ def _safeTransferFrom(
     if len(res) > 0:
         assert convert(res, bool), "transferFrom failed"
 
+
 # TODO: test
 @external
 def initialize():
     assert not self.initialized, "initialized"
-    
+
     if self.oldFundManager.address == ZERO_ADDRESS:
         assert msg.sender in [self.timeLock, self.admin], "!auth"
     else:
         assert msg.sender == self.oldFundManager.address, "!old fund manager"
 
-        assert self.vault.address == self.oldFundManager.vault(), "old fund manager vault != vault"
+        assert (
+            self.vault.address == self.oldFundManager.vault()
+        ), "old fund manager vault != vault"
 
         bal: uint256 = self.token.balanceOf(self.oldFundManager.address)
-        self._safeTransferFrom(self.token.address, self.oldFundManager.address, self, bal)
+        self._safeTransferFrom(
+            self.token.address, self.oldFundManager.address, self, bal
+        )
 
         self.totalDebt = self.oldFundManager.totalDebt()
         self.totalDebtRatio = self.oldFundManager.totalDebtRatio()
@@ -275,7 +286,9 @@ def initialize():
         for i in range(OLD_MAX_QUEUE):
             addr: address = self.oldFundManager.queue(i)
 
-            assert IStrategy(addr).fundManager() == self, "strategy fund manager != self"
+            assert (
+                IStrategy(addr).fundManager() == self
+            ), "strategy fund manager != self"
 
             approved: bool = False
             active: bool = False
@@ -284,23 +297,34 @@ def initialize():
             debt: uint256 = 0
             minBorrow: uint256 = 0
             maxBorrow: uint256 = 0
-            (approved, active, activated, debtRatio, debt, minBorrow, maxBorrow) = self.oldFundManager.strategies(addr)
+            (
+                approved,
+                active,
+                activated,
+                debtRatio,
+                debt,
+                minBorrow,
+                maxBorrow,
+            ) = self.oldFundManager.strategies(addr)
             assert approved, "!approved"
             assert active, "!active"
             assert activated, "!activated"
 
             self.queue[i] = addr
-            self.strategies[addr] = Strategy({
-                approved: True,
-                active: True,
-                activated: True,
-                debtRatio: debtRatio,
-                debt: debt,
-                minBorrow: minBorrow,
-                maxBorrow: maxBorrow,
-            })
+            self.strategies[addr] = Strategy(
+                {
+                    approved: True,
+                    active: True,
+                    activated: True,
+                    debtRatio: debtRatio,
+                    debt: debt,
+                    minBorrow: minBorrow,
+                    maxBorrow: maxBorrow,
+                }
+            )
 
     self.initialized = True
+
 
 # Migration steps to new fund manager
 #
@@ -315,7 +339,7 @@ def initialize():
 # 1. f2.setPause(true)           | admin
 # 2. f2.setVault(v)              | time lock
 # 3. f1.setPause(true)           | admin
-# 4. for s in strats             | 
+# 4. for s in strats             |
 #      s.setFundManager(f2)      | time lock
 # 5. t.approve(f2, bal)          | f1
 # 6. t.transferFrom(f1, f2, bal) | f2
@@ -337,14 +361,20 @@ def migrate(fundManager: address):
     assert self.initialized, "!initialized"
     assert self.paused, "!paused"
 
-    assert FundManager(fundManager).token() == self.token.address, "new fund manager token != token"
-    assert FundManager(fundManager).vault() == self.vault.address, "new fund manager vault != vault"
+    assert (
+        FundManager(fundManager).token() == self.token.address
+    ), "new fund manager token != token"
+    assert (
+        FundManager(fundManager).vault() == self.vault.address
+    ), "new fund manager vault != vault"
 
     for strat in self.queue:
         if strat == ZERO_ADDRESS:
             break
-        assert IStrategy(strat).fundManager() == fundManager, "strat fund manager != new fund manager"
-    
+        assert (
+            IStrategy(strat).fundManager() == fundManager
+        ), "strat fund manager != new fund manager"
+
     bal: uint256 = self.token.balanceOf(self)
     self._safeApprove(self.token.address, fundManager, bal)
     FundManager(fundManager).initialize()
@@ -357,7 +387,7 @@ def migrate(fundManager: address):
 
     for strat in self.queue:
         if strat == ZERO_ADDRESS:
-            break 
+            break
         self.strategies[strat].debt = 0
 
 
@@ -838,15 +868,17 @@ def migrateStrategy(oldStrat: address, newStrat: address):
 
     strat: Strategy = self.strategies[oldStrat]
 
-    self.strategies[newStrat] = Strategy({
-        approved: True,
-        active: True,
-        activated: True,
-        debtRatio: strat.debtRatio,
-        debt: strat.debt,
-        minBorrow: strat.minBorrow,
-        maxBorrow: strat.maxBorrow,
-    })
+    self.strategies[newStrat] = Strategy(
+        {
+            approved: True,
+            active: True,
+            activated: True,
+            debtRatio: strat.debtRatio,
+            debt: strat.debt,
+            minBorrow: strat.minBorrow,
+            maxBorrow: strat.maxBorrow,
+        }
+    )
 
     self.strategies[oldStrat].active = False
     self.strategies[oldStrat].debtRatio = 0
