@@ -112,11 +112,8 @@ event ForceUpdateBalanceOfVault:
     balanceOfVault: uint256
 
 # state transitions
-# DEPLOYED ---> LIVE <---> PAUSED
-#                |           |
-#                |           V
-#                +-------> DEAD
-DEPLOYED: constant(uint256) = 0
+# NOT_INITIALIZED ---> LIVE <---> PAUSED ---> DEAD
+NOT_INITIALIZED: constant(uint256) = 0
 LIVE: constant(uint256) = 1
 PAUSED: constant(uint256) = 2
 DEAD: constant(uint256) = 3
@@ -237,7 +234,7 @@ def setFundManager(fundManager: address):
 
 @external
 def initialize():
-    assert self.state == DEPLOYED, "!deployed"
+    assert self.state == NOT_INITIALIZED, "initialized"
 
     if self.oldVault.address == ZERO_ADDRESS:
         assert msg.sender in [self.timeLock, self.admin], "!auth"
@@ -245,8 +242,8 @@ def initialize():
     else:
         assert msg.sender == self.oldVault.address, "!old vault"
 
-        assert self.uToken.minter() == self, "!minter"
-        assert self.fundManager.address == self.oldVault.fundManager(), "fund manager mismatch"
+        assert self.uToken.minter() == self, "minter != vault"
+        # assert self.fundManager.address == self.oldVault.fundManager(), "fund manager"
 
         bal: uint256 = self.token.balanceOf(self.oldVault.address)
         balOfVault: uint256 = self.oldVault.balanceOfVault()
@@ -254,6 +251,7 @@ def initialize():
 
         self._safeTransferFrom(self.token.address, self.oldVault.address, self, bal)
 
+        # transferred amount <= balOfVault if fee on transfer
         self.balanceOfVault = balOfVault
         self.debt = self.oldVault.debt()
         self.lockedProfit = self.oldVault.lockedProfit()
@@ -300,8 +298,9 @@ def migrate(vault: address):
     assert self.uToken.minter() == vault, "minter"
     # new vault's fund manager is set to current fund manager
     assert Vault(vault).fundManager() == self.fundManager.address, "fund manager"
-    # fund manager's vault is set to new vault
-    assert self.fundManager.vault() == vault, "fund manager vault"
+    if self.fundManager.address != ZERO_ADDRESS:
+        # fund manager's vault is set to new vault
+        assert self.fundManager.vault() == vault, "fund manager vault"
 
     bal: uint256 = self.token.balanceOf(self)
     assert bal >= self.balanceOfVault, "bal < vault"
