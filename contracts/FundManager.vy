@@ -180,6 +180,9 @@ def __init__(token: address, guardian: address, worker: address):
 
 
 # TODO: migrate
+@external
+def migrate(fundManager: address):
+    pass
 
 
 @external
