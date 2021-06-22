@@ -272,7 +272,6 @@ def _safeTransferFrom(
         assert convert(res, bool), "transferFrom failed"
 
 
-# TODO: test migration
 @external
 def setVault(vault: address):
     assert msg.sender == self.timeLock, "!time lock"
@@ -283,7 +282,7 @@ def setVault(vault: address):
 
     self.vault = Vault(vault)
     self._safeApprove(self.token.address, self.vault.address, MAX_UINT256)
-    # TODO: reset total debt?
+
     log SetVault(vault)
 
 
