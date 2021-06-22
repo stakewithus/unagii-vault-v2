@@ -350,7 +350,6 @@ def setGuardian(guardian: address):
     log SetGuardian(guardian)
 
 
-# TODO: integration test migration
 @external
 def setFundManager(fundManager: address):
     assert msg.sender == self.timeLock, "!time lock"
