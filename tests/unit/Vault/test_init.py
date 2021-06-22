@@ -12,7 +12,8 @@ def test_init_no_old_vault(Vault, token, uToken, admin, guardian):
     assert vault.token() == token.address
     assert vault.uToken() == uToken.address
 
-    assert vault.state() == 0
+    assert vault.paused() == True
+    assert vault.initialized() == False
     assert vault.blockDelay() > 0
     assert vault.minReserve() > 0 and vault.minReserve() <= 10000
     assert vault.lastReport() == 0
