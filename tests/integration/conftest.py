@@ -1,5 +1,6 @@
 import pytest
 from brownie import (
+    ZERO_ADDRESS,
     accounts,
     Vault,
     UnagiiToken,
@@ -55,7 +56,7 @@ def uToken(UnagiiToken, token, admin):
 
 @pytest.fixture(scope="module")
 def vault(Vault, token, uToken, admin, guardian):
-    vault = Vault.deploy(token, uToken, guardian, {"from": admin})
+    vault = Vault.deploy(token, uToken, guardian, ZERO_ADDRESS, {"from": admin})
     yield vault
 
 
@@ -113,6 +114,7 @@ def setup(chain, uToken, vault, timeLock, fundManager, admin):
     # vault - setup
     vault.setPause(False, {"from": admin})
     vault.setDepositLimit(2 ** 256 - 1, {"from": admin})
+    vault.initialize({"from": admin})
 
     # vault - set admin to time lock
     vault.setNextTimeLock(timeLock, {"from": admin})
