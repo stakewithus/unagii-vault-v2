@@ -24,7 +24,6 @@ interface IStrategy:
     def fundManager() -> address: view
     def token() -> address: view
     def withdraw(amount: uint256) -> uint256: nonpayable
-    # TODO: migrate
     def migrate(newVersion: address): nonpayable
 
 
@@ -157,6 +156,8 @@ event MigrateStrategy:
     oldVersion: indexed(address)
     newVersion: indexed(address)
 
+paused: public(bool)
+initialized: public(bool)
 
 vault: public(Vault)
 token: public(ERC20)
@@ -167,7 +168,6 @@ admin: public(address)
 guardian: public(address)
 worker: public(address)
 
-paused: public(bool)
 totalDebt: public(uint256)
 MAX_TOTAL_DEBT_RATIO: constant(uint256) = 10000
 totalDebtRatio: public(uint256)
@@ -184,7 +184,37 @@ def __init__(token: address, guardian: address, worker: address):
     self.worker = worker
 
 
-# TODO: migrate
+# Migration steps to new fund manager
+#
+# t = token token
+# v = vault
+# f1 = fund manager 1
+# f2 = fund manager 2
+# strats = active strategies of f1
+#
+# action                         | caller
+# ----------------------------------------
+# 1. f2.setPause(true)           | admin
+# 2. f2.setVault(v)              | time lock
+# 3. f1.setPause(true)           | admin
+# 4. for s in strats             | 
+#      s.setFundManager(f2)      | time lock
+# 5. t.approve(f2, bal)          | f1
+# 6. t.transferFrom(f1, f2, bal) | f2
+# 7. f2 copy states from f1      | f2
+#    - totalDebt                 |
+#    - totalDebtRatio            |
+#    - queue                     |
+#    - active strategy params    |
+# 8. f1 reset state              | f1
+#    - totalDebt                 |
+#    - totalDebtRatio            |
+#    - queue                     |
+#    - active strategy params    |
+# 9. v.setFundManager(f2)        | time lock
+
+
+# TODO: integration test
 @external
 def migrate(fundManager: address):
     pass
