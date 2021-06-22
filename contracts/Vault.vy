@@ -289,7 +289,6 @@ def initialize():
 #    - debt                      |
 #    - locked profit             |
 
-# TODO: integration test (time lock)
 @external
 def migrate(vault: address):
     assert msg.sender == self.timeLock, "!time lock"
