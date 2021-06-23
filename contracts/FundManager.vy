@@ -851,9 +851,6 @@ def report(gain: uint256, loss: uint256):
     log Report(msg.sender, gain, loss, self.strategies[msg.sender].debt)
 
 
-# TODO: batch
-
-
 @external
 def migrateStrategy(oldStrat: address, newStrat: address):
     assert self.initialized, "!initialized"

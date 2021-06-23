@@ -141,12 +141,15 @@ def report(_min: uint256, _max: uint256):
         self.fundManager.report(gain, loss)
 
 
-# TODO: batch?
-# harvest
-# skim
-# calc gain and loss
-# report
-# borrow or repay
+@external
+def batch():
+    # harvest
+    # skim
+    # calc gain and loss
+    # report
+    # borrow or repay
+    pass
+
 
 @external
 def migrate(newStrategy: address):
