@@ -129,6 +129,7 @@ event Sync:
     balanceInVault: uint256
 
 initialized: public(bool)
+paused: public(bool)
 
 token: public(ERC20)
 uToken: public(UnagiiToken)
@@ -138,7 +139,6 @@ timeLock: public(address)
 guardian: public(address)
 keeper: public(address)
 
-paused: public(bool)
 depositLimit: public(uint256)
 totalDebt: public(uint256)
 totalDebtRatio: public(uint256)
