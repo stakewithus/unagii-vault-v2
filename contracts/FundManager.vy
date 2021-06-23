@@ -173,7 +173,6 @@ event Migrate:
     fundManager: address
     bal: uint256
     totalDebt: uint256
-    totalDebtRatio: uint256
 
 
 paused: public(bool)
@@ -374,7 +373,7 @@ def migrate(fundManager: address):
             break
         assert (
             IStrategy(strat).fundManager() == fundManager
-        ), "strat fund manager != new fund manager"
+        ), "strategy fund manager != new fund manager"
 
     bal: uint256 = self.token.balanceOf(self)
     self._safeApprove(self.token.address, fundManager, bal)
@@ -382,7 +381,7 @@ def migrate(fundManager: address):
 
     assert self.token.balanceOf(self) == 0, "bal != 0"
 
-    log Migrate(fundManager, bal, self.totalDebt, self.totalDebtRatio)
+    log Migrate(fundManager, bal, self.totalDebt)
 
     self.totalDebt = 0
 
