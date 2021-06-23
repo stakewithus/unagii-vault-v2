@@ -95,7 +95,20 @@ class StateMachine:
                 _loss -= 1
                 self.token.burn(self.fundManager, _loss)
 
-            print("withdraw loss", user, shares, _loss, calc)
+            bal_in_fund_manager = self.token.balanceOf(self.fundManager)
+
+            print(
+                "withdraw loss",
+                user,
+                "shares",
+                shares,
+                "loss",
+                _loss,
+                "calc",
+                calc,
+                "bal",
+                self.token.balanceOf(self.vault),
+            )
 
             self.vault.withdraw(shares, 0, {"from": user})
 
@@ -103,16 +116,28 @@ class StateMachine:
                 self.totalAssets -= calc
                 self.balanceOfVault -= calc
             else:
+                amount_from_fund_manager = min(calc - bal, bal_in_fund_manager)
+
                 self.totalAssets -= calc
-                self.balanceOfVault -= bal
-                self.debt -= calc - bal
+                # withdraw from fund manager
+                self.balanceOfVault += amount_from_fund_manager
+                self.debt -= amount_from_fund_manager + _loss
+                # withdraw from vault
+                self.balanceOfVault -= calc - _loss
 
     def rule_borrow(self, borrow_amount):
         available = self.vault.calcAvailableToInvest()
         borrow = min(borrow_amount, available)
 
         if borrow > 0:
-            print("borrow", borrow)
+            print(
+                "borrow",
+                borrow,
+                "availabe",
+                available,
+                "bal",
+                self.token.balanceOf(self.vault),
+            )
 
             self.fundManager.borrowFromVault(borrow, 1, {"from": self.admin})
 
@@ -158,6 +183,7 @@ class StateMachine:
             self.debt -= _loss
 
     def invariant(self):
+        assert self.vault.balanceOfVault() <= self.token.balanceOf(self.vault)
         assert self.totalAssets == self.balanceOfVault + self.debt
         assert self.vault.totalAssets() == self.totalAssets
         assert self.vault.balanceOfVault() == self.balanceOfVault
