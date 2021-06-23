@@ -336,22 +336,21 @@ def initialize():
 #
 # action                         | caller
 # ----------------------------------------
-# 1. f2.setPause(true)           | admin
-# 2. f2.setVault(v)              | time lock
-# 3. f1.setPause(true)           | admin
-# 4. for s in strats             |
+# 1. f2.setVault(v)              | time lock
+# 2. f1.setPause(true)           | admin
+# 3. for s in strats             |
 #      s.setFundManager(f2)      | time lock
-# 5. t.approve(f2, bal)          | f1
-# 6. t.transferFrom(f1, f2, bal) | f2
-# 7. f2 copy states from f1      | f2
+# 4. t.approve(f2, bal)          | f1
+# 5. t.transferFrom(f1, f2, bal) | f2
+# 6. f2 copy states from f1      | f2
 #    - totalDebt                 |
 #    - totalDebtRatio            |
 #    - queue                     |
 #    - active strategy params    |
-# 8. f1 reset state              | f1
+# 7. f1 reset state              | f1
 #    - totalDebt                 |
 #    - active strategy debt      |
-# 9. v.setFundManager(f2)        | time lock
+# 8. v.setFundManager(f2)        | time lock
 
 
 # TODO: integration test

@@ -19,6 +19,7 @@ interface Strategy:
 
 
 timeLock: public(address)
+nextTimeLock: public(address)
 admin: public(address)
 worker: public(address)
 fundManager: public(FundManager)
@@ -36,6 +37,18 @@ def __init__(fundManager: address, token: address):
     self.worker = msg.sender
     self.fundManager = FundManager(fundManager)
     self.token = ERC20(token)
+
+
+@external
+def setNextTimeLock(nextTimeLock: address):
+    assert msg.sender == self.timeLock, "!time lock"
+    self.nextTimeLock = nextTimeLock
+
+
+@external
+def acceptTimeLock():
+    assert msg.sender == self.nextTimeLock, "!next time lock"
+    self.timeLock = msg.sender
 
 
 @internal

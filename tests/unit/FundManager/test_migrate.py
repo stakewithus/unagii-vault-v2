@@ -41,7 +41,7 @@ def test_migrate(FundManager, token, guardian, worker, admin, user, TestStrategy
         minBorrow = (i + 1) * 10
         maxBorrow = (i + 1) * 100
         fundManager.addStrategyToQueue(
-            strat, debtRatio, minBorrow, maxBorrow, {"from": fundManager.timeLock()}
+            strat, debtRatio, minBorrow, maxBorrow, {"from": admin}
         )
 
         debt = (i + 1) * 1000
