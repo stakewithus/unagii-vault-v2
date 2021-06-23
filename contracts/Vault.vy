@@ -121,8 +121,8 @@ event ForceUpdateBalanceOfVault:
     balanceOfVault: uint256
 
 
-paused: public(bool)
 initialized: public(bool)
+paused: public(bool)
 
 token: public(ERC20)
 uToken: public(UnagiiToken)
