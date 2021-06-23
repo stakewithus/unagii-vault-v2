@@ -100,6 +100,7 @@ def setup(chain, uToken, vault, timeLock, fundManager, admin):
 
     # fund manager - set vault
     fundManager.setVault(vault, {"from": admin})
+    fundManager.initialize({"from": admin})
 
     # fund manager - set time lock
     fundManager.setNextTimeLock(timeLock, {"from": admin})
