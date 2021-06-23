@@ -18,6 +18,7 @@ interface Strategy:
     def fundManager() -> address: view 
 
 
+timeLock: public(address)
 admin: public(address)
 worker: public(address)
 fundManager: public(FundManager)
@@ -30,6 +31,7 @@ gain: public(uint256)
 
 @external
 def __init__(fundManager: address, token: address):
+    self.timeLock = msg.sender
     self.admin = msg.sender
     self.worker = msg.sender
     self.fundManager = FundManager(fundManager)
@@ -46,6 +48,17 @@ def _totalAssets() -> uint256:
 @view
 def totalAssets() -> uint256:
     return self._totalAssets()
+
+
+@external
+def setFundManager(fundManager: address):
+    assert msg.sender == self.timeLock, "!time lock"
+    
+    if self.fundManager.address != ZERO_ADDRESS:
+        self.token.approve(self.fundManager.address, 0)
+    
+    self.fundManager = FundManager(fundManager)
+    self.token.approve(fundManager, MAX_UINT256)
 
 
 @external
@@ -132,11 +145,6 @@ def migrate(newStrategy: address):
 
 
 ### test helpers ###
-@external
-def setFundManager(fundManager: address):
-    self.fundManager = FundManager(fundManager)
-
-
 @external
 def setToken(token: address):
     self.token = ERC20(token)

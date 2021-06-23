@@ -261,7 +261,6 @@ def _safeTransferFrom(
         assert convert(res, bool), "transferFrom failed"
 
 
-# TODO: test
 @external
 def initialize():
     assert not self.initialized, "initialized"
@@ -285,6 +284,8 @@ def initialize():
 
         for i in range(OLD_MAX_QUEUE):
             addr: address = self.oldFundManager.queue(i)
+            if addr == ZERO_ADDRESS:
+                break
 
             assert (
                 IStrategy(addr).fundManager() == self
