@@ -15,7 +15,7 @@ interface TestToken:
 
 
 interface Strategy:
-    def fundManager() -> address: view 
+    def fundManager() -> address: view
 
 
 timeLock: public(address)
@@ -66,10 +66,10 @@ def totalAssets() -> uint256:
 @external
 def setFundManager(fundManager: address):
     assert msg.sender == self.timeLock, "!time lock"
-    
+
     if self.fundManager.address != ZERO_ADDRESS:
         self.token.approve(self.fundManager.address, 0)
-    
+
     self.fundManager = FundManager(fundManager)
     self.token.approve(fundManager, MAX_UINT256)
 
@@ -154,7 +154,9 @@ def batch():
 @external
 def migrate(newStrategy: address):
     assert msg.sender == self.fundManager.address, "!fund manager"
-    assert Strategy(newStrategy).fundManager() == self.fundManager.address, "new strategy fund manager != fund manager"
+    assert (
+        Strategy(newStrategy).fundManager() == self.fundManager.address
+    ), "new strategy fund manager != fund manager"
 
     # should be approve / transfer for real strategies
     self.token.transfer(newStrategy, self.token.balanceOf(self))

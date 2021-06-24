@@ -8,7 +8,7 @@
 
 from vyper.interfaces import ERC20
 
-# TODO: Eth vault
+# TODO: ETH vault
 # TODO: comment
 # TODO: gas optimize
 
@@ -289,6 +289,7 @@ def initialize():
 #    - balanceOfVault            |
 #    - debt                      |
 #    - locked profit             |
+
 
 @external
 def migrate(vault: address):
