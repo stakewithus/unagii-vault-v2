@@ -3,8 +3,8 @@ from brownie import ZERO_ADDRESS
 import pytest
 
 
-def test_approve_strategy(fundManager, token, testStrategy, user):
-    strategy = testStrategy
+def test_approve_strategy(fundManager, token, testErc20Strategy, user):
+    strategy = testErc20Strategy
     timeLock = fundManager.timeLock()
 
     # revert if not time lock

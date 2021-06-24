@@ -8,7 +8,7 @@ from brownie import (
     TestToken,
     TestVault,
     TestFundManager,
-    TestStrategy,
+    TestErc20Strategy,
     TxTest,
     ZERO_ADDRESS,
 )
@@ -102,5 +102,5 @@ def testFundManager(TestFundManager, vault, token, admin):
 
 
 @pytest.fixture(scope="module")
-def testStrategy(TestStrategy, fundManager, token, admin):
-    yield TestStrategy.deploy(fundManager, token, {"from": admin})
+def testErc20Strategy(TestErc20Strategy, fundManager, token, admin):
+    yield TestErc20Strategy.deploy(fundManager, token, {"from": admin})

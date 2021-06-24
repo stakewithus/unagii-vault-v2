@@ -2,8 +2,8 @@ import brownie
 from brownie import ZERO_ADDRESS
 
 
-def test_repay(fundManager, token, admin, testStrategy, user):
-    strategy = testStrategy
+def test_repay(fundManager, token, admin, testErc20Strategy, user):
+    strategy = testErc20Strategy
     timeLock = fundManager.timeLock()
 
     # revert if not approved strategy

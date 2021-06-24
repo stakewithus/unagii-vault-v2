@@ -18,7 +18,7 @@ class StateMachine:
     gain = strategy("uint256", min_value=1, max_value=2 ** 128)
     loss = strategy("uint256", min_value=1, max_value=2 ** 128)
 
-    def __init__(cls, setup, fundManager, admin, token, TestStrategy):
+    def __init__(cls, setup, fundManager, admin, token, TestErc20Strategy):
         timeLock = fundManager.timeLock()
 
         cls.fundManager = fundManager
@@ -30,7 +30,7 @@ class StateMachine:
         token.mint(fundManager, 100000)
 
         for i in range(k):
-            strat = TestStrategy.deploy(fundManager, token, {"from": admin})
+            strat = TestErc20Strategy.deploy(fundManager, token, {"from": admin})
             cls.strategies.append(strat)
             fundManager.approveStrategy(strat, {"from": timeLock})
             fundManager.addStrategyToQueue(strat, 100, 0, 2 ** 256 - 1, {"from": admin})
@@ -109,5 +109,5 @@ class StateMachine:
         assert self.token.balanceOf(self.fundManager) == self.bal
 
 
-def test_stateful(setup, fundManager, admin, token, TestStrategy, state_machine):
-    state_machine(StateMachine, setup, fundManager, admin, token, TestStrategy)
+def test_stateful(setup, fundManager, admin, token, TestErc20Strategy, state_machine):
+    state_machine(StateMachine, setup, fundManager, admin, token, TestErc20Strategy)

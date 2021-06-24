@@ -26,7 +26,7 @@ N = 3  # number of active strategies in old fund manager
 
 
 def test_initialize_with_old_fund_manager(
-    FundManager, token, guardian, worker, admin, user, testVault, TestStrategy
+    FundManager, token, guardian, worker, admin, user, testVault, TestErc20Strategy
 ):
     vault = testVault
 
@@ -49,7 +49,7 @@ def test_initialize_with_old_fund_manager(
     maxBorrows = []
     debts = []
     for i in range(N):
-        strat = TestStrategy.deploy(oldFundManager, token, {"from": admin})
+        strat = TestErc20Strategy.deploy(oldFundManager, token, {"from": admin})
         oldFundManager.approveStrategy(strat, {"from": oldFundManager.timeLock()})
 
         debtRatio = i + 1

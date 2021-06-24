@@ -7,7 +7,7 @@ from brownie import (
     TimeLock,
     FundManager,
     TestToken,
-    TestStrategy,
+    TestErc20Strategy,
     TestFlash,
     TestZap,
 )

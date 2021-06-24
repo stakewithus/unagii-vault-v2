@@ -6,7 +6,7 @@ import pytest
 N = 3  # number of active strategies
 
 
-def test_migrate(FundManager, token, guardian, worker, admin, user, TestStrategy):
+def test_migrate(FundManager, token, guardian, worker, admin, user, TestErc20Strategy):
     fundManager = FundManager.deploy(
         token, guardian, worker, ZERO_ADDRESS, {"from": admin}
     )
@@ -34,7 +34,7 @@ def test_migrate(FundManager, token, guardian, worker, admin, user, TestStrategy
     strats = []
     debts = []
     for i in range(N):
-        strat = TestStrategy.deploy(fundManager, token, {"from": admin})
+        strat = TestErc20Strategy.deploy(fundManager, token, {"from": admin})
         fundManager.approveStrategy(strat, {"from": fundManager.timeLock()})
 
         debtRatio = i + 1

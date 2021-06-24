@@ -6,10 +6,10 @@ N = 20  # max active strategies
 
 
 def test_migrate_strategy(
-    chain, fundManager, testStrategy, TestStrategy, token, admin, user
+    chain, fundManager, testErc20Strategy, TestErc20Strategy, token, admin, user
 ):
-    strat = testStrategy
-    newStrat = TestStrategy.deploy(fundManager, token, {"from": admin})
+    strat = testErc20Strategy
+    newStrat = TestErc20Strategy.deploy(fundManager, token, {"from": admin})
 
     # fund strat with token
     token.mint(strat, 100)

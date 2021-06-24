@@ -1,7 +1,7 @@
 import brownie
 from brownie import ZERO_ADDRESS
 from brownie.test import strategy
-from brownie import TestStrategy
+from brownie import TestErc20Strategy
 
 
 N = 5
@@ -18,7 +18,7 @@ class StateMachine:
         cls.strategies = []
         for i in range(N):
             cls.strategies.append(
-                TestStrategy.deploy(
+                TestErc20Strategy.deploy(
                     fundManager, fundManager.token(), {"from": cls.timeLock}
                 )
             )
