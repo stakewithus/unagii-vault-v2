@@ -15,6 +15,8 @@ pip install black
 pip install blackadder
 pip install slither-analyzer
 
+brownie pm install OpenZeppelin/openzeppelin-contracts@3.4.0
+
 cp .env.sample .env
 
 # npm
