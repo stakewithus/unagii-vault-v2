@@ -1,5 +1,6 @@
 # @version ^0.2.12
 
+# TODO: use strategy from templates
 from vyper.interfaces import ERC20
 
 
