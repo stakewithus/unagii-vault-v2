@@ -136,7 +136,7 @@ def report(_min: uint256, _max: uint256):
         if gain > 0:
             self.token.approve(self.fundManager.address, gain)
     else:
-        loss = debt - loss
+        loss = debt - total
 
     if gain > 0 or loss > 0:
         self.fundManager.report(gain, loss)
