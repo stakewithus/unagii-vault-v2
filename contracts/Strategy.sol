@@ -36,7 +36,7 @@ abstract contract Strategy {
     address public treasury; // Profit from harvest is sent to this address
 
     IERC20 public immutable token;
-    IErc20FundManager public fundManager;
+    IFundManager public fundManager;
 
     // Performance fee sent to treasury when harvest()
     uint public perfFee = 1000;
@@ -44,6 +44,7 @@ abstract contract Strategy {
     uint internal constant PERF_FEE_MAX = 10000;
 
     constructor(
+        address _token,
         address _fundManager,
         address _guardian,
         address _worker,
@@ -58,8 +59,12 @@ abstract contract Strategy {
         worker = _worker;
         treasury = _treasury;
 
-        fundManager = IErc20FundManager(_fundManager);
-        address _token = fundManager.token();
+        require(
+            IFundManager(_fundManager).token() == _token,
+            "fund manager token != token"
+        );
+
+        fundManager = IFundManager(_fundManager);
         token = IERC20(_token);
 
         IERC20(_token).safeApprove(_fundManager, type(uint).max);
@@ -160,11 +165,11 @@ abstract contract Strategy {
         }
 
         require(
-            IErc20FundManager(_fundManager).token() == address(token),
+            IFundManager(_fundManager).token() == address(token),
             "new fund manager token != token"
         );
 
-        fundManager = IErc20FundManager(_fundManager);
+        fundManager = IFundManager(_fundManager);
         token.safeApprove(_fundManager, type(uint).max);
 
         emit SetFundManager(_fundManager);

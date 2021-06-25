@@ -93,9 +93,11 @@ def token(TestToken, admin):
 
 
 @pytest.fixture(scope="module")
-def strategyTest(StrategyTest, testFundManager, admin, guardian, worker, treasury):
+def strategyTest(
+    StrategyTest, token, testFundManager, admin, guardian, worker, treasury
+):
     strategyTest = StrategyTest.deploy(
-        testFundManager, guardian, worker, treasury, {"from": admin}
+        token, testFundManager, guardian, worker, treasury, {"from": admin}
     )
     yield strategyTest
 

@@ -8,11 +8,12 @@ contract StrategyTest is Strategy {
     using SafeERC20 for IERC20;
 
     constructor(
+        address _token,
         address _fundManager,
         address _guardian,
         address _worker,
         address _treasury
-    ) Strategy(_fundManager, _guardian, _worker, _treasury) {}
+    ) Strategy(_token, _fundManager, _guardian, _worker, _treasury) {}
 
     function _totalAssets() internal view returns (uint) {
         return token.balanceOf(address(this));
