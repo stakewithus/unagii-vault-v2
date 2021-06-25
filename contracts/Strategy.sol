@@ -14,6 +14,10 @@ abstract contract Strategy {
 
     event SetNextTimeLock(address nextTimeLock);
     event AcceptTimeLock(address timeLock);
+    event SetAdmin(address admin);
+    event SetGuardian(address guardian);
+    event SetWorker(address worker);
+    event SetTreasury(address treasury);
     event SetFundManager(address fundManager);
 
     // Privilege - time lock >= admin >= guardian >= worker >= treasury
@@ -102,6 +106,7 @@ abstract contract Strategy {
     */
     function setAdmin(address _admin) external onlyTimeLockOrAdmin {
         admin = _admin;
+        emit SetAdmin(_admin);
     }
 
     /*
@@ -110,6 +115,7 @@ abstract contract Strategy {
     */
     function setGuardian(address _guardian) external onlyTimeLockOrAdmin {
         guardian = _guardian;
+        emit SetGuardian(_guardian);
     }
 
     /*
@@ -118,6 +124,7 @@ abstract contract Strategy {
     */
     function setWorker(address _worker) external onlyTimeLockOrAdmin {
         worker = _worker;
+        emit SetWorker(_worker);
     }
 
     /*
@@ -128,14 +135,15 @@ abstract contract Strategy {
         // Don't allow accidentally sending perf fee to 0 address
         require(_treasury != address(0), "treasury = 0 address");
         treasury = _treasury;
+        emit SetTreasury(_treasury);
     }
 
     /*
     @notice Set performance fee
     @param _fee Performance fee
     */
-    function setPerformanceFee(uint _fee) external onlyTimeLockOrAdmin {
-        require(_fee <= PERF_FEE_CAP, "perf fee > cap");
+    function setPerfFee(uint _fee) external onlyTimeLockOrAdmin {
+        require(_fee <= PERF_FEE_CAP, "fee > cap");
         perfFee = _fee;
     }
 
