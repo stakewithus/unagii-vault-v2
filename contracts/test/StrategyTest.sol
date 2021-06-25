@@ -35,9 +35,7 @@ contract StrategyTest is Strategy {
         emit Repay(_amount, repaid);
     }
 
-    function withdraw(uint _amount) external override {
-        require(msg.sender == address(fundManager), "!fund manager");
-
+    function withdraw(uint _amount) external override onlyFundManager {
         uint amount = _amount;
         uint bal = token.balanceOf(address(this));
         if (bal < amount) {

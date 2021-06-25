@@ -91,6 +91,11 @@ abstract contract Strategy {
         _;
     }
 
+    modifier onlyFundManager() {
+        require(msg.sender == address(fundManager), "!fund manager");
+        _;
+    }
+
     /*
     @notice Set next time lock
     @param _nextTimeLock Address of next time lock
