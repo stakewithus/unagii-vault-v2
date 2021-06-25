@@ -20,6 +20,13 @@ abstract contract Strategy {
     event SetTreasury(address treasury);
     event SetFundManager(address fundManager);
 
+    event Deposit(uint amount, uint borrowed);
+    event Repay(uint amount, uint repaid);
+    event Withdraw(uint amount, uint withdrawn);
+    event Harvest(uint profit);
+    event Skim(uint profit);
+    event Report(uint gain, uint loss);
+
     // Privilege - time lock >= admin >= guardian >= worker >= treasury
     address public timeLock;
     address public nextTimeLock;
