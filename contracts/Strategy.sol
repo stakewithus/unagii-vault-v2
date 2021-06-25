@@ -80,7 +80,7 @@ abstract contract Strategy {
         _;
     }
 
-    modifier onlyAuth() {
+    modifier onlyAuthorized() {
         require(
             msg.sender == timeLock ||
                 msg.sender == admin ||

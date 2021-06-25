@@ -23,13 +23,13 @@ contract StrategyTest is Strategy {
         return _totalAssets();
     }
 
-    function deposit(uint _amount, uint _min) external override onlyAuth {
+    function deposit(uint _amount, uint _min) external override onlyAuthorized {
         uint borrowed = fundManager.borrow(_amount);
         require(borrowed >= _min, "borrowed < min");
         emit Deposit(_amount, borrowed);
     }
 
-    function repay(uint _amount, uint _min) external override onlyAuth {
+    function repay(uint _amount, uint _min) external override onlyAuthorized {
         uint repaid = fundManager.repay(_amount);
         require(repaid >= _min, "repaid < min");
         emit Repay(_amount, repaid);
@@ -49,15 +49,15 @@ contract StrategyTest is Strategy {
         emit Withdraw(_amount, amount);
     }
 
-    function harvest() external override onlyAuth {
+    function harvest() external override onlyAuthorized {
         emit Harvest(0);
     }
 
-    function skim() external override onlyAuth {
+    function skim() external override onlyAuthorized {
         emit Skim(0);
     }
 
-    function report(uint _min, uint _max) external override onlyAuth {
+    function report(uint _min, uint _max) external override onlyAuthorized {
         uint total = _totalAssets();
 
         uint gain = 0;
@@ -82,7 +82,7 @@ contract StrategyTest is Strategy {
         emit Report(gain, loss);
     }
 
-    function migrate(address _strategy) external override onlyAuth {}
+    function migrate(address _strategy) external override onlyAuthorized {}
 
     function sweep(address _token) external override {}
 }
