@@ -28,7 +28,7 @@ abstract contract Strategy {
     IErc20FundManager public fundManager;
 
     // Performance fee sent to treasury when harvest()
-    uint public perfFee = 500;
+    uint public perfFee = 1000;
     uint private constant PERF_FEE_CAP = 2000; // Upper limit to performance fee
     uint internal constant PERF_FEE_MAX = 10000;
 

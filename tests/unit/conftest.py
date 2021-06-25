@@ -5,10 +5,11 @@ from brownie import (
     UnagiiToken,
     TimeLock,
     FundManager,
+    StrategyTest,
     TestToken,
     TestVault,
     TestFundManager,
-    TestErc20Strategy,
+    TestStrategy,
     TxTest,
     ZERO_ADDRESS,
 )
@@ -32,6 +33,11 @@ def worker(accounts):
 @pytest.fixture(scope="session")
 def minter(accounts):
     yield accounts[3]
+
+
+@pytest.fixture(scope="session")
+def treasury(accounts):
+    yield accounts[4]
 
 
 @pytest.fixture(scope="session")
@@ -87,6 +93,14 @@ def token(TestToken, admin):
 
 
 @pytest.fixture(scope="module")
+def strategyTest(StrategyTest, testFundManager, admin, guardian, worker, treasury):
+    strategyTest = StrategyTest.deploy(
+        testFundManager, guardian, worker, treasury, {"from": admin}
+    )
+    yield strategyTest
+
+
+@pytest.fixture(scope="module")
 def txTest(TxTest, admin):
     yield TxTest.deploy({"from": admin})
 
@@ -102,5 +116,5 @@ def testFundManager(TestFundManager, vault, token, admin):
 
 
 @pytest.fixture(scope="module")
-def testErc20Strategy(TestErc20Strategy, fundManager, token, admin):
-    yield TestErc20Strategy.deploy(fundManager, token, {"from": admin})
+def testStrategy(TestStrategy, fundManager, token, admin):
+    yield TestStrategy.deploy(fundManager, token, {"from": admin})
