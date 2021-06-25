@@ -194,18 +194,19 @@ abstract contract Strategy {
     function deposit(uint _amount, uint _min) external virtual;
 
     /*
-    @notice Repay fund manager
-    @param _amount Amount of token to repay to fund manager
-    @param _min Minimum amount repaid
-    */
-    function repay(uint _amount, uint _min) external virtual;
-
-    /*
     @notice Withdraw token from this contract
     @dev Only callable by fund manager
     @dev Returns current loss = debt to fund manager - total assets
     */
     function withdraw(uint _amount) external virtual returns (uint);
+
+    /*
+    @notice Repay fund manager
+    @param _amount Amount of token to repay to fund manager
+    @param _min Minimum amount repaid
+    @dev Call report after this to report any loss
+    */
+    function repay(uint _amount, uint _min) external virtual;
 
     /*
     @notice Claim and sell rewards for token

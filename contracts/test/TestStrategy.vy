@@ -143,16 +143,6 @@ def report(_min: uint256, _max: uint256):
 
 
 @external
-def batch():
-    # harvest
-    # skim
-    # calc gain and loss
-    # report
-    # borrow or repay
-    pass
-
-
-@external
 def migrate(newStrategy: address):
     assert msg.sender == self.fundManager.address, "!fund manager"
     assert (

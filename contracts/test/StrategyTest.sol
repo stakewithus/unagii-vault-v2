@@ -29,12 +29,6 @@ contract StrategyTest is Strategy {
         emit Deposit(_amount, borrowed);
     }
 
-    function repay(uint _amount, uint _min) external override onlyAuthorized {
-        uint repaid = fundManager.repay(_amount);
-        require(repaid >= _min, "repaid < min");
-        emit Repay(_amount, repaid);
-    }
-
     function withdraw(uint _amount) external override onlyFundManager returns (uint) {
         uint amount = _amount;
         uint bal = token.balanceOf(address(this));
@@ -54,6 +48,12 @@ contract StrategyTest is Strategy {
         emit Withdraw(_amount, amount);
 
         return loss;
+    }
+
+    function repay(uint _amount, uint _min) external override onlyAuthorized {
+        uint repaid = fundManager.repay(_amount);
+        require(repaid >= _min, "repaid < min");
+        emit Repay(_amount, repaid);
     }
 
     function harvest() external override onlyAuthorized {
@@ -88,6 +88,13 @@ contract StrategyTest is Strategy {
 
         emit Report(gain, loss);
     }
+
+    // TODO: batch
+    // harvest
+    // skim
+    // calc gain and loss
+    // report
+    // borrow or repay
 
     function migrate(address _strategy) external override onlyAuthorized {}
 
