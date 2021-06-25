@@ -35,16 +35,25 @@ contract StrategyTest is Strategy {
         emit Repay(_amount, repaid);
     }
 
-    function withdraw(uint _amount) external override onlyFundManager {
+    function withdraw(uint _amount) external override onlyFundManager returns (uint) {
         uint amount = _amount;
         uint bal = token.balanceOf(address(this));
         if (bal < amount) {
             amount = bal;
         }
 
+        uint loss = 0;
+        uint debt = fundManager.getDebt(address(this));
+        uint total = _totalAssets();
+        if (debt > total) {
+            loss = debt - total;
+        }
+
         token.safeTransfer(msg.sender, amount);
 
         emit Withdraw(_amount, amount);
+
+        return loss;
     }
 
     function harvest() external override onlyAuthorized {

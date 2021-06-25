@@ -203,8 +203,9 @@ abstract contract Strategy {
     /*
     @notice Withdraw token from this contract
     @dev Only callable by fund manager
+    @dev Returns current loss = debt to fund manager - total assets
     */
-    function withdraw(uint _amount) external virtual;
+    function withdraw(uint _amount) external virtual returns (uint);
 
     /*
     @notice Claim and sell rewards for token
