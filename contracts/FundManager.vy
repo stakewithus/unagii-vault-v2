@@ -859,6 +859,7 @@ def repay(amount: uint256) -> uint256:
     return diff
 
 
+# TODO: batch
 @external
 def report(gain: uint256, loss: uint256):
     assert self.initialized, "!initialized"
