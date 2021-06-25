@@ -6,9 +6,9 @@ pragma solidity 0.7.6;
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
-import "./interfaces/IErc20FundManager.sol";
+import "./interfaces/IFundManager.sol";
 
-abstract contract Erc20Strategy {
+abstract contract Strategy {
     using SafeERC20 for IERC20;
     using SafeMath for uint;
 
