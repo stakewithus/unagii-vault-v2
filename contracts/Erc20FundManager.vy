@@ -1,7 +1,7 @@
 # @version 0.2.12
 
 """
-@title Unagii FundManager
+@title Unagii Erc20FundManager
 @author stakewith.us
 @license AGPL-3.0-or-later
 """
