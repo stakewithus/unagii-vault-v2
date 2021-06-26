@@ -50,10 +50,10 @@ contract StrategyCompLev is Strategy {
     // TODO: check contract addresses still active
     UniswapV2Router public uniswap =
         UniswapV2Router(0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D);
+    address private constant WETH = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
     // min profit harvest should make
     uint public minProfit;
 
-    address private constant WETH = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
     // Compound //
     Comptroller private constant comptroller =
         Comptroller(0x3d9819210A31b4961b30EF54bE2aeD79B9c9Cd3B);
