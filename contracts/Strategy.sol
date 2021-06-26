@@ -15,8 +15,7 @@ abstract contract Strategy {
     event SetNextTimeLock(address nextTimeLock);
     event AcceptTimeLock(address timeLock);
     event SetAdmin(address admin);
-    event SetGuardian(address guardian);
-    event SetWorker(address worker);
+    event Authorize(address addr, bool authorized);
     event SetTreasury(address treasury);
     event SetFundManager(address fundManager);
 
@@ -27,13 +26,14 @@ abstract contract Strategy {
     event Skim(uint profit);
     event Report(uint gain, uint loss);
 
-    // Privilege - time lock >= admin >= guardian >= worker >= treasury
+    // Privilege - time lock >= admin >= authorized addresses
     address public timeLock;
     address public nextTimeLock;
     address public admin;
-    address public guardian;
-    address public worker; // Bot that will calling deposit, repay, harvest, report
     address public treasury; // Profit from harvest is sent to this address
+
+    // authorization other than time lock and admin
+    mapping(address => bool) public authorized;
 
     IERC20 public immutable token;
     IFundManager public fundManager;
@@ -46,8 +46,6 @@ abstract contract Strategy {
     constructor(
         address _token,
         address _fundManager,
-        address _guardian,
-        address _worker,
         address _treasury
     ) {
         // Don't allow accidentally sending perf fee to 0 address
@@ -55,8 +53,6 @@ abstract contract Strategy {
 
         timeLock = msg.sender;
         admin = msg.sender;
-        guardian = _guardian;
-        worker = _worker;
         treasury = _treasury;
 
         require(
@@ -82,10 +78,7 @@ abstract contract Strategy {
 
     modifier onlyAuthorized() {
         require(
-            msg.sender == timeLock ||
-                msg.sender == admin ||
-                msg.sender == guardian ||
-                msg.sender == worker,
+            msg.sender == timeLock || msg.sender == admin || authorized[msg.sender],
             "!auth"
         );
         _;
@@ -127,21 +120,13 @@ abstract contract Strategy {
     }
 
     /*
-    @notice Set guardian
-    @param _guardian Address of guardian
+    @notice Set authorization
+    @param _addr Address to authorize
+    @param _authorized Boolean
     */
-    function setGuardian(address _guardian) external onlyTimeLockOrAdmin {
-        guardian = _guardian;
-        emit SetGuardian(_guardian);
-    }
-
-    /*
-    @notice Set worker
-    @param _worker Address of worker
-    */
-    function setWorker(address _worker) external onlyTimeLockOrAdmin {
-        worker = _worker;
-        emit SetWorker(_worker);
+    function authorize(address _addr, bool _authorized) external onlyTimeLockOrAdmin {
+        authorized[_addr] = _authorized;
+        emit Authorize(_addr, _authorized);
     }
 
     /*
@@ -178,6 +163,15 @@ abstract contract Strategy {
         token.safeApprove(_fundManager, type(uint).max);
 
         emit SetFundManager(_fundManager);
+    }
+
+    /*
+    @notice Pull funds from `_from` address. Used for migration.
+    @param _from Address to transfer token from
+    @param _amount Amount of token to transfer
+    */
+    function pull(address _from, uint _amount) external onlyAuthorized {
+        token.safeTransferFrom(_from, address(this), _amount);
     }
 
     /*

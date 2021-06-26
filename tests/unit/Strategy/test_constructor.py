@@ -2,15 +2,11 @@ import brownie
 import pytest
 
 
-def test_constructor(
-    strategyTest, testFundManager, token, admin, guardian, worker, treasury
-):
+def test_constructor(strategyTest, testFundManager, token, admin, treasury):
     fundManager = testFundManager
 
     assert strategyTest.timeLock() == admin
     assert strategyTest.admin() == admin
-    assert strategyTest.guardian() == guardian
-    assert strategyTest.worker() == worker
     assert strategyTest.treasury() == treasury
 
     assert strategyTest.fundManager() == fundManager

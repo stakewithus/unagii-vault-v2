@@ -10,10 +10,8 @@ contract StrategyTest is Strategy {
     constructor(
         address _token,
         address _fundManager,
-        address _guardian,
-        address _worker,
         address _treasury
-    ) Strategy(_token, _fundManager, _guardian, _worker, _treasury) {}
+    ) Strategy(_token, _fundManager, _treasury) {}
 
     function _totalAssets() internal view returns (uint) {
         return token.balanceOf(address(this));
