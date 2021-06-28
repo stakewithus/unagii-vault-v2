@@ -788,28 +788,30 @@ def calcMaxBorrow(strategy: address) -> uint256:
     return self._calcMaxBorrow(strategy)
 
 
-# TODO: use?
-# @internal
-# @view
-# def _calcOutstandingDebt(strategy: address) -> uint256:
-#     if self.totalDebtRatio == 0:
-#         return self.strategies[strategy].debt
+@internal
+@view
+def _calcOutstandingDebt(strategy: address) -> uint256:
+    if not self.initialized:
+        return 0
 
-#     limit: uint256 = self.strategies[strategy].debtRatio * self.totalDebt / self.totalDebtRatio
-#     debt: uint256 = self.strategies[strategy].debt
+    if self.totalDebtRatio == 0:
+        return self.strategies[strategy].debt
 
-#     if self.paused:
-#         return debt
-#     elif debt <= limit:
-#         return 0
-#     else:
-#         return debt - limit
+    limit: uint256 = self.strategies[strategy].debtRatio * self.totalDebt / self.totalDebtRatio
+    debt: uint256 = self.strategies[strategy].debt
+
+    if self.paused:
+        return debt
+    elif debt <= limit:
+        return 0
+    else:
+        return debt - limit
 
 
-# @external
-# @view
-# def calcOutstandingDebt(strategy: address) -> uint256:
-#     return self._calcOutstandingDebt(strategy)
+@external
+@view
+def calcOutstandingDebt(strategy: address) -> uint256:
+    return self._calcOutstandingDebt(strategy)
 
 
 @external
@@ -859,7 +861,6 @@ def repay(amount: uint256) -> uint256:
     return diff
 
 
-# TODO: batch
 @external
 def report(gain: uint256, loss: uint256):
     assert self.initialized, "!initialized"
