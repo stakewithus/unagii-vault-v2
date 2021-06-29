@@ -54,15 +54,15 @@ contract StrategyTest is Strategy {
         emit Repay(_amount, repaid);
     }
 
-    function harvest() external override onlyAuthorized {
-        emit Harvest(0);
+    function claimRewards(uint) external override onlyAuthorized {
+        emit ClaimRewards(0);
     }
 
     function skim() external override onlyAuthorized {
         emit Skim(0);
     }
 
-    function report(uint _min, uint _max) external override onlyAuthorized {
+    function report(uint _minTotal, uint _maxTotal) external override onlyAuthorized {
         uint total = _totalAssets();
 
         uint gain = 0;
@@ -84,15 +84,14 @@ contract StrategyTest is Strategy {
             fundManager.report(gain, loss);
         }
 
-        emit Report(gain, loss);
+        emit Report(gain, loss, total, debt);
     }
 
-    // TODO: batch
-    // harvest
-    // skim
-    // calc gain and loss
-    // report
-    // borrow or repay
+    function harvest(
+        uint,
+        uint,
+        uint
+    ) external override onlyAuthorized {}
 
     function migrate(address _strategy) external override onlyAuthorized {}
 

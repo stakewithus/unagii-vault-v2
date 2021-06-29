@@ -22,15 +22,15 @@ abstract contract Strategy {
     event Deposit(uint amount, uint borrowed);
     event Repay(uint amount, uint repaid);
     event Withdraw(uint amount, uint withdrawn);
-    event Harvest(uint profit);
+    event ClaimRewards(uint profit);
     event Skim(uint profit);
-    event Report(uint gain, uint loss);
+    event Report(uint gain, uint loss, uint total, uint debt);
 
     // Privilege - time lock >= admin >= authorized addresses
     address public timeLock;
     address public nextTimeLock;
     address public admin;
-    address public treasury; // Profit from harvest is sent to this address
+    address public treasury; // Profit is sent to this address
 
     // authorization other than time lock and admin
     mapping(address => bool) public authorized;
@@ -38,7 +38,7 @@ abstract contract Strategy {
     IERC20 public immutable token;
     IFundManager public fundManager;
 
-    // Performance fee sent to treasury when harvest()
+    // Performance fee sent to treasury
     uint public perfFee = 1000;
     uint private constant PERF_FEE_CAP = 2000; // Upper limit to performance fee
     uint internal constant PERF_FEE_MAX = 10000;
@@ -170,7 +170,7 @@ abstract contract Strategy {
     @param _from Address to transfer token from
     @param _amount Amount of token to transfer
     */
-    function pull(address _from, uint _amount) external onlyAuthorized {
+    function transferFrom(address _from, uint _amount) external onlyAuthorized {
         token.safeTransferFrom(_from, address(this), _amount);
     }
 
@@ -203,9 +203,10 @@ abstract contract Strategy {
     function repay(uint _amount, uint _min) external virtual;
 
     /*
-    @notice Claim and sell rewards for token
+    @notice Claim any reward tokens, sell for token
+    @param _minProfit Minumum amount of token to gain from selling rewards
     */
-    function harvest() external virtual;
+    function claimRewards(uint _minProfit) external virtual;
 
     /*
     @notice Free up any profit over debt
@@ -214,12 +215,26 @@ abstract contract Strategy {
 
     /*
     @notice Report gain or loss back to fund manager
-    @param _min Minimum value of total assets.
+    @param _minTotal Minimum value of total assets.
                Used to protect against price manipulation.
-    @param _max Maximum value of total assets Used
+    @param _maxTotal Maximum value of total assets Used
                Used to protect against price manipulation.  
     */
-    function report(uint _min, uint _max) external virtual;
+    function report(uint _minTotal, uint _maxTotal) external virtual;
+
+    /*
+    @notice Claim rewards, skim and report
+    @param _minProfit Minumum amount of token to gain from selling rewards
+    @param _minTotal Minimum value of total assets.
+               Used to protect against price manipulation.
+    @param _maxTotal Maximum value of total assets Used
+               Used to protect against price manipulation.  
+    */
+    function harvest(
+        uint _minProfit,
+        uint _minTotal,
+        uint _maxTotal
+    ) external virtual;
 
     /*
     @notice Migrate to new version of this strategy

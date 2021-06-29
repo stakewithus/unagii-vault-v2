@@ -51,8 +51,6 @@ contract StrategyCompLev is Strategy {
     UniswapV2Router public uniswap =
         UniswapV2Router(0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D);
     address private constant WETH = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
-    // min profit harvest should make
-    uint public minProfit;
 
     // Compound //
     Comptroller private constant comptroller =
@@ -72,6 +70,15 @@ contract StrategyCompLev is Strategy {
         IERC20(_token).safeApprove(_cToken, type(uint).max);
         // These tokens are never held by this contract
         // so the risk of them getting stolen is minimal
+        comp.safeApprove(address(uniswap), type(uint).max);
+    }
+
+    function setUniswap(address _uni) external onlyTimeLock {
+        if (address(uniswap) != address(0)) {
+            comp.safeApprove(address(uniswap), 0);
+        }
+
+        uniswap = UniswapV2Router(_uni);
         comp.safeApprove(address(uniswap), type(uint).max);
     }
 
@@ -95,7 +102,7 @@ contract StrategyCompLev is Strategy {
     }
 
     /*
-    @notice Returns amount of underlying tokens locked in this contract
+    @notice Returns amount of tokens locked in this contract
     */
     function totalAssets() external view override returns (uint) {
         return _totalAssets();
@@ -196,7 +203,7 @@ contract StrategyCompLev is Strategy {
     }
 
     // @dev Execute manual recovery by admin
-    // @dev `_amount` must be >= balance of underlying
+    // @dev `_amount` must be >= balance of token
     function supplyManaul(uint _amount) external onlyAuthorized {
         _supply(_amount);
     }
@@ -215,7 +222,7 @@ contract StrategyCompLev is Strategy {
     }
 
     // @dev Execute manual recovery by admin
-    // @dev `_amount` must be >= balance of underlying
+    // @dev `_amount` must be >= balance of token
     function repayManual(uint _amount) external onlyAuthorized {
         _repay(_amount);
     }
@@ -336,8 +343,8 @@ contract StrategyCompLev is Strategy {
     }
 
     /*
-    @notice Deposit underlying token into this strategy
-    @param _amount Amount of underlying token to deposit
+    @notice Deposit token into this strategy
+    @param _amount Amount of token to deposit
     @param _min Minimum amount to borrow from fund manager
     */
     function deposit(uint _amount, uint _min) external override onlyAuthorized {
@@ -491,7 +498,7 @@ contract StrategyCompLev is Strategy {
 
     /*
     @notice Withdraw undelying token to erc20Vault
-    @param _amount Amount of underlying token to withdraw
+    @param _amount Amount of token to withdraw
     @dev Returns current loss = debt to fund manager - total assets
     @dev Caller should implement guard against slippage
     */
@@ -527,19 +534,6 @@ contract StrategyCompLev is Strategy {
         emit Repay(_amount, repaid);
     }
 
-    function setUniswap(address _uni) external onlyTimeLock {
-        if (address(uniswap) != address(0)) {
-            comp.safeApprove(address(uniswap), 0);
-        }
-
-        uniswap = UniswapV2Router(_uni);
-        comp.safeApprove(address(uniswap), type(uint).max);
-    }
-
-    function setMinProfit(uint _minProfit) external onlyAuthorized {
-        minProfit = _minProfit;
-    }
-
     /*
     @dev Uniswap fails with zero address so no check is necessary here
     */
@@ -563,47 +557,40 @@ contract StrategyCompLev is Strategy {
         );
     }
 
-    function _claimRewards() private {
+    function _claimRewards(uint _minProfit) private {
+        // calculate profit = balance of token after - balance of token before
+        uint diff = token.balanceOf(address(this));
+
         // claim COMP
         address[] memory cTokens = new address[](1);
         cTokens[0] = address(cToken);
         comptroller.claimComp(address(this), cTokens);
+
         uint compBal = comp.balanceOf(address(this));
         if (compBal > 0) {
             _swap(address(comp), address(token), compBal);
-            // Now this contract has underlying token
         }
-    }
 
-    /*
-    @notice Claim and sell any rewards
-    */
-    function harvest() external override onlyAuthorized {
-        uint balBefore = token.balanceOf(address(this));
-        _claimRewards();
-        uint balAfter = token.balanceOf(address(this)) - balBefore;
-        uint diff = balAfter - balBefore;
+        diff = token.balanceOf(address(this)) - diff;
+        require(diff >= _minProfit, "profit < min");
 
-        require(diff >= minProfit, "profit < min");
-
-        uint profit = 0;
-        if (balAfter > 0) {
-            // transfer fee to treasury
-            uint fee = balAfter.mul(perfFee) / PERF_FEE_MAX;
+        // transfer performance fee to treasury
+        if (diff > 0) {
+            uint fee = diff.mul(perfFee) / PERF_FEE_MAX;
             if (fee > 0) {
                 token.safeTransfer(treasury, fee);
+                diff = diff.sub(fee);
             }
-            profit = balAfter.sub(fee);
-            // _supply() to decrease collateral ratio and earn interest
-            // use _supply() instead of _deposit() to save gas
-            // TODO: supply?
-            // _supply(profit);
         }
 
-        emit Harvest(profit);
+        emit ClaimRewards(diff);
     }
 
-    function skim() external override onlyAuthorized {
+    function claimRewards(uint _minProfit) external override onlyAuthorized {
+        _claimRewards(_minProfit);
+    }
+
+    function _skim() private {
         uint total = _totalAssets();
         uint debt = fundManager.getDebt(address(this));
         require(total > debt, "total <= debt");
@@ -615,14 +602,14 @@ contract StrategyCompLev is Strategy {
         emit Skim(profit);
     }
 
-    function report(uint _min, uint _max) external override onlyAuthorized {
-        uint total = _totalAssets();
-        require(total >= _min, "total < min");
-        require(total <= _max, "total > max");
+    function skim() external override onlyAuthorized {
+        _skim();
+    }
 
-        // TODO:
-        // _harvest();
-        // _skim();
+    function _report(uint _minTotal, uint _maxTotal) private {
+        uint total = _totalAssets();
+        require(total >= _minTotal, "total < min");
+        require(total <= _maxTotal, "total > max");
 
         uint gain = 0;
         uint loss = 0;
@@ -643,24 +630,34 @@ contract StrategyCompLev is Strategy {
             fundManager.report(gain, loss);
         }
 
-        /// TODO: borrow more or repay
+        emit Report(gain, loss, total, debt);
+    }
 
-        emit Report(gain, loss);
+    function report(uint _minTotal, uint _maxTotal) external override onlyAuthorized {
+        _report(_minTotal, _maxTotal);
+    }
+
+    function harvest(
+        uint _minProfit,
+        uint _minTotal,
+        uint _maxTotal
+    ) external override onlyAuthorized {
+        _claimRewards(_minProfit);
+        _skim();
+        _report(_minTotal, _maxTotal);
     }
 
     function migrate(address _strategy) external override onlyFundManager {
         Strategy strat = Strategy(_strategy);
         // TODO: is this checking interface type or address?
-        require(strat.token() == token, "strategy token != token");
+        require(address(strat.token()) == address(token), "strategy token != token");
         require(
-            strat.fundManager() == fundManager,
+            address(strat.fundManager()) == address(fundManager),
             "strategy fund manager != fund manager"
         );
-
-        // TODO: _harvest();
         uint bal = _withdraw(type(uint).max);
         token.safeApprove(_strategy, bal);
-        strat.pull(address(this), bal);
+        strat.transferFrom(address(this), bal);
     }
 
     /*
