@@ -43,10 +43,10 @@ contract StrategyConvexAlUsd is Strategy {
     DepositZapAlUsd3Crv private constant zap =
         DepositZapAlUsd3Crv(0xA79828DF1850E8a3A3064576f380D90aECDD3359);
     // StableSwap AlUsd + 3CRV (meta pool)
-    StableSwapAlUsd3Crv private constant meta =
+    StableSwapAlUsd3Crv private constant metaPool =
         StableSwapAlUsd3Crv(0x43b4FdFD4Ff969587185cDB6f0BD875c5Fc83f8c);
     // StableSwap 3CRV (base pool)
-    StableSwap3Crv private constant base =
+    StableSwap3Crv private constant basePool =
         StableSwap3Crv(0xbEbc44782C7dB0a1A60Cb6fe97d0b483032FF1C7);
     IERC20 private constant crv = IERC20(0xD533a949740bb3306d119CC777fa900bA034cd52);
 
@@ -75,18 +75,19 @@ contract StrategyConvexAlUsd is Strategy {
         address _treasury,
         uint _index
     ) Strategy(_token, _fundManager, _treasury) {
-        require(meta.coins(_index) == _token, "meta token != token");
         // disable alUsd
         require(_index > 0, "index = 0");
-
         INDEX = _index;
         MUL = MULS[_index];
 
         PoolInfo memory poolInfo = booster.poolInfo(PID);
-        require(address(meta) == poolInfo.lptoken, "curve meta pool != pool info lp");
+        require(
+            address(metaPool) == poolInfo.lptoken,
+            "curve meta pool != pool info lp"
+        );
         require(address(reward) == poolInfo.crvRewards, "reward != pool info reward");
 
-        meta.approve(address(booster), type(uint).max);
+        metaPool.approve(address(booster), type(uint).max);
 
         dai.safeApprove(address(zap), type(uint).max);
         usdc.safeApprove(address(zap), type(uint).max);
@@ -110,10 +111,12 @@ contract StrategyConvexAlUsd is Strategy {
         slip = _slip;
     }
 
+    // TODO:
     function setShouldClaimRewards(bool _shouldClaimRewards) external onlyAuthorized {
         shouldClaimRewards = _shouldClaimRewards;
     }
 
+    // TODO:
     function setShouldClaimExtras(bool _shouldClaimExtras) external onlyAuthorized {
         shouldClaimExtras = _shouldClaimExtras;
     }
@@ -137,9 +140,9 @@ contract StrategyConvexAlUsd is Strategy {
         // amount of Curve meta pool tokens in Convex
         uint metaBal = reward.balanceOf(address(this));
         // amount of alUsd or 3Crv converted from Curve LP
-        uint baseBal = metaBal.mul(meta.get_virtual_price()) / 1e18;
+        uint baseBal = metaBal.mul(metaPool.get_virtual_price()) / 1e18;
         // amount of token converted from 3Crv
-        uint bal = baseBal.mul(base.get_virtual_price()) / (MUL * 1e18);
+        uint bal = baseBal.mul(basePool.get_virtual_price()) / (MUL * 1e18);
 
         bal = bal.add(token.balanceOf(address(this)));
 
@@ -159,14 +162,14 @@ contract StrategyConvexAlUsd is Strategy {
             /*
             shares = token amount * precision multiplier * 1e18 / price per share
             */
-            uint pricePerShare = meta.get_virtual_price();
+            uint pricePerShare = metaPool.get_virtual_price();
             uint shares = bal.mul(MUL).mul(1e18).div(pricePerShare);
             uint min = shares.mul(SLIP_MAX - slip) / SLIP_MAX;
 
-            zap.add_liquidity(address(meta), amounts, min);
+            zap.add_liquidity(address(metaPool), amounts, min);
         }
 
-        uint metaBal = meta.balanceOf(address(this));
+        uint metaBal = metaPool.balanceOf(address(this));
         if (metaBal > 0) {
             require(booster.deposit(PID, metaBal, true), "deposit failed");
         }
@@ -246,14 +249,19 @@ contract StrategyConvexAlUsd is Strategy {
         }
 
         // withdraw from Curve
-        uint metaBal = meta.balanceOf(address(this));
+        uint metaBal = metaPool.balanceOf(address(this));
         if (shares > metaBal) {
             shares = metaBal;
         }
 
         if (shares > 0) {
             uint min = need.mul(SLIP_MAX - slip) / SLIP_MAX;
-            zap.remove_liquidity_one_coin(address(meta), shares, int128(INDEX), min);
+            zap.remove_liquidity_one_coin(
+                address(metaPool),
+                shares,
+                int128(INDEX),
+                min
+            );
         }
 
         uint balAfter = token.balanceOf(address(this));
