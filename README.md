@@ -36,3 +36,20 @@ solc-select use 0.8.4
 # slither
 slither contracts/Contract.sol
 ```
+
+### Test
+
+```shell
+source .env
+
+ganache-cli \
+--fork https://mainnet.infura.io/v3/$WEB3_INFURA_PROJECT_ID \
+--unlock $DAI_WHALE \
+--unlock $USDC_WHALE \
+--unlock $USDT_WHALE \
+--unlock $WBTC_WHALE \
+--networkId 999
+
+env $(cat .env) brownie test tests/mainnet/test.py --network mainnet-fork -s
+
+```
