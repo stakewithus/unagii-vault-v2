@@ -1,7 +1,7 @@
 # @version 0.2.12
 
 """
-@title Unagii Erc20Vault V2
+@title Unagii Vault V2
 @author stakewith.us
 @license AGPL-3.0-or-later
 """
