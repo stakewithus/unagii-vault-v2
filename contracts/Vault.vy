@@ -673,7 +673,7 @@ def withdraw(shares: uint256, _min: uint256) -> uint256:
     @notice Withdraw token from vault
     @param shares Amount of uToken to burn
     @param _min Minimum amount of token that msg.sender will receive
-    @pdev Returns actual amount of token transferred to msg.sender
+    @dev Returns actual amount of token transferred to msg.sender
     """
     assert self.initialized, "!initialized"
     # check block delay or whitelisted
