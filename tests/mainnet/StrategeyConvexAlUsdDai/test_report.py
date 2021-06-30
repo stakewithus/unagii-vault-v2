@@ -38,8 +38,8 @@ def test_report(daiFundManager, admin, treasury, dai, dai_whale):
     tx = strategy.report(0, 2 ** 256 - 1, {"from": admin})
     after = snapshot()
 
-    print(before)
-    print(after)
+    # print(before)
+    # print(after)
     # for e in tx.events:
     #     print(e)
 
