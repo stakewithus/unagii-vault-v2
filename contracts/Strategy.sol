@@ -175,7 +175,7 @@ abstract contract Strategy {
     }
 
     /*
-    @notice Returns amount of token locked in this contract
+    @notice Returns approximate amount of token locked in this contract
     @dev Output may vary depending on price pulled from external DeFi contracts
     */
     function totalAssets() external view virtual returns (uint);
