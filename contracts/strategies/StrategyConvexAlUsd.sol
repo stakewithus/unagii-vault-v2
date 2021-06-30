@@ -369,7 +369,7 @@ contract StrategyConvexAlUsd is Strategy {
         // reassign to actual amount withdrawn
         profit = _withdraw(profit);
 
-        emit Skim(profit);
+        emit Skim(total, debt, profit);
     }
 
     function skim() external override onlyAuthorized {

@@ -59,7 +59,9 @@ contract StrategyTest is Strategy {
     }
 
     function skim() external override onlyAuthorized {
-        emit Skim(0);
+        uint total = _totalAssets();
+        uint debt = fundManager.getDebt(address(this));
+        emit Skim(total, debt, 0);
     }
 
     function report(uint _minTotal, uint _maxTotal) external override onlyAuthorized {

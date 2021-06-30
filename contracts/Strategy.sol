@@ -23,7 +23,7 @@ abstract contract Strategy {
     event Repay(uint amount, uint repaid);
     event Withdraw(uint amount, uint withdrawn);
     event ClaimRewards(uint profit);
-    event Skim(uint profit);
+    event Skim(uint total, uint debt, uint profit);
     event Report(uint gain, uint loss, uint free, uint total, uint debt);
 
     // Privilege - time lock >= admin >= authorized addresses
