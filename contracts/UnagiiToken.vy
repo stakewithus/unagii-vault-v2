@@ -5,8 +5,6 @@
 @author stakewith.us
 @license AGPL-3.0-or-later
 """
-# TODO: comment
-# TODO: gas optimize
 
 from vyper.interfaces import ERC20
 
@@ -56,6 +54,7 @@ minter: public(address)
 token: public(ERC20)
 # placeholder address used when token ETH
 ETH: constant(address) = 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE
+# last block number balance of msg.sender was changed (mint, burn, transfer, transferFrom)
 lastBlock: public(HashMap[address, uint256])
 
 
@@ -142,7 +141,7 @@ def transfer(_to: address, amount: uint256) -> bool:
 
 @external
 def transferFrom(_from: address, _to: address, amount: uint256) -> bool:
-    # Unlimited approval (saves an SSTORE)
+    # skip if unlimited approval
     if self.allowance[_from][msg.sender] < MAX_UINT256:
         self.allowance[_from][msg.sender] -= amount
         log Approval(_from, msg.sender, self.allowance[_from][msg.sender])
@@ -171,7 +170,7 @@ def decreaseAllowance(spender: address, amount: uint256) -> bool:
     return True
 
 
-# TODO: permit
+# TODO: permit?
 
 
 @external
