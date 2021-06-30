@@ -8,10 +8,6 @@
 
 from vyper.interfaces import ERC20
 
-# TODO: ETH vault
-# TODO: comment
-# TODO: gas optimize
-
 
 interface DetailedERC20:
     def decimals() -> uint256: view
@@ -138,18 +134,26 @@ depositLimit: public(uint256)
 # from sending tokens directly to this contract
 balanceOfVault: public(uint256)
 debt: public(uint256)  # debt to users (amount borrowed by fund manager)
+# minimum amount of token to be kept in this vault for cheap withdraw
+minReserve: public(uint256) 
 MAX_MIN_RESERVE: constant(uint256) = 10000
-minReserve: public(uint256)
+# timestamp of last report
 lastReport: public(uint256)
+# profit locked from report, released over time at a rate set by lockedProfitDegradation
 lockedProfit: public(uint256)
 MAX_DEGRADATION: constant(uint256) = 10 ** 18
+# rate at which locked profit is released
+# 0 = forever, MAX_DEGREDATION = 100% of profit is released after report
 lockedProfitDegradation: public(uint256)
-
+# minimum number of block to wait before deposit / withdraw
+# used to protect agains flash attacks
 blockDelay: public(uint256)
-# Token has fee on transfer
-feeOnTransfer: public(bool)
+# whitelisted address can bypass block delay check
 whitelist: public(HashMap[address, bool])
+# set to true if token has fee on transfer
+feeOnTransfer: public(bool)
 
+# address of old Vault contract, used for migration
 oldVault: public(Vault)
 # constants used for protection when migrating vault funds
 MIN_OLD_BAL: constant(uint256) = 9990
