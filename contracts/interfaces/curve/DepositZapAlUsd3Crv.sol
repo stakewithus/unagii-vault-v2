@@ -16,4 +16,10 @@ interface DepositZapAlUsd3Crv {
         int128 _i,
         uint _min_amount
     ) external returns (uint);
+
+    function calc_withdraw_one_coin(
+        address _pool,
+        uint _amount,
+        int128 _i
+    ) external view returns (uint);
 }

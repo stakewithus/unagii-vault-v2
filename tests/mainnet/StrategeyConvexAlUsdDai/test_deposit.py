@@ -18,6 +18,27 @@ def test_deposit(daiFundManager, admin, treasury, dai, dai_whale):
     amount = 10 ** 18
     token.transfer(fundManager, amount, {"from": whale})
 
-    strategy.deposit(2 ** 256 - 1, 1, {"from": admin})
+    def snapshot():
+        return {
+            "token": {
+                "fundManager": token.balanceOf(fundManager),
+                "strategy": token.balanceOf(strategy),
+            },
+            "strategy": {"totalAssets": strategy.totalAssets()},
+        }
 
-    print(dai.balanceOf(dai_whale))
+    before = snapshot()
+    tx = strategy.deposit(2 ** 256 - 1, 1, {"from": admin})
+    after = snapshot()
+
+    # print(before)
+    # print(after)
+    # for e in tx.events:
+    #     print(e)
+
+    assert after["token"]["fundManager"] == before["token"]["fundManager"] - amount
+    # all token were deposited into Convex
+    assert after["token"]["strategy"] == before["token"]["strategy"]
+    assert (
+        after["strategy"]["totalAssets"] - before["token"]["strategy"] >= 0.999 * amount
+    )

@@ -24,7 +24,7 @@ def treasury(accounts):
 
 
 @pytest.fixture(scope="session")
-def daiFundManager(FundManager, admin, guardian, worker, dai):
+def daiFundManager(admin, guardian, worker, dai):
     fundManager = FundManager.deploy(
         dai, guardian, worker, ZERO_ADDRESS, {"from": admin}
     )

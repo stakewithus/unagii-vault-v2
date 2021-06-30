@@ -87,11 +87,9 @@ contract StrategyConvexAlUsd is Strategy {
         );
         require(address(reward) == poolInfo.crvRewards, "reward != pool info reward");
 
-        metaPool.approve(address(booster), type(uint).max);
+        IERC20(address(metaPool)).safeApprove(address(booster), type(uint).max);
 
-        dai.safeApprove(address(zap), type(uint).max);
-        usdc.safeApprove(address(zap), type(uint).max);
-        usdt.safeApprove(address(zap), type(uint).max);
+        IERC20(_token).safeApprove(address(zap), type(uint).max);
 
         // TODO: sushiswap
         cvx.safeApprove(address(uniswap), type(uint).max);
@@ -137,12 +135,24 @@ contract StrategyConvexAlUsd is Strategy {
     }
 
     function _totalAssets() private view returns (uint) {
+        /*
+        s0 = shares in meta pool
+        p0 = price per share of meta pool
+        s1 = shares in base pool
+        p1 = price per share of base pool
+        a = amount of tokens (DAI, USDC, USDT)
+
+        s1 = s0 * p0
+        a = s1 * p1
+
+        a = s0 * p0 * p1
+        */
         // amount of Curve meta pool tokens in Convex
         uint metaBal = reward.balanceOf(address(this));
-        // amount of alUsd or 3Crv converted from Curve LP
-        uint baseBal = metaBal.mul(metaPool.get_virtual_price()) / 1e18;
-        // amount of token converted from 3Crv
-        uint bal = baseBal.mul(basePool.get_virtual_price()) / (MUL * 1e18);
+        // amount of alUsd or DAI, USDC, USDT converted from Curve LP
+        // basePool.get_virtual_price is included in metaPool.get_virtual_price
+        // so metaPool.get_virtual_price = p0 * p1
+        uint bal = metaBal.mul(metaPool.get_virtual_price()) / (MUL * 1e18);
 
         bal = bal.add(token.balanceOf(address(this)));
 
@@ -158,9 +168,8 @@ contract StrategyConvexAlUsd is Strategy {
         if (bal > 0) {
             uint[4] memory amounts;
             amounts[INDEX] = bal;
-
             /*
-            shares = token amount * precision multiplier * 1e18 / price per share
+            shares = token amount * multiplier * 1e18 / price per share
             */
             uint pricePerShare = metaPool.get_virtual_price();
             uint shares = bal.mul(MUL).mul(1e18).div(pricePerShare);
@@ -225,20 +234,6 @@ contract StrategyConvexAlUsd is Strategy {
 
         uint need = _amount - bal;
         uint totalShares = reward.balanceOf(address(this));
-        /*
-        s0 = meta pool shares (alUsd / 3Crv)
-        v0 = meta pool virtual price
-        s1 = base pool shares (3Crv)
-        v1 = base pool virtual price
-        a = token amount
-
-        s0 * v0 roughly equals s1
-        s1 * v1 roughly equals a
-
-        a roughly equals s0 * v0 * v1
-        */
-
-        // calculate s0
         // total assets is always >= bal
         uint shares = _calcSharesToWithdraw(need, total - bal, totalShares);
 
