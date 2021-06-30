@@ -286,7 +286,7 @@ contract StrategyConvexAlUsd is Strategy {
             token.safeTransfer(msg.sender, available);
         }
 
-        emit Withdraw(_amount, available);
+        emit Withdraw(_amount, available, loss);
 
         return loss;
     }

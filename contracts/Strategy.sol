@@ -21,7 +21,7 @@ abstract contract Strategy {
 
     event Deposit(uint amount, uint borrowed);
     event Repay(uint amount, uint repaid);
-    event Withdraw(uint amount, uint withdrawn);
+    event Withdraw(uint amount, uint withdrawn, uint loss);
     event ClaimRewards(uint profit);
     event Skim(uint total, uint debt, uint profit);
     event Report(uint gain, uint loss, uint free, uint total, uint debt);

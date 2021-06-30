@@ -127,8 +127,3 @@ def setup(chain, uToken, vault, timeLock, fundManager, admin):
     eta = tx.timestamp + DELAY
     chain.sleep(DELAY)
     timeLock.execute(vault, 0, data, eta, 0, {"from": admin})
-
-
-# TODO: test vault migration
-# TODO: test fund manager migration
-# TODO: test strategy migration

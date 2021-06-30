@@ -43,7 +43,7 @@ contract StrategyTest is Strategy {
 
         token.safeTransfer(msg.sender, amount);
 
-        emit Withdraw(_amount, amount);
+        emit Withdraw(_amount, amount, loss);
 
         return loss;
     }
