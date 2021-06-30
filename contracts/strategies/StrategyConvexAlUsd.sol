@@ -19,24 +19,26 @@ contract StrategyConvexAlUsd is Strategy {
     // UNISWAP = 0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D;
     // SUSHISWAP = 0xd9e1cE17f2641f24aE83637ab66a2cca9C378B9F;
     address private constant WETH = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
-    // address of DEX (uniswap or sushiswap) to use for selling tokens
+    // address of DEX (uniswap or sushiswap) to use for selling reward tokens
     // CRV, CVX, ALCX
     address[3] public dex;
+
+    address private constant CRV = 0xD533a949740bb3306d119CC777fa900bA034cd52;
+    address private constant CVX = 0x4e3FBD56CD56c3e72c1403e103b45Db9da5B9D2B;
+    address private constant ALCX = 0xdBdb4d16EdA451D0503b854CF79D55697F90c8DF;
+
+    // Solc 0.7 cannot create constant arrays
+    address[3] private REWARDS = [CRV, CVX, ALCX];
 
     // Convex //
     Booster private constant BOOSTER =
         Booster(0xF403C135812408BFbE8713b5A23a04b3D48AAE31);
-    IERC20 private constant CVX = IERC20(0x4e3FBD56CD56c3e72c1403e103b45Db9da5B9D2B);
     // pool id
     uint private constant PID = 36;
     BaseRewardPool private constant REWARD =
         BaseRewardPool(0x02E2151D4F351881017ABdF2DD2b51150841d5B3);
-    // TODO: use shouldClaimRewards
     bool public shouldClaimRewards = true;
     bool public shouldClaimExtras = true;
-
-    // Alchemist //
-    IERC20 private constant ALCX = IERC20(0xdBdb4d16EdA451D0503b854CF79D55697F90c8DF);
 
     // Curve //
     // DepositZap AlUsd + 3Pool
@@ -48,7 +50,6 @@ contract StrategyConvexAlUsd is Strategy {
     // StableSwap 3CRV (base pool)
     // StableSwap3Crv private constant BASE_POOL =
     //     StableSwap3Crv(0xbEbc44782C7dB0a1A60Cb6fe97d0b483032FF1C7);
-    IERC20 private constant CRV = IERC20(0xD533a949740bb3306d119CC777fa900bA034cd52);
 
     // prevent slippage from deposit / withdraw
     uint public slip = 100;
@@ -96,19 +97,17 @@ contract StrategyConvexAlUsd is Strategy {
     }
 
     function _setDex(uint _i, address _dex) private {
+        IERC20 reward = IERC20(REWARDS[_i]);
+
         // disallow previous dex
         if (dex[_i] != address(0)) {
-            CRV.safeApprove(dex[_i], 0);
-            CVX.safeApprove(dex[_i], 0);
-            ALCX.safeApprove(dex[_i], 0);
+            reward.safeApprove(dex[_i], 0);
         }
 
         dex[_i] = _dex;
 
         // approve new dex
-        CRV.safeApprove(dex[_i], type(uint).max);
-        CVX.safeApprove(dex[_i], type(uint).max);
-        ALCX.safeApprove(dex[_i], type(uint).max);
+        reward.safeApprove(_dex, type(uint).max);
     }
 
     function setDex(uint _i, address _dex) external onlyAuthorized {
@@ -130,15 +129,10 @@ contract StrategyConvexAlUsd is Strategy {
         shouldClaimRewards = _shouldClaimRewards;
     }
 
-    // TODO:
+    // @dev Claim extra rewards (ALCX) from Convex
     function setShouldClaimExtras(bool _shouldClaimExtras) external onlyAuthorized {
         shouldClaimExtras = _shouldClaimExtras;
     }
-
-    //     function switchDex(uint _id, address _dex) external onlyAuthorized {
-    //     dex[_id] = _dex;
-    //     _approveDex();
-    // }
 
     function _totalAssets() private view returns (uint) {
         /*
@@ -337,19 +331,11 @@ contract StrategyConvexAlUsd is Strategy {
             "get reward failed"
         );
 
-        uint crvBal = CRV.balanceOf(address(this));
-        if (crvBal > 0) {
-            _swap(dex[0], address(CRV), address(token), crvBal);
-        }
-
-        uint cvxBal = CVX.balanceOf(address(this));
-        if (cvxBal > 0) {
-            _swap(dex[1], address(CVX), address(token), cvxBal);
-        }
-
-        uint alcxBal = ALCX.balanceOf(address(this));
-        if (alcxBal > 0) {
-            _swap(dex[2], address(ALCX), address(token), alcxBal);
+        for (uint i = 0; i < REWARDS.length; i++) {
+            uint rewardBal = IERC20(REWARDS[i]).balanceOf(address(this));
+            if (rewardBal > 0) {
+                _swap(dex[i], REWARDS[i], address(token), rewardBal);
+            }
         }
 
         diff = token.balanceOf(address(this)) - diff;
