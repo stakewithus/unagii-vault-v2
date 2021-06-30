@@ -380,13 +380,14 @@ contract StrategyConvexAlUsd is Strategy {
 
         uint gain = 0;
         uint loss = 0;
+        uint free = 0; // balance of token
         uint debt = fundManager.getDebt(address(this));
         if (total > debt) {
             gain = total - debt;
 
-            uint bal = token.balanceOf(address(this));
-            if (gain > bal) {
-                gain = bal;
+            free = token.balanceOf(address(this));
+            if (gain > free) {
+                gain = free;
             }
         } else {
             loss = debt - total;
@@ -396,7 +397,7 @@ contract StrategyConvexAlUsd is Strategy {
             fundManager.report(gain, loss);
         }
 
-        emit Report(gain, loss, total, debt);
+        emit Report(gain, loss, free, total, debt);
     }
 
     function report(uint _minTotal, uint _maxTotal) external override onlyAuthorized {

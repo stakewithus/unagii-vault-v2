@@ -8,7 +8,7 @@ interface IFundManager {
 
     function repay(uint amount) external returns (uint);
 
-    function report(uint gain, uint loss) external returns (uint);
+    function report(uint gain, uint loss) external;
 
     function getDebt(address strategy) external view returns (uint);
 }
