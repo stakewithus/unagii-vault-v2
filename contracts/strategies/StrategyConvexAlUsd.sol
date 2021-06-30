@@ -16,39 +16,39 @@ contract StrategyConvexAlUsd is Strategy {
     using SafeMath for uint;
 
     // Uniswap and Sushiswap //
-    // TODO: check contract addresses still active
-    UniswapV2Router public uniswap =
-        UniswapV2Router(0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D);
-    UniswapV2Router public sushiswap =
-        UniswapV2Router(0xd9e1cE17f2641f24aE83637ab66a2cca9C378B9F);
+    // UNISWAP = 0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D;
+    // SUSHISWAP = 0xd9e1cE17f2641f24aE83637ab66a2cca9C378B9F;
     address private constant WETH = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
+    // address of DEX (uniswap or sushiswap) to use for selling tokens
+    // CRV, CVX, ALCX
+    address[3] public dex;
 
     // Convex //
-    Booster private constant booster =
+    Booster private constant BOOSTER =
         Booster(0xF403C135812408BFbE8713b5A23a04b3D48AAE31);
-    IERC20 private constant cvx = IERC20(0x4e3FBD56CD56c3e72c1403e103b45Db9da5B9D2B);
+    IERC20 private constant CVX = IERC20(0x4e3FBD56CD56c3e72c1403e103b45Db9da5B9D2B);
     // pool id
     uint private constant PID = 36;
-    BaseRewardPool private constant reward =
+    BaseRewardPool private constant REWARD =
         BaseRewardPool(0x02E2151D4F351881017ABdF2DD2b51150841d5B3);
     // TODO: use shouldClaimRewards
     bool public shouldClaimRewards = true;
     bool public shouldClaimExtras = true;
 
     // Alchemist //
-    IERC20 private constant alcx = IERC20(0xdBdb4d16EdA451D0503b854CF79D55697F90c8DF);
+    IERC20 private constant ALCX = IERC20(0xdBdb4d16EdA451D0503b854CF79D55697F90c8DF);
 
     // Curve //
     // DepositZap AlUsd + 3Pool
-    DepositZapAlUsd3Crv private constant zap =
+    DepositZapAlUsd3Crv private constant ZAP =
         DepositZapAlUsd3Crv(0xA79828DF1850E8a3A3064576f380D90aECDD3359);
     // StableSwap AlUsd + 3CRV (meta pool)
-    StableSwapAlUsd3Crv private constant metaPool =
+    StableSwapAlUsd3Crv private constant META_POOL =
         StableSwapAlUsd3Crv(0x43b4FdFD4Ff969587185cDB6f0BD875c5Fc83f8c);
     // StableSwap 3CRV (base pool)
-    StableSwap3Crv private constant basePool =
-        StableSwap3Crv(0xbEbc44782C7dB0a1A60Cb6fe97d0b483032FF1C7);
-    IERC20 private constant crv = IERC20(0xD533a949740bb3306d119CC777fa900bA034cd52);
+    // StableSwap3Crv private constant BASE_POOL =
+    //     StableSwap3Crv(0xbEbc44782C7dB0a1A60Cb6fe97d0b483032FF1C7);
+    IERC20 private constant CRV = IERC20(0xD533a949740bb3306d119CC777fa900bA034cd52);
 
     // prevent slippage from deposit / withdraw
     uint public slip = 100;
@@ -65,9 +65,9 @@ contract StrategyConvexAlUsd is Strategy {
     uint private immutable MUL; // multiplier of token
     uint private immutable INDEX; // index of token
 
-    IERC20 private constant dai = IERC20(0x6B175474E89094C44Da98b954EedeAC495271d0F);
-    IERC20 private constant usdc = IERC20(0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48);
-    IERC20 private constant usdt = IERC20(0xdAC17F958D2ee523a2206206994597C13D831ec7);
+    // DAI = 0x6B175474E89094C44Da98b954EedeAC495271d0F
+    // USDC = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48
+    // USDT = 0xdAC17F958D2ee523a2206206994597C13D831ec7
 
     constructor(
         address _token,
@@ -80,24 +80,40 @@ contract StrategyConvexAlUsd is Strategy {
         INDEX = _index;
         MUL = MULS[_index];
 
-        PoolInfo memory poolInfo = booster.poolInfo(PID);
+        PoolInfo memory poolInfo = BOOSTER.poolInfo(PID);
         require(
-            address(metaPool) == poolInfo.lptoken,
+            address(META_POOL) == poolInfo.lptoken,
             "curve meta pool != pool info lp"
         );
-        require(address(reward) == poolInfo.crvRewards, "reward != pool info reward");
+        require(address(REWARD) == poolInfo.crvRewards, "reward != pool info reward");
 
-        IERC20(address(metaPool)).safeApprove(address(booster), type(uint).max);
+        IERC20(_token).safeApprove(address(ZAP), type(uint).max);
+        IERC20(address(META_POOL)).safeApprove(address(BOOSTER), type(uint).max);
 
-        IERC20(_token).safeApprove(address(zap), type(uint).max);
+        _setDex(0, 0xd9e1cE17f2641f24aE83637ab66a2cca9C378B9F); // CRV - sushiswap
+        _setDex(1, 0xd9e1cE17f2641f24aE83637ab66a2cca9C378B9F); // CVX - sushiswap
+        _setDex(2, 0xd9e1cE17f2641f24aE83637ab66a2cca9C378B9F); // ALCX - sushiswap
+    }
 
-        // TODO: sushiswap
-        cvx.safeApprove(address(uniswap), type(uint).max);
-        // cvx.safeApprove(address(sushiswap), type(uint).max);
-        alcx.safeApprove(address(uniswap), type(uint).max);
-        // alcx.safeApprove(address(sushiswap), type(uint).max);
-        crv.safeApprove(address(uniswap), type(uint).max);
-        // crv.safeApprove(address(sushiswap), type(uint).max);
+    function _setDex(uint _i, address _dex) private {
+        // disallow previous dex
+        if (dex[_i] != address(0)) {
+            CRV.safeApprove(dex[_i], 0);
+            CVX.safeApprove(dex[_i], 0);
+            ALCX.safeApprove(dex[_i], 0);
+        }
+
+        dex[_i] = _dex;
+
+        // approve new dex
+        CRV.safeApprove(dex[_i], type(uint).max);
+        CVX.safeApprove(dex[_i], type(uint).max);
+        ALCX.safeApprove(dex[_i], type(uint).max);
+    }
+
+    function setDex(uint _i, address _dex) external onlyAuthorized {
+        require(_dex != address(0), "dex = 0 address");
+        _setDex(_i, _dex);
     }
 
     /*
@@ -124,16 +140,6 @@ contract StrategyConvexAlUsd is Strategy {
     //     _approveDex();
     // }
 
-    // TODO:
-    function setUniswap(address _uni) external onlyTimeLock {
-        if (address(uniswap) != address(0)) {
-            // comp.safeApprove(address(uniswap), 0);
-        }
-
-        uniswap = UniswapV2Router(_uni);
-        // comp.safeApprove(address(uniswap), type(uint).max);
-    }
-
     function _totalAssets() private view returns (uint) {
         /*
         s0 = shares in meta pool
@@ -148,11 +154,11 @@ contract StrategyConvexAlUsd is Strategy {
         a = s0 * p0 * p1
         */
         // amount of Curve meta pool tokens in Convex
-        uint metaBal = reward.balanceOf(address(this));
+        uint metaBal = REWARD.balanceOf(address(this));
         // amount of alUsd or DAI, USDC, USDT converted from Curve LP
-        // basePool.get_virtual_price is included in metaPool.get_virtual_price
-        // so metaPool.get_virtual_price = p0 * p1
-        uint bal = metaBal.mul(metaPool.get_virtual_price()) / (MUL * 1e18);
+        // BASE_POOL.get_virtual_price is included in META_POOL.get_virtual_price
+        // so META_POOL.get_virtual_price = p0 * p1
+        uint bal = metaBal.mul(META_POOL.get_virtual_price()) / (MUL * 1e18);
 
         bal = bal.add(token.balanceOf(address(this)));
 
@@ -171,16 +177,16 @@ contract StrategyConvexAlUsd is Strategy {
             /*
             shares = token amount * multiplier * 1e18 / price per share
             */
-            uint pricePerShare = metaPool.get_virtual_price();
+            uint pricePerShare = META_POOL.get_virtual_price();
             uint shares = bal.mul(MUL).mul(1e18).div(pricePerShare);
             uint min = shares.mul(SLIP_MAX - slip) / SLIP_MAX;
 
-            zap.add_liquidity(address(metaPool), amounts, min);
+            ZAP.add_liquidity(address(META_POOL), amounts, min);
         }
 
-        uint metaBal = metaPool.balanceOf(address(this));
+        uint metaBal = META_POOL.balanceOf(address(this));
         if (metaBal > 0) {
-            require(booster.deposit(PID, metaBal, true), "deposit failed");
+            require(BOOSTER.deposit(PID, metaBal, true), "deposit failed");
         }
     }
 
@@ -233,26 +239,26 @@ contract StrategyConvexAlUsd is Strategy {
         }
 
         uint need = _amount - bal;
-        uint totalShares = reward.balanceOf(address(this));
+        uint totalShares = REWARD.balanceOf(address(this));
         // total assets is always >= bal
         uint shares = _calcSharesToWithdraw(need, total - bal, totalShares);
 
         // withdraw from Convex
         // TODO: claim = true?
         if (shares > 0) {
-            require(reward.withdrawAndUnwrap(shares, false), "reward withdraw failed");
+            require(REWARD.withdrawAndUnwrap(shares, false), "reward withdraw failed");
         }
 
         // withdraw from Curve
-        uint metaBal = metaPool.balanceOf(address(this));
+        uint metaBal = META_POOL.balanceOf(address(this));
         if (shares > metaBal) {
             shares = metaBal;
         }
 
         if (shares > 0) {
             uint min = need.mul(SLIP_MAX - slip) / SLIP_MAX;
-            zap.remove_liquidity_one_coin(
-                address(metaPool),
+            ZAP.remove_liquidity_one_coin(
+                address(META_POOL),
                 shares,
                 int128(INDEX),
                 min
@@ -302,6 +308,7 @@ contract StrategyConvexAlUsd is Strategy {
     @dev Uniswap fails with zero address so no check is necessary here
     */
     function _swap(
+        address _dex,
         address _tokenIn,
         address _tokenOut,
         uint _amount
@@ -312,7 +319,7 @@ contract StrategyConvexAlUsd is Strategy {
         path[1] = WETH;
         path[2] = _tokenOut;
 
-        uniswap.swapExactTokensForTokens(
+        UniswapV2Router(_dex).swapExactTokensForTokens(
             _amount,
             1,
             path,
@@ -326,29 +333,23 @@ contract StrategyConvexAlUsd is Strategy {
         uint diff = token.balanceOf(address(this));
 
         require(
-            reward.getReward(address(this), shouldClaimExtras),
+            REWARD.getReward(address(this), shouldClaimExtras),
             "get reward failed"
         );
 
-        uint crvBal = crv.balanceOf(address(this));
+        uint crvBal = CRV.balanceOf(address(this));
         if (crvBal > 0) {
-            // TODO: check liquidity
-            // TODO: token to buy
-            _swap(address(crv), address(token), crvBal);
+            _swap(dex[0], address(CRV), address(token), crvBal);
         }
 
-        uint cvxBal = cvx.balanceOf(address(this));
+        uint cvxBal = CVX.balanceOf(address(this));
         if (cvxBal > 0) {
-            // TODO: check liquidity
-            // TODO: token to buy
-            _swap(address(cvx), address(token), cvxBal);
+            _swap(dex[1], address(CVX), address(token), cvxBal);
         }
 
-        uint alcxBal = alcx.balanceOf(address(this));
+        uint alcxBal = ALCX.balanceOf(address(this));
         if (alcxBal > 0) {
-            // TODO: check liquidity
-            // TODO: token to buy
-            _swap(address(alcx), address(token), alcxBal);
+            _swap(dex[2], address(ALCX), address(token), alcxBal);
         }
 
         diff = token.balanceOf(address(this)) - diff;
@@ -445,9 +446,9 @@ contract StrategyConvexAlUsd is Strategy {
     */
     function sweep(address _token) external override onlyAuthorized {
         require(_token != address(token), "protected token");
-        require(_token != address(cvx), "protected token");
-        require(_token != address(alcx), "protected token");
-        require(_token != address(crv), "protected token");
+        require(_token != address(CVX), "protected token");
+        require(_token != address(ALCX), "protected token");
+        require(_token != address(CRV), "protected token");
         IERC20(_token).safeTransfer(admin, IERC20(_token).balanceOf(address(this)));
     }
 }
