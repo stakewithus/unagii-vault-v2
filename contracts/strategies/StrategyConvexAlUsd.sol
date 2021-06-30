@@ -89,7 +89,10 @@ contract StrategyConvexAlUsd is Strategy {
         require(address(REWARD) == poolInfo.crvRewards, "reward != pool info reward");
 
         IERC20(_token).safeApprove(address(ZAP), type(uint).max);
+        // deposit into BOOSTER
         IERC20(address(META_POOL)).safeApprove(address(BOOSTER), type(uint).max);
+        // withdraw from ZAP
+        IERC20(address(META_POOL)).safeApprove(address(ZAP), type(uint).max);
 
         _setDex(0, 0xd9e1cE17f2641f24aE83637ab66a2cca9C378B9F); // CRV - sushiswap
         _setDex(1, 0xd9e1cE17f2641f24aE83637ab66a2cca9C378B9F); // CVX - sushiswap
@@ -222,7 +225,7 @@ contract StrategyConvexAlUsd is Strategy {
 
     function _withdraw(uint _amount) private returns (uint) {
         uint bal = token.balanceOf(address(this));
-        if (bal >= _amount) {
+        if (_amount <= bal) {
             return _amount;
         }
 
