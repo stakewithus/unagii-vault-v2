@@ -449,7 +449,7 @@ contract StrategyCompLev is Strategy {
     // @dev Returns amount available for transfer
     function _withdraw(uint _amount) private returns (uint) {
         uint bal = token.balanceOf(address(this));
-        if (bal >= _amount) {
+        if (_amount <= bal) {
             return _amount;
         }
 
