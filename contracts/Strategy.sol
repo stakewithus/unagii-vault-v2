@@ -24,7 +24,7 @@ abstract contract Strategy {
     event Withdraw(uint amount, uint withdrawn);
     event ClaimRewards(uint profit);
     event Skim(uint profit);
-    event Report(uint gain, uint loss, uint total, uint debt);
+    event Report(uint gain, uint loss, uint free, uint total, uint debt);
 
     // Privilege - time lock >= admin >= authorized addresses
     address public timeLock;
