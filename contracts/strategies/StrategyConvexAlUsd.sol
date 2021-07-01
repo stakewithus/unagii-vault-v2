@@ -44,6 +44,9 @@ contract StrategyConvexAlUsd is Strategy {
     // StableSwap alUSD + 3CRV (meta pool)
     StableSwapAlUsd3Crv private constant META_POOL =
         StableSwapAlUsd3Crv(0x43b4FdFD4Ff969587185cDB6f0BD875c5Fc83f8c);
+    // LP token for meta pool (same contract as META_POOL)
+    IERC20 private constant META_POOL_LP =
+        IERC20(0x43b4FdFD4Ff969587185cDB6f0BD875c5Fc83f8c);
 
     // prevent slippage from deposit / withdraw
     uint public slip = 100;
@@ -77,16 +80,16 @@ contract StrategyConvexAlUsd is Strategy {
 
         PoolInfo memory poolInfo = BOOSTER.poolInfo(PID);
         require(
-            address(META_POOL) == poolInfo.lptoken,
-            "curve meta pool != pool info lp"
+            address(META_POOL_LP) == poolInfo.lptoken,
+            "curve meta pool lp != pool info lp"
         );
         require(address(REWARD) == poolInfo.crvRewards, "reward != pool info reward");
 
         IERC20(_token).safeApprove(address(ZAP), type(uint).max);
         // deposit into BOOSTER
-        IERC20(address(META_POOL)).safeApprove(address(BOOSTER), type(uint).max);
+        META_POOL_LP.safeApprove(address(BOOSTER), type(uint).max);
         // withdraw from ZAP
-        IERC20(address(META_POOL)).safeApprove(address(ZAP), type(uint).max);
+        META_POOL_LP.safeApprove(address(ZAP), type(uint).max);
 
         _setDex(0, 0xd9e1cE17f2641f24aE83637ab66a2cca9C378B9F); // CRV - sushiswap
         _setDex(1, 0xd9e1cE17f2641f24aE83637ab66a2cca9C378B9F); // CVX - sushiswap
@@ -170,7 +173,7 @@ contract StrategyConvexAlUsd is Strategy {
             ZAP.add_liquidity(address(META_POOL), amounts, min);
         }
 
-        uint metaBal = META_POOL.balanceOf(address(this));
+        uint metaBal = META_POOL_LP.balanceOf(address(this));
         if (metaBal > 0) {
             require(BOOSTER.deposit(PID, metaBal, true), "deposit failed");
         }
@@ -236,7 +239,7 @@ contract StrategyConvexAlUsd is Strategy {
         }
 
         // withdraw from Curve
-        uint metaBal = META_POOL.balanceOf(address(this));
+        uint metaBal = META_POOL_LP.balanceOf(address(this));
         if (shares > metaBal) {
             shares = metaBal;
         }
