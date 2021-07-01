@@ -5,8 +5,8 @@ pragma abicoder v2;
 import "../interfaces/uniswap/UniswapV2Router.sol";
 import "../interfaces/convex/BaseRewardPool.sol";
 import "../interfaces/convex/Booster.sol";
-import "../interfaces/curve/DepositZapUsdp3Crv.sol";
-import "../interfaces/curve/StableSwapUsdp3Crv.sol";
+import "../interfaces/curve/DepositBbtc.sol";
+import "../interfaces/curve/StableSwapBbtc.sol";
 import "../Strategy.sol";
 
 contract StrategyConvexBbtc is Strategy {
@@ -31,40 +31,38 @@ contract StrategyConvexBbtc is Strategy {
     Booster private constant BOOSTER =
         Booster(0xF403C135812408BFbE8713b5A23a04b3D48AAE31);
     // pool id
-    uint private constant PID = 28;
+    uint private constant PID = 19;
     BaseRewardPool private constant REWARD =
-        BaseRewardPool(0x24DfFd1949F888F91A0c8341Fc98a3F280a782a8);
+        BaseRewardPool(0x61D741045cCAA5a215cF4E5e55f20E1199B4B843);
     bool public shouldClaimExtras = true;
 
     // Curve //
-    // Deposit USDP + 3CRV
-    DepositZapUsdp3Crv private constant ZAP =
-        DepositZapUsdp3Crv(0x3c8cAee4E09296800f8D29A68Fa3837e2dae4940);
-    // StableSwap USDP + 3CRV (meta pool)
-    StableSwapUsdp3Crv private constant META_POOL =
-        StableSwapUsdp3Crv(0x42d7025938bEc20B69cBae5A77421082407f053A);
-    // LP token for meta pool (USDP / 3CRV)
+    // Deposit
+    DepositBbtc private constant ZAP =
+        DepositBbtc(0xC45b2EEe6e09cA176Ca3bB5f7eEe7C47bF93c756);
+    // StableSwap
+    StableSwapBbtc private constant CURVE_POOL =
+        StableSwapBbtc(0x42d7025938bEc20B69cBae5A77421082407f053A);
+    // LP token for curve pool bBTC/sbtcCRV
     IERC20 private constant CURVE_LP =
-        IERC20(0x7Eb40E450b9655f4B3cC4259BCC731c63ff55ae6);
+        IERC20(0x410e3E86ef427e30B9235497143881f717d93c2A);
 
     // prevent slippage from deposit / withdraw
     uint public slip = 100;
     uint private constant SLIP_MAX = 10000;
 
     /*
-    0 - USDP
-    1 - DAI
-    2 - USDC
-    3 - USDT
+    0 - BBTC
+    1 - renBTC
+    2 - WBTC
+    3 - SBTC
     */
     // multipliers to normalize token decimals to 10 ** 18
-    uint[4] private MULS = [1, 1, 1e12, 1e12];
+    uint[4] private MULS = [1e10, 1e10, 1e10, 1];
     uint private immutable MUL; // multiplier of token
     uint private immutable INDEX; // index of token
 
-    // DAI = 0x6B175474E89094C44Da98b954EedeAC495271d0F
-    // USDC = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48
-    // USDT = 0xdAC17F958D2ee523a2206206994597C13D831ec7
+    // WBTC = 0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599
 
     constructor(
         address _token,
@@ -72,16 +70,13 @@ contract StrategyConvexBbtc is Strategy {
         address _treasury,
         uint _index
     ) Strategy(_token, _fundManager, _treasury) {
-        // disable USDP
-        require(_index > 0, "index = 0");
+        // only WBTC
+        require(_index == 2, "index != 2");
         INDEX = _index;
         MUL = MULS[_index];
 
         PoolInfo memory poolInfo = BOOSTER.poolInfo(PID);
-        require(
-            address(CURVE_LP) == poolInfo.lptoken,
-            "curve meta pool lp != pool info lp"
-        );
+        require(address(CURVE_LP) == poolInfo.lptoken, "curve pool lp != pool info lp");
         require(address(REWARD) == poolInfo.crvRewards, "reward != pool info reward");
 
         IERC20(_token).safeApprove(address(ZAP), type(uint).max);
@@ -129,23 +124,15 @@ contract StrategyConvexBbtc is Strategy {
 
     function _totalAssets() private view returns (uint) {
         /*
-        s0 = shares in meta pool
-        p0 = price per share of meta pool
-        s1 = shares in base pool
-        p1 = price per share of base pool
-        a = amount of tokens (DAI, USDC, USDT)
+        s0 = shares in curve pool
+        p0 = price per share of curve pool
+        a = amount of tokens
 
-        s1 = s0 * p0
-        a = s1 * p1
-
-        a = s0 * p0 * p1
+        a = s0 * p0
         */
         // amount of Curve LP tokens in Convex
         uint lpBal = REWARD.balanceOf(address(this));
-        // amount of USDP or DAI, USDC, USDT converted from Curve LP
-        // BASE_POOL.get_virtual_price is included in META_POOL.get_virtual_price
-        // so META_POOL.get_virtual_price = p0 * p1
-        uint bal = lpBal.mul(META_POOL.get_virtual_price()) / (MUL * 1e18);
+        uint bal = lpBal.mul(CURVE_POOL.get_virtual_price()) / (MUL * 1e18);
 
         bal = bal.add(token.balanceOf(address(this)));
 
@@ -164,7 +151,7 @@ contract StrategyConvexBbtc is Strategy {
             /*
             shares = token amount * multiplier * 1e18 / price per share
             */
-            uint pricePerShare = META_POOL.get_virtual_price();
+            uint pricePerShare = CURVE_POOL.get_virtual_price();
             uint shares = bal.mul(MUL).mul(1e18).div(pricePerShare);
             uint min = shares.mul(SLIP_MAX - slip) / SLIP_MAX;
 
