@@ -7,7 +7,6 @@ import "../interfaces/convex/BaseRewardPool.sol";
 import "../interfaces/convex/Booster.sol";
 import "../interfaces/curve/DepositZapAlUsd3Crv.sol";
 import "../interfaces/curve/StableSwapAlUsd3Crv.sol";
-import "../interfaces/curve/StableSwap3Crv.sol";
 import "../Strategy.sol";
 
 contract StrategyConvexAlUsd is Strategy {
@@ -36,19 +35,15 @@ contract StrategyConvexAlUsd is Strategy {
     uint private constant PID = 36;
     BaseRewardPool private constant REWARD =
         BaseRewardPool(0x02E2151D4F351881017ABdF2DD2b51150841d5B3);
-    bool public shouldClaimRewards = true;
     bool public shouldClaimExtras = true;
 
     // Curve //
-    // DepositZap AlUsd + 3Pool
+    // DepositZap alUSD + 3CRV
     DepositZapAlUsd3Crv private constant ZAP =
         DepositZapAlUsd3Crv(0xA79828DF1850E8a3A3064576f380D90aECDD3359);
-    // StableSwap AlUsd + 3CRV (meta pool)
+    // StableSwap alUSD + 3CRV (meta pool)
     StableSwapAlUsd3Crv private constant META_POOL =
         StableSwapAlUsd3Crv(0x43b4FdFD4Ff969587185cDB6f0BD875c5Fc83f8c);
-    // StableSwap 3CRV (base pool)
-    // StableSwap3Crv private constant BASE_POOL =
-    //     StableSwap3Crv(0xbEbc44782C7dB0a1A60Cb6fe97d0b483032FF1C7);
 
     // prevent slippage from deposit / withdraw
     uint public slip = 100;
@@ -75,7 +70,7 @@ contract StrategyConvexAlUsd is Strategy {
         address _treasury,
         uint _index
     ) Strategy(_token, _fundManager, _treasury) {
-        // disable alUsd
+        // disable alUSD
         require(_index > 0, "index = 0");
         INDEX = _index;
         MUL = MULS[_index];
@@ -146,7 +141,7 @@ contract StrategyConvexAlUsd is Strategy {
         */
         // amount of Curve meta pool tokens in Convex
         uint metaBal = REWARD.balanceOf(address(this));
-        // amount of alUsd or DAI, USDC, USDT converted from Curve LP
+        // amount of alUSD or DAI, USDC, USDT converted from Curve LP
         // BASE_POOL.get_virtual_price is included in META_POOL.get_virtual_price
         // so META_POOL.get_virtual_price = p0 * p1
         uint bal = metaBal.mul(META_POOL.get_virtual_price()) / (MUL * 1e18);
