@@ -5,8 +5,8 @@ pragma abicoder v2;
 import "../interfaces/uniswap/UniswapV2Router.sol";
 import "../interfaces/convex/BaseRewardPool.sol";
 import "../interfaces/convex/Booster.sol";
-import "../interfaces/curve/DepositZapAlUsd3Crv.sol";
-import "../interfaces/curve/StableSwapAlUsd3Crv.sol";
+import "../interfaces/curve/DepositZapUsdp3Crv.sol";
+import "../interfaces/curve/StableSwapUsdp3Crv.sol";
 import "../Strategy.sol";
 
 contract StrategyConvexUsdp is Strategy {
@@ -18,42 +18,41 @@ contract StrategyConvexUsdp is Strategy {
     // SUSHISWAP = 0xd9e1cE17f2641f24aE83637ab66a2cca9C378B9F;
     address private constant WETH = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
     // address of DEX (uniswap or sushiswap) to use for selling reward tokens
-    // CRV, CVX, ALCX
-    address[3] public dex;
+    // CRV, CVX
+    address[2] public dex;
 
     address private constant CRV = 0xD533a949740bb3306d119CC777fa900bA034cd52;
     address private constant CVX = 0x4e3FBD56CD56c3e72c1403e103b45Db9da5B9D2B;
-    address private constant ALCX = 0xdBdb4d16EdA451D0503b854CF79D55697F90c8DF;
 
     // Solc 0.7 cannot create constant arrays
-    address[3] private REWARDS = [CRV, CVX, ALCX];
+    address[2] private REWARDS = [CRV, CVX];
 
     // Convex //
     Booster private constant BOOSTER =
         Booster(0xF403C135812408BFbE8713b5A23a04b3D48AAE31);
     // pool id
-    uint private constant PID = 36;
+    uint private constant PID = 28;
     BaseRewardPool private constant REWARD =
-        BaseRewardPool(0x02E2151D4F351881017ABdF2DD2b51150841d5B3);
+        BaseRewardPool(0x24DfFd1949F888F91A0c8341Fc98a3F280a782a8);
     bool public shouldClaimExtras = true;
 
     // Curve //
-    // DepositZap alUSD + 3CRV
-    DepositZapAlUsd3Crv private constant ZAP =
-        DepositZapAlUsd3Crv(0xA79828DF1850E8a3A3064576f380D90aECDD3359);
-    // StableSwap alUSD + 3CRV (meta pool)
-    StableSwapAlUsd3Crv private constant META_POOL =
-        StableSwapAlUsd3Crv(0x43b4FdFD4Ff969587185cDB6f0BD875c5Fc83f8c);
-    // LP token for meta pool (same contract as META_POOL)
+    // Deposit USDP + 3CRV
+    DepositZapUsdp3Crv private constant ZAP =
+        DepositZapUsdp3Crv(0x3c8cAee4E09296800f8D29A68Fa3837e2dae4940);
+    // StableSwap USDP + 3CRV (meta pool)
+    StableSwapUsdp3Crv private constant META_POOL =
+        StableSwapUsdp3Crv(0x42d7025938bEc20B69cBae5A77421082407f053A);
+    // LP token for meta pool (USDP / 3CRV)
     IERC20 private constant CURVE_LP =
-        IERC20(0x43b4FdFD4Ff969587185cDB6f0BD875c5Fc83f8c);
+        IERC20(0x7Eb40E450b9655f4B3cC4259BCC731c63ff55ae6);
 
     // prevent slippage from deposit / withdraw
     uint public slip = 100;
     uint private constant SLIP_MAX = 10000;
 
     /*
-    0 - alUSD
+    0 - USDP
     1 - DAI
     2 - USDC
     3 - USDT
@@ -73,7 +72,7 @@ contract StrategyConvexUsdp is Strategy {
         address _treasury,
         uint _index
     ) Strategy(_token, _fundManager, _treasury) {
-        // disable alUSD
+        // disable USDP
         require(_index > 0, "index = 0");
         INDEX = _index;
         MUL = MULS[_index];
@@ -93,7 +92,6 @@ contract StrategyConvexUsdp is Strategy {
 
         _setDex(0, 0xd9e1cE17f2641f24aE83637ab66a2cca9C378B9F); // CRV - sushiswap
         _setDex(1, 0xd9e1cE17f2641f24aE83637ab66a2cca9C378B9F); // CVX - sushiswap
-        _setDex(2, 0xd9e1cE17f2641f24aE83637ab66a2cca9C378B9F); // ALCX - sushiswap
     }
 
     function _setDex(uint _i, address _dex) private {
@@ -124,7 +122,7 @@ contract StrategyConvexUsdp is Strategy {
         slip = _slip;
     }
 
-    // @dev Claim extra rewards (ALCX) from Convex
+    // @dev Claim extra rewards from Convex
     function setShouldClaimExtras(bool _shouldClaimExtras) external onlyAuthorized {
         shouldClaimExtras = _shouldClaimExtras;
     }
@@ -144,7 +142,7 @@ contract StrategyConvexUsdp is Strategy {
         */
         // amount of Curve LP tokens in Convex
         uint lpBal = REWARD.balanceOf(address(this));
-        // amount of alUSD or DAI, USDC, USDT converted from Curve LP
+        // amount of USDP or DAI, USDC, USDT converted from Curve LP
         // BASE_POOL.get_virtual_price is included in META_POOL.get_virtual_price
         // so META_POOL.get_virtual_price = p0 * p1
         uint bal = lpBal.mul(META_POOL.get_virtual_price()) / (MUL * 1e18);
@@ -170,7 +168,7 @@ contract StrategyConvexUsdp is Strategy {
             uint shares = bal.mul(MUL).mul(1e18).div(pricePerShare);
             uint min = shares.mul(SLIP_MAX - slip) / SLIP_MAX;
 
-            ZAP.add_liquidity(address(META_POOL), amounts, min);
+            ZAP.add_liquidity(amounts, min);
         }
 
         uint lpBal = CURVE_LP.balanceOf(address(this));
@@ -234,7 +232,7 @@ contract StrategyConvexUsdp is Strategy {
 
         // withdraw from Convex
         if (shares > 0) {
-            // true = claim CRV and ALCX
+            // true = claim CRVand
             require(REWARD.withdrawAndUnwrap(shares, false), "reward withdraw failed");
         }
 
@@ -246,12 +244,7 @@ contract StrategyConvexUsdp is Strategy {
 
         if (shares > 0) {
             uint min = need.mul(SLIP_MAX - slip) / SLIP_MAX;
-            ZAP.remove_liquidity_one_coin(
-                address(META_POOL),
-                shares,
-                int128(INDEX),
-                min
-            );
+            ZAP.remove_liquidity_one_coin(shares, int128(INDEX), min);
         }
 
         uint balAfter = token.balanceOf(address(this));
@@ -428,7 +421,6 @@ contract StrategyConvexUsdp is Strategy {
     function sweep(address _token) external override onlyAuthorized {
         require(_token != address(token), "protected token");
         require(_token != address(CVX), "protected token");
-        require(_token != address(ALCX), "protected token");
         require(_token != address(CRV), "protected token");
         IERC20(_token).safeTransfer(admin, IERC20(_token).balanceOf(address(this)));
     }
