@@ -2,7 +2,6 @@
 pragma solidity 0.7.6;
 pragma abicoder v2;
 
-// TODO: uniswap v3?
 import "../interfaces/uniswap/UniswapV2Router.sol";
 import "../interfaces/convex/BaseRewardPool.sol";
 import "../interfaces/convex/Booster.sol";
@@ -113,7 +112,7 @@ contract StrategyConvexAlUsd is Strategy {
         reward.safeApprove(_dex, type(uint).max);
     }
 
-    function setDex(uint _i, address _dex) external onlyAuthorized {
+    function setDex(uint _i, address _dex) external onlyTimeLockOrAdmin {
         require(_dex != address(0), "dex = 0 address");
         _setDex(_i, _dex);
     }
@@ -291,7 +290,7 @@ contract StrategyConvexAlUsd is Strategy {
         return loss;
     }
 
-    function repay(uint _amount, uint _min) external override {
+    function repay(uint _amount, uint _min) external override onlyAuthorized {
         require(_amount > 0, "repay = 0");
         // availabe <= _amount
         uint available = _withdraw(_amount);
