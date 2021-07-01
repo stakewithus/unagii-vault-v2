@@ -248,7 +248,7 @@ contract StrategyConvexUsdp is Strategy {
         }
 
         uint balAfter = token.balanceOf(address(this));
-        if (balAfter < _amount) {
+        if (_amount > balAfter) {
             return balAfter;
         }
         return _amount;
