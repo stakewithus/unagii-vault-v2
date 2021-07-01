@@ -126,11 +126,6 @@ contract StrategyConvexAlUsd is Strategy {
         slip = _slip;
     }
 
-    // TODO:
-    function setShouldClaimRewards(bool _shouldClaimRewards) external onlyAuthorized {
-        shouldClaimRewards = _shouldClaimRewards;
-    }
-
     // @dev Claim extra rewards (ALCX) from Convex
     function setShouldClaimExtras(bool _shouldClaimExtras) external onlyAuthorized {
         shouldClaimExtras = _shouldClaimExtras;
@@ -240,8 +235,8 @@ contract StrategyConvexAlUsd is Strategy {
         uint shares = _calcSharesToWithdraw(need, total - bal, totalShares);
 
         // withdraw from Convex
-        // TODO: claim = true?
         if (shares > 0) {
+            // true = claim CRV and ALCX
             require(REWARD.withdrawAndUnwrap(shares, false), "reward withdraw failed");
         }
 
