@@ -27,5 +27,5 @@ def reward():
 
 
 @pytest.fixture(scope="session")
-def alUsd3Crv():
+def curve_lp():
     yield interface.IERC20("0x43b4FdFD4Ff969587185cDB6f0BD875c5Fc83f8c")

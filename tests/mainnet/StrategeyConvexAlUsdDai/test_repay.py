@@ -1,9 +1,8 @@
 import brownie
-from brownie import StrategyConvexAlUsdDai
 import pytest
 
 
-def test_repay(strategy, daiFundManager, admin, treasury, dai, dai_whale):
+def test_repay(strategy, daiFundManager, admin, dai, dai_whale):
     token = dai
     whale = dai_whale
 
