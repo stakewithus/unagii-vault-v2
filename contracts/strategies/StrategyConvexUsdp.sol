@@ -248,9 +248,15 @@ contract StrategyConvexUsdp is Strategy {
         }
 
         uint balAfter = token.balanceOf(address(this));
-        if (_amount > balAfter) {
+        if (balAfter < _amount) {
             return balAfter;
         }
+        // balAfter >= _amount >= total
+        // requested to withdraw all so return balAfter
+        if (_amount >= total) {
+            return balAfter;
+        }
+        // requested withdraw < all
         return _amount;
     }
 
