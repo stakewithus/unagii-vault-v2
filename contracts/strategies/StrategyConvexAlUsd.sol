@@ -42,9 +42,9 @@ contract StrategyConvexAlUsd is Strategy {
     DepositZapAlUsd3Crv private constant ZAP =
         DepositZapAlUsd3Crv(0xA79828DF1850E8a3A3064576f380D90aECDD3359);
     // StableSwap alUSD + 3CRV (meta pool)
-    StableSwapAlUsd3Crv private constant META_POOL =
+    StableSwapAlUsd3Crv private constant CURVE_POOL =
         StableSwapAlUsd3Crv(0x43b4FdFD4Ff969587185cDB6f0BD875c5Fc83f8c);
-    // LP token for meta pool (same contract as META_POOL)
+    // LP token for curve pool (same contract as CURVE_POOL)
     IERC20 private constant CURVE_LP =
         IERC20(0x43b4FdFD4Ff969587185cDB6f0BD875c5Fc83f8c);
 
@@ -79,10 +79,7 @@ contract StrategyConvexAlUsd is Strategy {
         MUL = MULS[_index];
 
         PoolInfo memory poolInfo = BOOSTER.poolInfo(PID);
-        require(
-            address(CURVE_LP) == poolInfo.lptoken,
-            "curve meta pool lp != pool info lp"
-        );
+        require(address(CURVE_LP) == poolInfo.lptoken, "curve pool lp != pool info lp");
         require(address(REWARD) == poolInfo.crvRewards, "reward != pool info reward");
 
         IERC20(_token).safeApprove(address(ZAP), type(uint).max);
@@ -145,9 +142,9 @@ contract StrategyConvexAlUsd is Strategy {
         // amount of Curve LP tokens in Convex
         uint lpBal = REWARD.balanceOf(address(this));
         // amount of alUSD or DAI, USDC, USDT converted from Curve LP
-        // BASE_POOL.get_virtual_price is included in META_POOL.get_virtual_price
-        // so META_POOL.get_virtual_price = p0 * p1
-        uint bal = lpBal.mul(META_POOL.get_virtual_price()) / (MUL * 1e18);
+        // BASE_POOL.get_virtual_price is included in CURVE_POOL.get_virtual_price
+        // so CURVE_POOL.get_virtual_price = p0 * p1
+        uint bal = lpBal.mul(CURVE_POOL.get_virtual_price()) / (MUL * 1e18);
 
         bal = bal.add(token.balanceOf(address(this)));
 
@@ -166,11 +163,11 @@ contract StrategyConvexAlUsd is Strategy {
             /*
             shares = token amount * multiplier * 1e18 / price per share
             */
-            uint pricePerShare = META_POOL.get_virtual_price();
+            uint pricePerShare = CURVE_POOL.get_virtual_price();
             uint shares = bal.mul(MUL).mul(1e18).div(pricePerShare);
             uint min = shares.mul(SLIP_MAX - slip) / SLIP_MAX;
 
-            ZAP.add_liquidity(address(META_POOL), amounts, min);
+            ZAP.add_liquidity(address(CURVE_POOL), amounts, min);
         }
 
         uint lpBal = CURVE_LP.balanceOf(address(this));
@@ -247,7 +244,7 @@ contract StrategyConvexAlUsd is Strategy {
         if (shares > 0) {
             uint min = need.mul(SLIP_MAX - slip) / SLIP_MAX;
             ZAP.remove_liquidity_one_coin(
-                address(META_POOL),
+                address(CURVE_POOL),
                 shares,
                 int128(INDEX),
                 min

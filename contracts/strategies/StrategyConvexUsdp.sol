@@ -41,9 +41,9 @@ contract StrategyConvexUsdp is Strategy {
     DepositZapUsdp3Crv private constant ZAP =
         DepositZapUsdp3Crv(0x3c8cAee4E09296800f8D29A68Fa3837e2dae4940);
     // StableSwap USDP + 3CRV (meta pool)
-    StableSwapUsdp3Crv private constant META_POOL =
+    StableSwapUsdp3Crv private constant CURVE_POOL =
         StableSwapUsdp3Crv(0x42d7025938bEc20B69cBae5A77421082407f053A);
-    // LP token for meta pool (USDP / 3CRV)
+    // LP token for curve pool (USDP / 3CRV)
     IERC20 private constant CURVE_LP =
         IERC20(0x7Eb40E450b9655f4B3cC4259BCC731c63ff55ae6);
 
@@ -78,10 +78,7 @@ contract StrategyConvexUsdp is Strategy {
         MUL = MULS[_index];
 
         PoolInfo memory poolInfo = BOOSTER.poolInfo(PID);
-        require(
-            address(CURVE_LP) == poolInfo.lptoken,
-            "curve meta pool lp != pool info lp"
-        );
+        require(address(CURVE_LP) == poolInfo.lptoken, "curve pool lp != pool info lp");
         require(address(REWARD) == poolInfo.crvRewards, "reward != pool info reward");
 
         IERC20(_token).safeApprove(address(ZAP), type(uint).max);
@@ -143,9 +140,9 @@ contract StrategyConvexUsdp is Strategy {
         // amount of Curve LP tokens in Convex
         uint lpBal = REWARD.balanceOf(address(this));
         // amount of USDP or DAI, USDC, USDT converted from Curve LP
-        // BASE_POOL.get_virtual_price is included in META_POOL.get_virtual_price
-        // so META_POOL.get_virtual_price = p0 * p1
-        uint bal = lpBal.mul(META_POOL.get_virtual_price()) / (MUL * 1e18);
+        // BASE_POOL.get_virtual_price is included in CURVE_POOL.get_virtual_price
+        // so CURVE_POOL.get_virtual_price = p0 * p1
+        uint bal = lpBal.mul(CURVE_POOL.get_virtual_price()) / (MUL * 1e18);
 
         bal = bal.add(token.balanceOf(address(this)));
 
@@ -164,7 +161,7 @@ contract StrategyConvexUsdp is Strategy {
             /*
             shares = token amount * multiplier * 1e18 / price per share
             */
-            uint pricePerShare = META_POOL.get_virtual_price();
+            uint pricePerShare = CURVE_POOL.get_virtual_price();
             uint shares = bal.mul(MUL).mul(1e18).div(pricePerShare);
             uint min = shares.mul(SLIP_MAX - slip) / SLIP_MAX;
 
