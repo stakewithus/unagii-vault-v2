@@ -229,7 +229,7 @@ contract StrategyConvexUsdp is Strategy {
 
         // withdraw from Convex
         if (shares > 0) {
-            // true = claim CRVand
+            // true = claim CRV
             require(REWARD.withdrawAndUnwrap(shares, false), "reward withdraw failed");
         }
 

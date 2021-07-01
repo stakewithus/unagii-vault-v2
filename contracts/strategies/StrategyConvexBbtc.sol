@@ -219,7 +219,7 @@ contract StrategyConvexBbtc is Strategy {
 
         // withdraw from Convex
         if (shares > 0) {
-            // true = claim CRVand
+            // true = claim CRV
             require(REWARD.withdrawAndUnwrap(shares, false), "reward withdraw failed");
         }
 
@@ -315,6 +315,7 @@ contract StrategyConvexBbtc is Strategy {
         for (uint i = 0; i < REWARDS.length; i++) {
             uint rewardBal = IERC20(REWARDS[i]).balanceOf(address(this));
             if (rewardBal > 0) {
+                // swap may fail if rewards are too small
                 _swap(dex[i], REWARDS[i], address(token), rewardBal);
             }
         }

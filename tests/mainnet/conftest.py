@@ -33,6 +33,15 @@ def daiFundManager(admin, guardian, worker, dai):
 
 
 @pytest.fixture(scope="session")
+def wbtcFundManager(admin, guardian, worker, wbtc):
+    fundManager = FundManager.deploy(
+        wbtc, guardian, worker, ZERO_ADDRESS, {"from": admin}
+    )
+    fundManager.initialize({"from": admin})
+    yield fundManager
+
+
+@pytest.fixture(scope="session")
 def dai_whale(accounts):
     yield accounts.at("0xF977814e90dA44bFA03b6295A0616a897441aceC", force=True)
 
@@ -50,3 +59,13 @@ def usdc():
 @pytest.fixture(scope="session")
 def usdt():
     yield interface.IERC20("0xdAC17F958D2ee523a2206206994597C13D831ec7")
+
+
+@pytest.fixture(scope="session")
+def wbtc_whale(accounts):
+    yield accounts.at("0xF977814e90dA44bFA03b6295A0616a897441aceC", force=True)
+
+
+@pytest.fixture(scope="session")
+def wbtc():
+    yield interface.IERC20("0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599")
