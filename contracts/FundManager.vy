@@ -8,9 +8,6 @@
 
 from vyper.interfaces import ERC20
 
-# TODO: comment
-# TODO: gas optimize
-
 
 interface Vault:
     def token() -> address: view
@@ -26,7 +23,7 @@ interface IStrategy:
     def withdraw(amount: uint256) -> uint256: nonpayable
     def migrate(newVersion: address): nonpayable
 
-
+# interface to new version of FundManager used for migration
 interface FundManager:
     def token() -> address: view
     def vault() -> address: view
@@ -38,18 +35,18 @@ interface FundManager:
     ) -> (bool, bool, bool, uint256, uint256, uint256, uint256): view
     def initialize(): nonpayable
 
-
+# maximum number of active strategies
 MAX_QUEUE: constant(uint256) = 20
 
 
 struct Strategy:
     approved: bool
     active: bool
-    activated: bool
-    debtRatio: uint256
-    debt: uint256
-    minBorrow: uint256
-    maxBorrow: uint256
+    activated: bool # sent to True once after strategy is active
+    debtRatio: uint256 # ratio of total assets this strategy can borrow
+    debt: uint256 # current amount borrowed
+    minBorrow: uint256 # minimum amount to borrow per call to borrow()
+    maxBorrow: uint256 # maximum amount to borrow per call to borrow()
 
 
 event SetNextTimeLock:
@@ -187,12 +184,13 @@ admin: public(address)
 guardian: public(address)
 worker: public(address)
 
-totalDebt: public(uint256)
+totalDebt: public(uint256) # sum of all debts of strategies
 MAX_TOTAL_DEBT_RATIO: constant(uint256) = 10000
-totalDebtRatio: public(uint256)
-strategies: public(HashMap[address, Strategy])
-queue: public(address[MAX_QUEUE])
+totalDebtRatio: public(uint256) # sum of all debtRatios of strategies
+strategies: public(HashMap[address, Strategy]) # all strategies
+queue: public(address[MAX_QUEUE]) # list of active strategies
 
+# migration
 OLD_MAX_QUEUE: constant(uint256) = 20  # must be <= MAX_QUEUE
 oldFundManager: public(FundManager)
 
@@ -262,6 +260,10 @@ def _safeTransferFrom(
 
 @external
 def initialize():
+    """
+    @notice Initialize fund manager. Transfer tokens and copy states if
+            old fund manager is set.
+    """
     assert not self.initialized, "initialized"
 
     if self.oldFundManager.address == ZERO_ADDRESS:
@@ -328,7 +330,7 @@ def initialize():
 
 # Migration steps to new fund manager
 #
-# t = token token
+# t = token
 # v = vault
 # f1 = fund manager 1
 # f2 = fund manager 2
@@ -355,6 +357,10 @@ def initialize():
 
 @external
 def migrate(fundManager: address):
+    """
+    @notice Migrate to new fund manager
+    @param fundManager Address of new fund manager
+    """
     assert msg.sender == self.timeLock, "!time lock"
     assert self.initialized, "!initialized"
     assert self.paused, "!paused"
@@ -391,6 +397,10 @@ def migrate(fundManager: address):
 
 @external
 def setNextTimeLock(nextTimeLock: address):
+    """
+    @notice Set next time lock
+    @param nextTimeLock Address of next time lock
+    """
     assert msg.sender == self.timeLock, "!time lock"
     self.nextTimeLock = nextTimeLock
     log SetNextTimeLock(nextTimeLock)
@@ -398,6 +408,10 @@ def setNextTimeLock(nextTimeLock: address):
 
 @external
 def acceptTimeLock():
+    """
+    @notice Accept time lock
+    @dev Only `nextTimeLock` can claim time lock
+    """
     assert msg.sender == self.nextTimeLock, "!next time lock"
     self.timeLock = msg.sender
     log AcceptTimeLock(msg.sender)
@@ -433,6 +447,10 @@ def setPause(paused: bool):
 
 @external
 def setVault(vault: address):
+    """
+    @notice Set vault
+    @param vault Address of vault
+    """
     assert msg.sender == self.timeLock, "!time lock"
     assert Vault(vault).token() == self.token.address, "vault token != token"
 
@@ -448,6 +466,11 @@ def setVault(vault: address):
 @internal
 @view
 def _totalAssets() -> uint256:
+    """
+    @notice Total amount of token in this fund manager + total amount borrowed
+            by strategies
+    @dev Returns total amount of token managed by this contract 
+    """
     return self.token.balanceOf(self) + self.totalDebt
 
 
@@ -495,6 +518,10 @@ def _find(strategy: address) -> uint256:
 
 @external
 def approveStrategy(strategy: address):
+    """
+    @notice Approve strategy
+    @param strategy Address of strategy
+    """
     assert msg.sender == self.timeLock, "!time lock"
 
     assert not self.strategies[strategy].approved, "approved"
@@ -518,11 +545,14 @@ def approveStrategy(strategy: address):
 
 @external
 def revokeStrategy(strategy: address):
+    """
+    @notice Disapprove strategy
+    @param strategy Address of strategy
+    """
     assert msg.sender in [self.timeLock, self.admin], "!auth"
     assert self.strategies[strategy].approved, "!approved"
     assert not self.strategies[strategy].active, "active"
 
-    # TODO: assert strategy.debt > 0 ?
     self.strategies[strategy].approved = False
     log RevokeStrategy(strategy)
 
@@ -531,6 +561,13 @@ def revokeStrategy(strategy: address):
 def addStrategyToQueue(
     strategy: address, debtRatio: uint256, minBorrow: uint256, maxBorrow: uint256
 ):
+    """
+    @notice Activate strategy
+    @param strategy Address of strategy
+    @param debtRatio Ratio of total assets this strategy can borrow
+    @param minBorrow Minimum amount to borrow per call to borrow()
+    @param maxBorrow Maximum amount to borrow per call to borrow()
+    """
     assert msg.sender in [self.timeLock, self.admin], "!auth"
     assert self.strategies[strategy].approved, "!approved"
     assert not self.strategies[strategy].active, "active"
@@ -550,6 +587,10 @@ def addStrategyToQueue(
 
 @external
 def removeStrategyFromQueue(strategy: address):
+    """
+    @notice Deactivate strategy
+    @param strategy Addres of strategy
+    """
     assert msg.sender in [self.timeLock, self.admin, self.guardian], "!auth"
     assert self.strategies[strategy].active, "!active"
 
@@ -563,6 +604,10 @@ def removeStrategyFromQueue(strategy: address):
 
 @external
 def setQueue(queue: address[MAX_QUEUE]):
+    """
+    @notice Reorder queue
+    @param queue Array of active strategies
+    """
     assert msg.sender in [self.timeLock, self.admin], "!auth"
 
     # check no gaps in new queue
@@ -606,6 +651,10 @@ def setQueue(queue: address[MAX_QUEUE]):
 
 @external
 def setDebtRatios(debtRatios: uint256[MAX_QUEUE]):
+    """
+    @notice Update debt ratios of active strategies
+    @param debtRatios Array of debt ratios
+    """
     assert msg.sender in [self.timeLock, self.admin], "!auth"
 
     # check that we're only setting debt ratio on active strategy
@@ -633,6 +682,11 @@ def setDebtRatios(debtRatios: uint256[MAX_QUEUE]):
 
 @external
 def setMinMaxBorrow(strategy: address, minBorrow: uint256, maxBorrow: uint256):
+    """
+    @notice Update `minBorrow` and `maxBorrow` of approved strategy
+    @param minBorrow Minimum amount to borrow per call to borrow()
+    @param maxBorrow Maximum amount to borrow per call to borrow()
+    """
     assert msg.sender in [self.timeLock, self.admin], "!auth"
     assert self.strategies[strategy].approved, "!approved"
     assert minBorrow <= maxBorrow, "min borrow > max borrow"
@@ -646,6 +700,11 @@ def setMinMaxBorrow(strategy: address, minBorrow: uint256, maxBorrow: uint256):
 # functions between Vault and this contract #
 @external
 def borrowFromVault(amount: uint256, _min: uint256):
+    """
+    @notice Borrow `token` from vault
+    @param amount Amount of token to borrow
+    @param _min Minimum amount to borrow
+    """
     assert self.initialized, "!initialized"
     assert msg.sender in [self.timeLock, self.admin, self.worker], "!auth"
     # fails if vault not set
@@ -657,6 +716,11 @@ def borrowFromVault(amount: uint256, _min: uint256):
 
 @external
 def repayVault(amount: uint256, _min: uint256):
+    """
+    @notice Repay `token` to vault
+    @param amount Amount to repay
+    @param _min Minimum amount to repay
+    """
     assert self.initialized, "!initialized"
     assert msg.sender in [self.timeLock, self.admin, self.worker], "!auth"
     # fails if vault not set
@@ -667,14 +731,20 @@ def repayVault(amount: uint256, _min: uint256):
     log RepayVault(self.vault.address, amount, repaid)
 
 
-# _min and _max to protect against price manipulation
 @external
-def reportToVault(_min: uint256, _max: uint256):
+def reportToVault(_minTotal: uint256, _maxTotal: uint256):
+    """
+    @notice Report gain and loss to vault
+    @param _minTotal Minumum of total assets
+    @param _maxTotal Maximum of total assets
+    @dev `_minTotal` and `_maxTotal` is used to check that totalAssets is
+         within a reasonable range before this function is called
+    """
     assert self.initialized, "!initialized"
     assert msg.sender in [self.timeLock, self.admin, self.worker], "!auth"
 
     total: uint256 = self._totalAssets()
-    assert total >= _min and total <= _max, "total not in range"
+    assert total >= _minTotal and total <= _maxTotal, "total not in range"
 
     debt: uint256 = self.vault.debt()
     gain: uint256 = 0
@@ -695,6 +765,11 @@ def reportToVault(_min: uint256, _max: uint256):
 # functions between vault -> this contract -> strategies #
 @internal
 def _withdraw(amount: uint256) -> uint256:
+    """
+    @notice Withdraw `token` from active strategies
+    @param amount Amount of `token` to withdraw
+    @dev Returns sum of losses from active strategies that were withdrawn.
+    """
     _amount: uint256 = amount
     totalLoss: uint256 = 0
     for strategy in self.queue:
@@ -730,6 +805,11 @@ def _withdraw(amount: uint256) -> uint256:
 
 @external
 def withdraw(amount: uint256) -> uint256:
+    """
+    @notice Withdraw `token` from fund manager back to vault
+    @param amount Amount of `token` to withdraw
+    @dev Returns sum of losses from active strategies that were withdrawn.
+    """
     assert self.initialized, "!initialized"
     assert msg.sender == self.vault.address, "!vault"
 
@@ -762,6 +842,11 @@ def withdraw(amount: uint256) -> uint256:
 @internal
 @view
 def _calcMaxBorrow(strategy: address) -> uint256:
+    """
+    @notice Calculate how much `token` strategy can borrow
+    @param strategy Address of strategy
+    @dev Returns amount of `token` that `strategy` can borrow
+    """
     if (not self.initialized) or self.paused or self.totalDebtRatio == 0:
         return 0
 
@@ -791,6 +876,11 @@ def calcMaxBorrow(strategy: address) -> uint256:
 @internal
 @view
 def _calcOutstandingDebt(strategy: address) -> uint256:
+    """
+    @notice Calculate amount of `token` that `strategy` should pay back to fund manager
+    @param strategy Address of strategy
+    @dev Returns minimum amount of `token` strategy should repay
+    """
     if not self.initialized:
         return 0
 
@@ -817,11 +907,22 @@ def calcOutstandingDebt(strategy: address) -> uint256:
 @external
 @view
 def getDebt(strategy: address) -> uint256:
+    """
+    @notice Return debt of strategy
+    @param strategy Address of strategy
+    @dev Returns current debt of strategy
+    """
     return self.strategies[strategy].debt
 
 
 @external
 def borrow(amount: uint256) -> uint256:
+    """
+    @notice Borrow `token` from fund manager
+    @param amount Amount of `token` to borrow
+    @dev Returns actual amount sent
+    @dev Only active strategy can borrow
+    """
     assert self.initialized, "!initialized"
     assert not self.paused, "paused"
     assert self.strategies[msg.sender].active, "!active"
@@ -842,6 +943,12 @@ def borrow(amount: uint256) -> uint256:
 
 @external
 def repay(amount: uint256) -> uint256:
+    """
+    @notice Repay debt to fund manager
+    @param amount Amount of `token` to repay
+    @dev Returns actual amount repaid
+    @dev Only approved strategy can repay
+    """
     assert self.initialized, "!initialized"
     assert self.strategies[msg.sender].approved, "!approved"
 
@@ -863,6 +970,11 @@ def repay(amount: uint256) -> uint256:
 
 @external
 def report(gain: uint256, loss: uint256):
+    """
+    @notice Report gain and loss from strategy
+    @param gain Amount of profit
+    @param loss Amount of loss
+    """
     assert self.initialized, "!initialized"
     assert self.strategies[msg.sender].active, "!active"
     # can't have both gain and loss > 0
@@ -879,6 +991,11 @@ def report(gain: uint256, loss: uint256):
 
 @external
 def migrateStrategy(oldStrat: address, newStrat: address):
+    """
+    @notice Migrate strategy
+    @param oldStrat Address of current strategy
+    @param newStrat Address of strategy to migrate to
+    """
     assert self.initialized, "!initialized"
     assert msg.sender in [self.timeLock, self.admin], "!auth"
     assert self.strategies[oldStrat].active, "old !active"
@@ -915,6 +1032,11 @@ def migrateStrategy(oldStrat: address, newStrat: address):
 
 @external
 def sweep(token: address):
+    """
+    @notice Transfer any token (except `token`) accidentally sent to this contract
+            to admin or time lock
+    @dev Cannot transfer `token`
+    """
     assert msg.sender in [self.timeLock, self.admin], "!auth"
     assert token != self.token.address, "protected"
     self._safeTransfer(token, msg.sender, ERC20(token).balanceOf(self))
