@@ -1,5 +1,5 @@
 import brownie
-from brownie import interface, StrategyConvexAlUsdDai
+from brownie import interface, StrategyConvexUsdpDai
 import pytest
 
 
@@ -8,7 +8,7 @@ def strategy(daiFundManager, admin, treasury):
     fundManager = daiFundManager
     timeLock = fundManager.timeLock()
 
-    strategy = StrategyConvexAlUsdDai.deploy(fundManager, treasury, {"from": admin})
+    strategy = StrategyConvexUsdpDai.deploy(fundManager, treasury, {"from": admin})
 
     fundManager.approveStrategy(strategy, {"from": timeLock})
     fundManager.addStrategyToQueue(strategy, 1, 0, 2 ** 256 - 1, {"from": admin})
