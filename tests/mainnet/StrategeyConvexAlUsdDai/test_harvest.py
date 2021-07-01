@@ -2,7 +2,7 @@ import brownie
 import pytest
 
 
-def test_withdraw(strategy, daiFundManager, admin, dai, dai_whale):
+def test_harvest(strategy, daiFundManager, admin, dai, dai_whale):
     token = dai
     whale = dai_whale
 
@@ -33,10 +33,10 @@ def test_withdraw(strategy, daiFundManager, admin, dai, dai_whale):
     tx = strategy.harvest(1, 0, 2 ** 256 - 1, {"from": admin})
     after = snapshot()
 
-    print(before)
-    print(after)
-    for e in tx.events:
-        print(e)
+    # print(before)
+    # print(after)
+    # for e in tx.events:
+    #     print(e)
 
     assert after["strategy"]["totalAssets"] >= before["fundManager"]["debt"]
     assert after["token"]["fundManager"] >= before["token"]["fundManager"]

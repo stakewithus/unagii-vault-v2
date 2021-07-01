@@ -419,7 +419,6 @@ contract StrategyConvexAlUsd is Strategy {
 
     function migrate(address _strategy) external override onlyFundManager {
         Strategy strat = Strategy(_strategy);
-        // TODO: is this checking interface type or address?
         require(address(strat.token()) == address(token), "strategy token != token");
         require(
             address(strat.fundManager()) == address(fundManager),
