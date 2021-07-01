@@ -273,7 +273,7 @@ def initialize():
 
 # Migration steps from this vault to new vault
 #
-# t = token token
+# t = token
 # ut = unagi token
 # v1 = vault 1
 # v2 = vault 2
@@ -685,8 +685,7 @@ def withdraw(shares: uint256, _min: uint256) -> uint256:
     _shares: uint256 = min(shares, self.uToken.balanceOf(msg.sender))
     assert _shares > 0, "shares = 0"
 
-    totalSupply: uint256 = self.uToken.totalSupply()
-    amount: uint256 = self._calcWithdraw(_shares, totalSupply, self._calcFreeFunds())
+    amount: uint256 = self._calcWithdraw(_shares, self.uToken.totalSupply(), self._calcFreeFunds())
 
     # withdraw from fund manager if amount to withdraw > balance of vault 
     if amount > self.balanceOfVault:
