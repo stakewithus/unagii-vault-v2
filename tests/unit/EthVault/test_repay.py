@@ -46,12 +46,16 @@ def test_repay(
             },
         }
 
+    debt = vault.debt()
+    _repay_amount = min(repay_amount, debt)
+    user.transfer(fundManager, _repay_amount)
+
     before = snapshot()
-    tx = vault.repay(repay_amount, {"from": fundManager})
+    tx = vault.repay(_repay_amount, {"from": fundManager, "value": _repay_amount})
     after = snapshot()
 
     diff = after["eth"]["vault"] - before["eth"]["vault"]
-    assert tx.events["Repay"].values() == [fundManager, repay_amount, diff]
+    assert tx.events["Repay"].values() == [fundManager, _repay_amount, diff]
     assert diff > 0
     assert after["eth"]["fundManager"] == before["eth"]["fundManager"] - diff
     assert after["vault"]["balanceOfVault"] == before["vault"]["balanceOfVault"] + diff
