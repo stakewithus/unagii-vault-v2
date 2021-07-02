@@ -228,6 +228,7 @@ def token() -> address:
 
 @internal
 def _sendEth(to: address, amount: uint256):
+    assert to != ZERO_ADDRESS, "to = 0 address"
     raw_call(to, b"\x00", value=amount)
 
 
