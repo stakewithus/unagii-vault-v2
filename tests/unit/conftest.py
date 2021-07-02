@@ -140,8 +140,8 @@ def testFundManager(TestFundManager, vault, token, admin):
 
 
 @pytest.fixture(scope="module")
-def testEthFundManager(TestEthFundManager, vault, admin):
-    yield TestEthFundManager.deploy(vault, ETH, {"from": admin})
+def testEthFundManager(TestEthFundManager, ethVault, admin):
+    yield TestEthFundManager.deploy(ethVault, ETH, {"from": admin})
 
 
 @pytest.fixture(scope="module")
