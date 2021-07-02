@@ -10,6 +10,7 @@ from brownie import (
     TestToken,
     TestVault,
     TestFundManager,
+    TestEthFundManager,
     TestStrategy,
     TxTest,
     ZERO_ADDRESS,
@@ -136,6 +137,11 @@ def testVault(TestVault, token, admin):
 @pytest.fixture(scope="module")
 def testFundManager(TestFundManager, vault, token, admin):
     yield TestFundManager.deploy(vault, token, {"from": admin})
+
+
+@pytest.fixture(scope="module")
+def testEthFundManager(TestEthFundManager, vault, admin):
+    yield TestEthFundManager.deploy(vault, ETH, {"from": admin})
 
 
 @pytest.fixture(scope="module")

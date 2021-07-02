@@ -235,7 +235,7 @@ def initialize():
         if self.fundManager.address != ZERO_ADDRESS:
             assert self.fundManager.vault() == self, "fund manager vault != self"
 
-        # check balance of old vault >= old balanceOfVault
+        # check ETH sent from old vault >= old balanceOfVault
         balOfVault: uint256 = self.oldVault.balanceOfVault()
         assert msg.value >= balOfVault, "value < vault"
 
