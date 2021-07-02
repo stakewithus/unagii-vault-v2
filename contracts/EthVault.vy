@@ -130,11 +130,11 @@ guardian: public(address)
 admin: public(address)
 
 depositLimit: public(uint256)
-# token balance of vault tracked internally to protect against share dilution
-# from sending tokens directly to this contract
+# ETH balance of vault tracked internally to protect against share dilution
+# from sending ETH directly to this contract
 balanceOfVault: public(uint256)
 debt: public(uint256)  # debt to users (amount borrowed by fund manager)
-# minimum amount of token to be kept in this vault for cheap withdraw
+# minimum amount of ETH to be kept in this vault for cheap withdraw
 minReserve: public(uint256) 
 MAX_MIN_RESERVE: constant(uint256) = 10000
 # timestamp of last report
@@ -217,7 +217,7 @@ def _safeTransfer(token: address, receiver: address, amount: uint256):
 @payable
 def initialize():
     """
-    @notice Initialize vault. Transfer tokens and copy states if old vault is set.
+    @notice Initialize vault. Transfer ETH and copy states if old vault is set.
     """
     assert not self.initialized, "initialized"
 
@@ -374,11 +374,11 @@ def setPause(paused: bool):
 @external
 def setMinReserve(minReserve: uint256):
     """
-    @notice Set minimum amount of token reserved in this vault for cheap 
+    @notice Set minimum amount of ETH reserved in this vault for cheap 
             withdrawn by user
     @param minReserve Numerator to calculate min reserve
            0 = all funds can be transferred to fund manager
-           MAX_MIN_RESERVE = 0 tokens can be transferred to fund manager
+           MAX_MIN_RESERVE = 0 ETH can be transferred to fund manager
     """
     assert msg.sender in [self.timeLock, self.admin], "!auth"
     assert minReserve <= MAX_MIN_RESERVE, "min reserve > max"
@@ -437,12 +437,12 @@ def setWhitelist(addr: address, approved: bool):
 @view
 def _totalAssets() -> uint256:
     """
-    @notice Total amount of token in this vault + amount in fund manager
-    @dev State variable `balanceOfVault` is used to track balance of token in
-         this contract instead of `token.balanceOf(self)`. This is done to
-         protect against uToken shares being diluted by directly sending token 
+    @notice Total amount of ETH in this vault + amount in fund manager
+    @dev State variable `balanceOfVault` is used to track balance of ETH in
+         this contract instead of `self.balance`. This is done to
+         protect against uToken shares being diluted by directly sending ETH 
          to this contract.
-    @dev Returns total amount of token in this contract
+    @dev Returns total amount of ETH in this contract
     """
     return self.balanceOfVault + self.debt
 
@@ -484,7 +484,7 @@ def calcLockedProfit() -> uint256:
 def _calcFreeFunds() -> uint256:
     """
     @notice Calculate free funds (total assets - locked profit)
-    @dev Returns total amount of tokens that can be withdrawn
+    @dev Returns total amount of ETH that can be withdrawn
     """
     return self._totalAssets() - self._calcLockedProfit()
 
@@ -502,7 +502,7 @@ def _calcSharesToMint(
 ) -> uint256:
     """
     @notice Calculate uToken shares to mint
-    @param amount Amount of token to deposit
+    @param amount Amount of ETH to deposit
     @param totalSupply Total amount of shares
     @param freeFunds Free funds before deposit
     @dev Returns amount of uToken to mint. Input must be numbers before deposit
@@ -511,7 +511,7 @@ def _calcSharesToMint(
     # s = shares to mint
     # T = total shares before mint
     # a = deposit amount
-    # P = total amount of underlying token in vault + fund manager before deposit
+    # P = total amount of ETH in vault + fund manager before deposit
     # s / (T + s) = a / (P + a)
     # sP = aT
     # a = 0               | mint s = 0
@@ -539,17 +539,17 @@ def calcSharesToMint(amount: uint256) -> uint256:
 @pure
 def _calcWithdraw(shares: uint256, totalSupply: uint256, freeFunds: uint256) -> uint256:
     """
-    @notice Calculate amount of token to withdraw
+    @notice Calculate amount of ETH to withdraw
     @param shares Amount of uToken shares to burn
     @param totalSupply Total amount of shares before burn
     @param freeFunds Free funds
-    @dev Returns amount of token to withdraw
+    @dev Returns amount of ETH to withdraw
     @dev Calculated with `freeFunds`, not `totalAssets`
     """
     # s = shares
     # T = total supply of shares
     # a = amount to withdraw
-    # P = total amount of underlying token in vault + fund manager
+    # P = total amount of ETH in vault + fund manager
     # s / T = a / P (constraints T >= s, P >= a)
     # sP = aT
     # s = 0               | a = 0
@@ -831,7 +831,7 @@ def skim():
 @external
 def sweep(token: address):
     """
-    @notice Transfer any token (except `token`) accidentally sent to this contract
+    @notice Transfer any token accidentally sent to this contract
             to admin or time lock
     """
     assert msg.sender in [self.timeLock, self.admin], "!auth"
