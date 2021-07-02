@@ -5,37 +5,39 @@ import pytest
 
 
 @pytest.fixture(scope="function", autouse=True)
-def setup(fn_isolation, ethVault, token, admin, user):
+def setup(fn_isolation, ethVault, admin, user):
     pass
 
 
-def test_deposit_paused(vault, admin, user):
-    vault.setPause(True, {"from": admin})
+def test_deposit_paused(ethVault, admin, user):
+    ethVault.setPause(True, {"from": admin})
     with brownie.reverts("paused"):
-        vault.deposit(1, 0, {"from": user})
+        ethVault.deposit(1, 0, {"from": user})
 
 
-def test_deposit_zero(vault, user):
+def test_deposit_zero(ethVault, user):
     with brownie.reverts("deposit = 0"):
-        vault.deposit(0, 0, {"from": user})
+        ethVault.deposit(0, 0, {"from": user})
 
 
-def test_deposit_limit(vault, admin, user):
-    vault.setDepositLimit(0, {"from": admin})
+def test_deposit_limit(ethVault, admin, user):
+    ethVault.setDepositLimit(0, {"from": admin})
     with brownie.reverts("deposit limit"):
-        vault.deposit(1, 0, {"from": user, "value": 1})
+        ethVault.deposit(1, 0, {"from": user, "value": 1})
 
 
-def test_deposit_min_shares(vault, user):
+def test_deposit_min_shares(ethVault, user):
     with brownie.reverts("shares < min"):
-        vault.deposit(1, 100, {"from": user, "value": 1})
+        ethVault.deposit(1, 100, {"from": user, "value": 1})
 
 
 @given(
     user=strategy("address", exclude=ZERO_ADDRESS),
-    amount=strategy("uint256", exclude=0),
+    amount=strategy("uint256", min_value=1, max_value=100),
 )
-def test_deposit(vault, uEth, user, amount):
+def test_deposit(ethVault, uEth, user, amount):
+    vault = ethVault
+
     def snapshot():
         return {
             "eth": {
@@ -60,15 +62,14 @@ def test_deposit(vault, uEth, user, amount):
     tx = vault.deposit(amount, 1, {"from": user, "value": amount})
     after = snapshot()
 
-    assert tx.events["Deposit"].values() == [user, amount, amount, calc]
+    assert tx.events["Deposit"].values() == [user, amount, calc]
 
-    # token balances
-    assert after["token"]["balance"]["user"] == (
-        before["token"]["balance"]["user"] - amount
+    # ETH balances
+    assert after["eth"]["balance"]["user"] == (
+        before["eth"]["balance"]["user"] - amount
     )
     assert (
-        after["token"]["balance"]["vault"]
-        == before["token"]["balance"]["vault"] + amount
+        after["eth"]["balance"]["vault"] == before["eth"]["balance"]["vault"] + amount
     )
-    assert after["vault"]["balanceOfVault"] == after["token"]["balance"]["vault"]
+    assert after["vault"]["balanceOfVault"] == after["eth"]["balance"]["vault"]
     assert after["uEth"]["balance"]["user"] > before["uEth"]["balance"]["user"]
