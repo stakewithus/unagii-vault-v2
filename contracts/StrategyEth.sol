@@ -3,10 +3,13 @@ pragma solidity 0.7.6;
 
 // version 0.1.0
 
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
 import "./interfaces/IEthFundManager.sol";
 
 abstract contract StrategyEth {
+    using SafeERC20 for IERC20;
     using SafeMath for uint;
 
     event SetNextTimeLock(address nextTimeLock);
@@ -33,7 +36,7 @@ abstract contract StrategyEth {
     // authorization other than time lock and admin
     mapping(address => bool) public authorized;
 
-    address private constant ETH = 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE;
+    address internal constant ETH = 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE;
     address public constant token = ETH;
     IEthFundManager public fundManager;
 
@@ -60,6 +63,12 @@ abstract contract StrategyEth {
 
     receive() external payable {
         emit ReceiveEth(msg.sender, msg.value);
+    }
+
+    function _sendEth(address _to, uint _amount) internal {
+        require(_to != address(0), "to = 0 address");
+        (bool sent, ) = _to.call{value: _amount}("");
+        require(sent, "Send ETH failed");
     }
 
     modifier onlyTimeLock() {
@@ -223,7 +232,7 @@ abstract contract StrategyEth {
     @param _strategy Address of new strategy
     @dev Only callable by fund manager
     */
-    function migrate(address _strategy) external virtual;
+    function migrate(address payable _strategy) external virtual;
 
     /*
     @notice Transfer token accidentally sent here back to admin
