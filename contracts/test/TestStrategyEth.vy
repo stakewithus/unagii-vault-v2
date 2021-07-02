@@ -5,13 +5,9 @@ from vyper.interfaces import ERC20
 
 interface FundManager:
     def borrow(amount: uint256) -> uint256: nonpayable
-    def repay(amount: uint256) -> uint256: nonpayable
-    def report(gain: uint256, loss: uint256): nonpayable
+    def repay(amount: uint256) -> uint256: payable
+    def report(gain: uint256, loss: uint256): payable
     def getDebt(strategy: address) -> uint256: view
-
-
-interface TestToken:
-    def burn(_from: address, amount: uint256): nonpayable
 
 
 interface Strategy:
@@ -23,7 +19,7 @@ nextTimeLock: public(address)
 admin: public(address)
 worker: public(address)
 fundManager: public(FundManager)
-token: public(ERC20)
+token: public(address)
 
 # test helpers
 loss: public(uint256)
@@ -36,7 +32,18 @@ def __init__(fundManager: address, token: address):
     self.admin = msg.sender
     self.worker = msg.sender
     self.fundManager = FundManager(fundManager)
-    self.token = ERC20(token)
+    self.token = token
+
+
+@external
+@payable
+def __default__():
+    pass
+
+
+@internal
+def _sendEth(to: address, amount: uint256):
+    raw_call(to, b"\x00", value=amount)
 
 
 @external
@@ -54,7 +61,7 @@ def acceptTimeLock():
 @internal
 @view
 def _totalAssets() -> uint256:
-    return self.token.balanceOf(self) + self.gain
+    return self.balance + self.gain
 
 
 @external
@@ -66,12 +73,7 @@ def totalAssets() -> uint256:
 @external
 def setFundManager(fundManager: address):
     assert msg.sender == self.timeLock, "!time lock"
-
-    if self.fundManager.address != ZERO_ADDRESS:
-        self.token.approve(self.fundManager.address, 0)
-
     self.fundManager = FundManager(fundManager)
-    self.token.approve(fundManager, MAX_UINT256)
 
 
 @external
@@ -87,8 +89,7 @@ def deposit(amount: uint256, _min: uint256):
 def repay(amount: uint256, _min: uint256):
     assert msg.sender in [self.admin, self.worker], "!auth"
     # code to withdraw from external DeFi here...
-    self.token.approve(self.fundManager.address, amount)
-    repaid: uint256 = self.fundManager.repay(amount)
+    repaid: uint256 = self.fundManager.repay(amount, value=amount)
     assert repaid >= _min, "repaid < min"
 
 
@@ -96,13 +97,11 @@ def repay(amount: uint256, _min: uint256):
 def withdraw(amount: uint256) -> uint256:
     assert msg.sender == self.fundManager.address, "!fund manager"
 
-    loss: uint256 = min(self.token.balanceOf(self), self.loss)
+    loss: uint256 = min(self.balance, self.loss)
     if loss > 0:
-        TestToken(self.token.address).burn(self, loss)
-
-    _amount: uint256 = min(amount, self.token.balanceOf(self))
-    self.token.approve(msg.sender, _amount)
-    self.token.transfer(self.fundManager.address, _amount)
+        self._sendEth(ZERO_ADDRESS, loss)
+    
+    self._sendEth(self.fundManager.address, min(amount, self.balance))
 
     return loss
 
@@ -131,14 +130,12 @@ def report(_min: uint256, _max: uint256):
     debt: uint256 = self.fundManager.getDebt(self)
 
     if total > debt:
-        gain = min(total - debt, self.token.balanceOf(self))
-        if gain > 0:
-            self.token.approve(self.fundManager.address, gain)
+        gain = min(total - debt, self.balance)
     else:
         loss = debt - total
 
     if gain > 0 or loss > 0:
-        self.fundManager.report(gain, loss)
+        self.fundManager.report(gain, loss, value=gain)
 
 
 @external
@@ -149,13 +146,13 @@ def migrate(newStrategy: address):
     ), "new strategy fund manager != fund manager"
 
     # should be approve / transfer for real strategies
-    self.token.transfer(newStrategy, self.token.balanceOf(self))
+    self._sendEth(newStrategy, self.balance)
 
 
 ### test helpers ###
 @external
 def setToken(token: address):
-    self.token = ERC20(token)
+    self.token = token
 
 
 @external

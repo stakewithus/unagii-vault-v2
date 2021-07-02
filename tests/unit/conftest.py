@@ -6,12 +6,15 @@ from brownie import (
     UnagiiToken,
     TimeLock,
     FundManager,
+    EthFundManager,
     StrategyTest,
     TestToken,
     TestVault,
+    TestEthVault,
     TestFundManager,
     TestEthFundManager,
     TestStrategy,
+    TestStrategyEth,
     TxTest,
     ZERO_ADDRESS,
 )
@@ -110,6 +113,16 @@ def fundManager(FundManager, testVault, token, admin, guardian, worker):
     yield fundManager
 
 
+@pytest.fixture(scope="module")
+def ethFundManager(EthFundManager, testEthVault, admin, guardian, worker):
+    ethFundManager = EthFundManager.deploy(
+        guardian, worker, ZERO_ADDRESS, {"from": admin}
+    )
+    ethFundManager.setVault(testEthVault, {"from": admin})
+    ethFundManager.initialize({"from": admin})
+    yield ethFundManager
+
+
 # test contracts
 @pytest.fixture(scope="module")
 def token(TestToken, admin):
@@ -135,6 +148,11 @@ def testVault(TestVault, token, admin):
 
 
 @pytest.fixture(scope="module")
+def testEthVault(TestEthVault, admin):
+    yield TestEthVault.deploy(ETH, {"from": admin})
+
+
+@pytest.fixture(scope="module")
 def testFundManager(TestFundManager, vault, token, admin):
     yield TestFundManager.deploy(vault, token, {"from": admin})
 
@@ -147,3 +165,8 @@ def testEthFundManager(TestEthFundManager, ethVault, admin):
 @pytest.fixture(scope="module")
 def testStrategy(TestStrategy, fundManager, token, admin):
     yield TestStrategy.deploy(fundManager, token, {"from": admin})
+
+
+@pytest.fixture(scope="module")
+def testStrategyEth(TestStrategyEth, ethFundManager, admin):
+    yield TestStrategyEth.deploy(ethFundManager, ETH, {"from": admin})
