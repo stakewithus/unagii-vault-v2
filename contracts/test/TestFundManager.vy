@@ -23,13 +23,13 @@ def __init__(vault: address, token: address):
 
 @external
 def withdraw(amount: uint256) -> uint256:
-    loss: uint256 = min(amount, self.loss)
-
-    self.token.transfer(self.vault, amount - loss)
+    loss: uint256 = min(self.token.balanceOf(self), self.loss)
     if loss > 0:
         TestToken(self.token.address).burn(self, loss)
 
-    return self.loss
+    self.token.transfer(self.vault, min(amount, self.token.balanceOf(self)))
+
+    return loss
 
 
 ### test helpers ###

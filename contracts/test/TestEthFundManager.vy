@@ -26,15 +26,20 @@ def __default__():
     pass
 
 
+@internal
+def _sendEth(to: address, amount: uint256):
+    raw_call(to, b"\x00", value=amount)
+
+
 @external
 def withdraw(amount: uint256) -> uint256:
-    loss: uint256 = min(amount, self.loss)
-
-    send(self.vault, amount - loss)
+    loss: uint256 = min(self.balance, self.loss)
     if loss > 0:
-        send(ZERO_ADDRESS, loss)
+        self._sendEth(ZERO_ADDRESS, loss)
 
-    return self.loss
+    self._sendEth(self.vault, min(amount, self.balance))
+
+    return loss
 
 
 ### test helpers ###

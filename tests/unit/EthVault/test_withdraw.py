@@ -6,63 +6,35 @@ import pytest
 
 
 @pytest.fixture(scope="function", autouse=True)
-def setup(fn_isolation, vault, token, admin, user):
-    token.mint(user, 1000)
-    token.approve(vault, 1000, {"from": user})
-    vault.deposit(1000, 1, {"from": user})
+def setup(fn_isolation, ethVault, admin, user):
+    ethVault.deposit(100, 1, {"from": user, "value": 100})
 
 
-def test_withdraw_zero_shares(vault, user):
+def test_withdraw_zero_shares(ethVault, user):
     with brownie.reverts("shares = 0"):
-        vault.withdraw(0, 0, {"from": user})
+        ethVault.withdraw(0, 0, {"from": user})
 
 
-def test_withdraw_min(vault, user):
+def test_withdraw_min(ethVault, user):
     with brownie.reverts("amount < min"):
-        vault.withdraw(1, 1000, {"from": user})
-
-
-def test_withdraw_fee_on_transfer(vault, token, uToken, user):
-    shares = 123
-    fee = 1
-    token.setFeeOnTransfer(fee)
-
-    def snapshot():
-        return {
-            "token": {"vault": token.balanceOf(vault)},
-            "uToken": {"user": uToken.balanceOf(user)},
-            "vault": {"balanceOfVault": vault.balanceOfVault()},
-        }
-
-    before = snapshot()
-    vault.withdraw(shares, 1, {"from": user})
-    after = snapshot()
-
-    assert after["uToken"]["user"] < before["uToken"]["user"]
-    assert (before["vault"]["balanceOfVault"] - after["vault"]["balanceOfVault"]) == (
-        before["token"]["vault"] - after["token"]["vault"]
-    )
+        ethVault.withdraw(1, 1000, {"from": user})
 
 
 @given(
-    deposit_amount=strategy("uint256", min_value=1, max_value=2 ** 128),
+    deposit_amount=strategy("uint256", min_value=1, max_value=1000),
     shares=strategy("uint256", min_value=1),
     user=strategy("address", exclude=ZERO_ADDRESS),
 )
-def test_withdraw_no_loss(vault, token, uToken, user, deposit_amount, shares):
-    token.mint(user, deposit_amount)
-    token.approve(vault, deposit_amount, {"from": user})
-    vault.deposit(deposit_amount, 1, {"from": user})
+def test_withdraw_no_loss(ethVault, uEth, user, deposit_amount, shares):
+    vault = ethVault
+    vault.deposit(deposit_amount, 1, {"from": user, "value": deposit_amount})
 
     def snapshot():
         return {
-            "token": {
-                "vault": token.balanceOf(vault),
-                "user": token.balanceOf(user),
-            },
-            "uToken": {
-                "user": uToken.balanceOf(user),
-                "totalSupply": uToken.totalSupply(),
+            "eth": {"vault": vault.balance(), "user": user.balance()},
+            "uEth": {
+                "user": uEth.balanceOf(user),
+                "totalSupply": uEth.totalSupply(),
             },
             "vault": {
                 "totalAssets": vault.totalAssets(),
@@ -71,7 +43,7 @@ def test_withdraw_no_loss(vault, token, uToken, user, deposit_amount, shares):
             },
         }
 
-    _shares = min(shares, uToken.balanceOf(user))
+    _shares = min(shares, uEth.balanceOf(user))
     calc = vault.calcWithdraw(_shares)
 
     before = snapshot()
@@ -80,55 +52,51 @@ def test_withdraw_no_loss(vault, token, uToken, user, deposit_amount, shares):
 
     assert tx.events["Withdraw"].values() == [user, _shares, calc]
 
-    diff = after["token"]["user"] - before["token"]["user"]
+    diff = after["eth"]["user"] - before["eth"]["user"]
     assert diff == calc
-    assert after["token"]["user"] == before["token"]["user"] + diff
-    assert after["token"]["vault"] == before["token"]["vault"] - diff
+    assert after["eth"]["user"] == before["eth"]["user"] + diff
+    assert after["eth"]["vault"] == before["eth"]["vault"] - diff
 
     assert after["vault"]["totalAssets"] == before["vault"]["totalAssets"] - diff
     assert after["vault"]["balanceOfVault"] == before["vault"]["balanceOfVault"] - diff
     assert after["vault"]["debt"] == before["vault"]["debt"]
-    assert after["vault"]["balanceOfVault"] == after["token"]["vault"]
+    assert after["vault"]["balanceOfVault"] == after["eth"]["vault"]
 
-    assert after["uToken"]["user"] == before["uToken"]["user"] - _shares
-    assert after["uToken"]["totalSupply"] == before["uToken"]["totalSupply"] - _shares
+    assert after["uEth"]["user"] == before["uEth"]["user"] - _shares
+    assert after["uEth"]["totalSupply"] == before["uEth"]["totalSupply"] - _shares
 
 
 @given(
-    deposit_amount=strategy("uint256", min_value=1, max_value=2 ** 128),
+    deposit_amount=strategy("uint256", min_value=1, max_value=1000),
     loss=strategy("uint256"),
     shares=strategy("uint256", min_value=1),
     user=strategy("address", exclude=ZERO_ADDRESS),
 )
 def test_withdraw_maybe_loss(
-    vault, testFundManager, token, uToken, user, admin, deposit_amount, loss, shares
+    ethVault, testEthFundManager, uEth, user, admin, deposit_amount, loss, shares
 ):
-    fundManager = testFundManager
+    vault = ethVault
+    fundManager = testEthFundManager
     timeLock = vault.timeLock()
 
     vault.setFundManager(fundManager, {"from": timeLock})
 
-    token.mint(user, deposit_amount)
-    token.approve(vault, deposit_amount, {"from": user})
-    vault.deposit(deposit_amount, 1, {"from": user})
+    vault.deposit(deposit_amount, 1, {"from": user, "value": deposit_amount})
 
     vault.borrow(2 ** 256 - 1, {"from": fundManager})
 
-    _shares = min(shares, uToken.balanceOf(user))
+    _shares = min(shares, uEth.balanceOf(user))
     calc = vault.calcWithdraw(_shares)
-    bal = token.balanceOf(vault)
+    bal = vault.balance()
     debt = vault.debt()
-    fund_manager_bal = token.balanceOf(fundManager)
+    fund_manager_bal = fundManager.balance()
 
     _loss = min(calc, debt, loss, fund_manager_bal)
     fundManager.setLoss(_loss)
 
     def snapshot():
         return {
-            "token": {
-                "vault": token.balanceOf(vault),
-                "user": token.balanceOf(user),
-            },
+            "eth": {"vault": vault.balance(), "user": user.balance()},
             "vault": {
                 "totalAssets": vault.totalAssets(),
                 "balanceOfVault": vault.balanceOfVault(),
@@ -140,7 +108,7 @@ def test_withdraw_maybe_loss(
     vault.withdraw(_shares, 0, {"from": user})
     after = snapshot()
 
-    diff = after["token"]["user"] - before["token"]["user"]
+    diff = after["eth"]["user"] - before["eth"]["user"]
 
     # withdrew from fund manager
     if calc > bal:
@@ -174,4 +142,4 @@ def test_withdraw_maybe_loss(
         )
         assert after["vault"]["debt"] == before["vault"]["debt"]
 
-    assert after["token"]["vault"] == after["vault"]["balanceOfVault"]
+    assert after["eth"]["vault"] == after["vault"]["balanceOfVault"]
