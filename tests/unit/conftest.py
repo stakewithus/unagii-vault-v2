@@ -2,6 +2,7 @@ import pytest
 from brownie import (
     accounts,
     Vault,
+    EthVault,
     UnagiiToken,
     TimeLock,
     FundManager,
@@ -13,6 +14,8 @@ from brownie import (
     TxTest,
     ZERO_ADDRESS,
 )
+
+ETH = "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE"
 
 
 @pytest.fixture(scope="session")
@@ -64,6 +67,13 @@ def uToken(UnagiiToken, token, admin, minter):
 
 
 @pytest.fixture(scope="module")
+def uEth(UnagiiToken, admin, minter):
+    uEth = UnagiiToken.deploy(ETH, {"from": admin})
+    uEth.setMinter(minter, {"from": admin})
+    yield uEth
+
+
+@pytest.fixture(scope="module")
 def vault(Vault, token, uToken, admin, guardian):
     vault = Vault.deploy(token, uToken, guardian, ZERO_ADDRESS, {"from": admin})
 
@@ -74,6 +84,19 @@ def vault(Vault, token, uToken, admin, guardian):
 
     vault.initialize({"from": admin})
     yield vault
+
+
+@pytest.fixture(scope="module")
+def ethVault(EthVault, uEth, admin, guardian):
+    ethVault = EthVault.deploy(uEth, guardian, ZERO_ADDRESS, {"from": admin})
+
+    uEth.setMinter(ethVault, {"from": admin})
+
+    ethVault.setPause(False, {"from": admin})
+    ethVault.setDepositLimit(2 ** 256 - 1, {"from": admin})
+
+    ethVault.initialize({"from": admin})
+    yield ethVault
 
 
 @pytest.fixture(scope="module")
