@@ -76,6 +76,11 @@ event SetWhitelist:
     approved: bool
 
 
+event ReceiveEth:
+    sender: indexed(address)
+    amount: uint256
+
+
 event Deposit:
     sender: indexed(address)
     amount: uint256
@@ -178,6 +183,7 @@ def __default__():
     @dev Prevent users from accidentally sending ETH to this vault
     """
     assert msg.sender == self.fundManager.address, "!fund manager"
+    log ReceiveEth(msg.sender, msg.value)
     
 
 @external
@@ -242,7 +248,6 @@ def initialize():
 
 # Migration steps from this vault to new vault
 #
-# t = token
 # ut = unagi token
 # v1 = vault 1
 # v2 = vault 2
@@ -741,19 +746,18 @@ def repay(amount: uint256) -> uint256:
     assert self.initialized, "!initialized"
     assert msg.sender == self.fundManager.address, "!fund manager"
 
-    _amount: uint256 = min(amount, self.debt)
-    assert _amount == msg.value, "amount != msg.value"
-    assert _amount > 0, "repay = 0"
+    assert amount == msg.value, "amount != msg.value"
+    assert amount > 0, "repay = 0"
 
-    self.balanceOfVault += _amount
-    self.debt -= _amount
+    self.balanceOfVault += amount
+    self.debt -= amount
 
     # check ETH balance >= balanceOfVault
     assert self.balance >= self.balanceOfVault, "bal < vault"
 
-    log Repay(msg.sender, amount, _amount)
+    log Repay(msg.sender, amount, amount)
 
-    return _amount
+    return amount
 
 
 @external
