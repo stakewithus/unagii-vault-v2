@@ -50,13 +50,16 @@ abstract contract StrategyEth {
         admin = msg.sender;
         treasury = _treasury;
 
-        require(IFundManager(_fundManager).token() == ETH, "fund manager token != ETH");
+        require(
+            IEthFundManager(_fundManager).token() == ETH,
+            "fund manager token != ETH"
+        );
 
-        fundManager = IFundManager(_fundManager);
+        fundManager = IEthFundManager(_fundManager);
     }
 
     receive() external payable {
-        emit ReceiveEth(msg.sender, msg.value)
+        emit ReceiveEth(msg.sender, msg.value);
     }
 
     modifier onlyTimeLock() {
@@ -144,11 +147,11 @@ abstract contract StrategyEth {
 
     function setFundManager(address _fundManager) external onlyTimeLock {
         require(
-            IFundManager(_fundManager).token() == ETH,
+            IEthFundManager(_fundManager).token() == ETH,
             "new fund manager token != ETH"
         );
 
-        fundManager = IFundManager(_fundManager);
+        fundManager = IEthFundManager(_fundManager);
 
         emit SetFundManager(_fundManager);
     }
