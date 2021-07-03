@@ -2,8 +2,8 @@ import brownie
 from brownie import ZERO_ADDRESS
 
 
-def test_set_min_max_borrow(fundManager, admin, testErc20Strategy, user):
-    strategy = testErc20Strategy
+def test_set_min_max_borrow(fundManager, admin, testStrategy, user):
+    strategy = testStrategy
     timeLock = fundManager.timeLock()
 
     # revert if not authorized

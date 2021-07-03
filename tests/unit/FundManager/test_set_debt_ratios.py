@@ -12,7 +12,7 @@ N = 20
     # random numbers for debt ratios
     rands=strategy("uint256[]", min_value=0, max_value=100, min_length=N, max_length=N),
 )
-def test_set_debt_ratios(fundManager, admin, TestErc20Strategy, token, user, k, rands):
+def test_set_debt_ratios(fundManager, admin, TestStrategy, token, user, k, rands):
     timeLock = fundManager.timeLock()
 
     # not authorized
@@ -28,7 +28,7 @@ def test_set_debt_ratios(fundManager, admin, TestErc20Strategy, token, user, k, 
 
     strats = []
     for i in range(k):
-        strat = TestErc20Strategy.deploy(fundManager, token, {"from": admin})
+        strat = TestStrategy.deploy(fundManager, token, {"from": admin})
         fundManager.approveStrategy(strat, {"from": timeLock})
         fundManager.addStrategyToQueue(strat, 1, 0, 0, {"from": admin})
         strats.append(strat.address)

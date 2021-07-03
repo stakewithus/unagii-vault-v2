@@ -83,7 +83,7 @@ def test_withdraw(
     token,
     testVault,
     admin,
-    TestErc20Strategy,
+    TestStrategy,
     k,
     debtRatios,
     borrows,
@@ -99,7 +99,7 @@ def test_withdraw(
 
     strats = []
     for i in range(k):
-        strat = TestErc20Strategy.deploy(fundManager, token, {"from": admin})
+        strat = TestStrategy.deploy(fundManager, token, {"from": admin})
         fundManager.approveStrategy(strat, {"from": timeLock})
         fundManager.addStrategyToQueue(
             strat, debtRatios[i], 0, 2 ** 256 - 1, {"from": admin}

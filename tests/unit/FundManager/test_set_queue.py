@@ -1,7 +1,7 @@
 import brownie
 from brownie import ZERO_ADDRESS
 from brownie.test import given, strategy
-from brownie import TestErc20Strategy
+from brownie import TestStrategy
 import pytest
 
 N = 20
@@ -45,7 +45,7 @@ def test_set_queue(fundManager, token, admin, user, k):
     # activate strategies
     strats = []
     for i in range(k):
-        strat = TestErc20Strategy.deploy(fundManager, token, {"from": admin})
+        strat = TestStrategy.deploy(fundManager, token, {"from": admin})
         fundManager.approveStrategy(strat, {"from": timeLock})
         fundManager.addStrategyToQueue(strat, 1, 0, 0, {"from": admin})
         strats.append(strat.address)

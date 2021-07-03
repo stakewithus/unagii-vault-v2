@@ -3,8 +3,8 @@ from brownie import ZERO_ADDRESS
 import pytest
 
 
-def test_revoke_strategy(fundManager, admin, testErc20Strategy, user):
-    strategy = testErc20Strategy
+def test_revoke_strategy(fundManager, admin, testStrategy, user):
+    strategy = testStrategy
     timeLock = fundManager.timeLock()
 
     # revert if not authorized

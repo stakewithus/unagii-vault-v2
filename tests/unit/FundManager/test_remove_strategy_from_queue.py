@@ -3,8 +3,8 @@ from brownie import ZERO_ADDRESS
 import pytest
 
 
-def test_remove_strategy_from_queue(fundManager, admin, testErc20Strategy, user):
-    strategy = testErc20Strategy
+def test_remove_strategy_from_queue(fundManager, admin, testStrategy, user):
+    strategy = testStrategy
     timeLock = fundManager.timeLock()
 
     fundManager.approveStrategy(strategy, {"from": timeLock})

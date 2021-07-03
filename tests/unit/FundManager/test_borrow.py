@@ -2,8 +2,8 @@ import brownie
 from brownie import ZERO_ADDRESS
 
 
-def test_borrow(fundManager, token, admin, guardian, testErc20Strategy, user):
-    strategy = testErc20Strategy
+def test_borrow(fundManager, token, admin, guardian, testStrategy, user):
+    strategy = testStrategy
     timeLock = fundManager.timeLock()
 
     # revert if paused

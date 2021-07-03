@@ -2,8 +2,8 @@ import brownie
 from brownie import ZERO_ADDRESS
 
 
-def test_add_strategy_to_queue(fundManager, admin, testErc20Strategy, user):
-    strategy = testErc20Strategy
+def test_add_strategy_to_queue(fundManager, admin, testStrategy, user):
+    strategy = testStrategy
     timeLock = fundManager.timeLock()
 
     # revert if not authorized
