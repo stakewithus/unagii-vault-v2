@@ -354,7 +354,7 @@ contract StrategyConvexStEth is StrategyEth {
         }
 
         if (gain > 0 || loss > 0) {
-            fundManager.report(gain, loss);
+            fundManager.report{value: gain}(gain, loss);
         }
 
         emit Report(gain, loss, free, total, debt);
