@@ -4,7 +4,7 @@ import pytest
 DELAY = 24 * 3600
 
 
-def test_vault_migration(
+def test_eth_vault_migration(
     chain,
     setup_eth,
     timeLock,
