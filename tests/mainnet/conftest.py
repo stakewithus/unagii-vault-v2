@@ -1,6 +1,6 @@
 import pytest
 
-from brownie import interface, FundManager, ZERO_ADDRESS
+from brownie import interface, FundManager, EthFundManager, ZERO_ADDRESS
 
 
 @pytest.fixture(scope="session")
@@ -24,6 +24,11 @@ def treasury(accounts):
 
 
 @pytest.fixture(scope="session")
+def eth_whale(accounts):
+    yield accounts[-1]
+
+
+@pytest.fixture(scope="session")
 def daiFundManager(admin, guardian, worker, dai):
     fundManager = FundManager.deploy(
         dai, guardian, worker, ZERO_ADDRESS, {"from": admin}
@@ -37,6 +42,13 @@ def wbtcFundManager(admin, guardian, worker, wbtc):
     fundManager = FundManager.deploy(
         wbtc, guardian, worker, ZERO_ADDRESS, {"from": admin}
     )
+    fundManager.initialize({"from": admin})
+    yield fundManager
+
+
+@pytest.fixture(scope="session")
+def ethFundManager(admin, guardian, worker):
+    fundManager = EthFundManager.deploy(guardian, worker, ZERO_ADDRESS, {"from": admin})
     fundManager.initialize({"from": admin})
     yield fundManager
 

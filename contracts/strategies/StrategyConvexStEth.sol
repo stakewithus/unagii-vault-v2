@@ -151,8 +151,8 @@ contract StrategyConvexStEth is StrategyEth {
         uint borrowed = fundManager.borrow(_amount);
         require(borrowed >= _min, "borrowed < min");
 
-        // _deposit();
-        // emit Deposit(_amount, borrowed);
+        _deposit();
+        emit Deposit(_amount, borrowed);
     }
 
     function _calcSharesToWithdraw(

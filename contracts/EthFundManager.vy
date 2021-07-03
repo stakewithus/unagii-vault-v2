@@ -906,14 +906,13 @@ def borrow(amount: uint256) -> uint256:
 
     self._sendEth(msg.sender, _amount)
 
-    # # include any fee on transfer to debt
-    # self.strategies[msg.sender].debt += _amount
-    # self.totalDebt += _amount
+    # include any fee on transfer to debt
+    self.strategies[msg.sender].debt += _amount
+    self.totalDebt += _amount
 
-    # log Borrow(msg.sender, amount, _amount)
+    log Borrow(msg.sender, amount, _amount)
 
-    # return _amount
-    return 1
+    return _amount
 
 
 @external
