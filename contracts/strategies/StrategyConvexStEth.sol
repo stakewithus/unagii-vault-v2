@@ -52,17 +52,11 @@ contract StrategyConvexStEth is StrategyEth {
     0 - ETH
     1 - stETH
     */
-    uint private immutable INDEX; // index of token
+    uint private constant INDEX = 0; // index of token
 
-    constructor(
-        address _fundManager,
-        address _treasury,
-        uint _index
-    ) StrategyEth(_fundManager, _treasury) {
-        // only ETH
-        require(_index == 0, "index != 0");
-        INDEX = _index;
-
+    constructor(address _fundManager, address _treasury)
+        StrategyEth(_fundManager, _treasury)
+    {
         PoolInfo memory poolInfo = BOOSTER.poolInfo(PID);
         require(address(CURVE_LP) == poolInfo.lptoken, "curve pool lp != pool info lp");
         require(address(REWARD) == poolInfo.crvRewards, "reward != pool info reward");
@@ -157,8 +151,8 @@ contract StrategyConvexStEth is StrategyEth {
         uint borrowed = fundManager.borrow(_amount);
         require(borrowed >= _min, "borrowed < min");
 
-        _deposit();
-        emit Deposit(_amount, borrowed);
+        // _deposit();
+        // emit Deposit(_amount, borrowed);
     }
 
     function _calcSharesToWithdraw(

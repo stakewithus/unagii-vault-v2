@@ -229,7 +229,7 @@ def token() -> address:
 @internal
 def _sendEth(to: address, amount: uint256):
     assert to != ZERO_ADDRESS, "to = 0 address"
-    raw_call(to, b"\x00", value=amount)
+    raw_call(to, b"", value=amount)
 
 
 @internal
@@ -906,13 +906,14 @@ def borrow(amount: uint256) -> uint256:
 
     self._sendEth(msg.sender, _amount)
 
-    # include any fee on transfer to debt
-    self.strategies[msg.sender].debt += _amount
-    self.totalDebt += _amount
+    # # include any fee on transfer to debt
+    # self.strategies[msg.sender].debt += _amount
+    # self.totalDebt += _amount
 
-    log Borrow(msg.sender, amount, _amount)
+    # log Borrow(msg.sender, amount, _amount)
 
-    return _amount
+    # return _amount
+    return 1
 
 
 @external

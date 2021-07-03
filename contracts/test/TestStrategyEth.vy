@@ -43,7 +43,7 @@ def __default__():
 
 @internal
 def _sendEth(to: address, amount: uint256):
-    raw_call(to, b"\x00", value=amount)
+    raw_call(to, b"", value=amount)
 
 
 @external
