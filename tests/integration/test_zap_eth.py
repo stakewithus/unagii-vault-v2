@@ -2,12 +2,14 @@ import brownie
 import pytest
 
 
-def test_zap(setup, vault, token, uToken, zap, user):
-    amount = 1000
-    token.mint(user, amount)
+def test_zap_eth(setup_eth, ethVault, uEth, zapEth, user):
+    zap = zapEth
+    uToken = uEth
+    vault = ethVault
 
-    token.approve(zap, amount, {"from": user})
-    zap.zapIn(amount, {"from": user})
+    amount = 1000
+
+    zap.zapIn(amount, {"from": user, "value": amount})
 
     shares = uToken.balanceOf(user)
     uToken.approve(zap, shares, {"from": user})
@@ -19,5 +21,3 @@ def test_zap(setup, vault, token, uToken, zap, user):
     vault.setWhitelist(zap, True)
 
     zap.zapOut(shares, {"from": user})
-
-    assert token.balanceOf(user) == amount
