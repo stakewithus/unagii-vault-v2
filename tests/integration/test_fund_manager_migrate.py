@@ -16,7 +16,7 @@ def test_fund_manager_migration(
     timeLock,
     guardian,
     worker,
-    TestErc20Strategy,
+    TestStrategy,
 ):
     newFundManager = FundManager.deploy(
         token, guardian, worker, fundManager, {"from": admin}
@@ -30,7 +30,7 @@ def test_fund_manager_migration(
     strats = []
     debts = []
     for i in range(N):
-        strat = TestErc20Strategy.deploy(fundManager, token, {"from": admin})
+        strat = TestStrategy.deploy(fundManager, token, {"from": admin})
 
         # set time lock
         strat.setNextTimeLock(timeLock, {"from": admin})

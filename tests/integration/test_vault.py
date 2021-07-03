@@ -12,9 +12,7 @@ class StateMachine:
     gain = strategy("uint256", min_value=1, max_value=10 ** 27)
     loss = strategy("uint256", min_value=1)
 
-    def __init__(
-        cls, setup, vault, fundManager, admin, token, uToken, TestErc20Strategy
-    ):
+    def __init__(cls, setup, vault, fundManager, admin, token, uToken, TestStrategy):
         cls.vault = vault
         cls.fundManager = fundManager
         cls.token = token
@@ -193,8 +191,8 @@ class StateMachine:
 
 
 def test_stateful(
-    setup, vault, fundManager, admin, token, uToken, TestErc20Strategy, state_machine
+    setup, vault, fundManager, admin, token, uToken, TestStrategy, state_machine
 ):
     state_machine(
-        StateMachine, setup, vault, fundManager, admin, token, uToken, TestErc20Strategy
+        StateMachine, setup, vault, fundManager, admin, token, uToken, TestStrategy
     )
