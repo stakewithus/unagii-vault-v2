@@ -8,6 +8,7 @@ from brownie import (
     FundManager,
     EthFundManager,
     StrategyTest,
+    StrategyEthTest,
     TestToken,
     TestVault,
     TestEthVault,
@@ -135,6 +136,14 @@ def strategyTest(StrategyTest, token, testFundManager, admin, treasury):
         token, testFundManager, treasury, {"from": admin}
     )
     yield strategyTest
+
+
+@pytest.fixture(scope="module")
+def strategyEthTest(StrategyEthTest, testEthFundManager, admin, treasury):
+    strategyEthTest = StrategyEthTest.deploy(
+        testEthFundManager, treasury, {"from": admin}
+    )
+    yield strategyEthTest
 
 
 @pytest.fixture(scope="module")
