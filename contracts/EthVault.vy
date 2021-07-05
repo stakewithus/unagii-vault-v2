@@ -107,9 +107,11 @@ event Repay:
 
 event Report:
     fundManager: indexed(address)
+    balanceOfVault: uint256
     debt: uint256
     gain: uint256
     loss: uint256
+    diff: uint256
     lockedProfit: uint256
 
 
@@ -762,6 +764,7 @@ def repay(amount: uint256) -> uint256:
 
 
 @external
+@payable
 def report(gain: uint256, loss: uint256):
     """
     @notice Report profit or loss
@@ -774,18 +777,16 @@ def report(gain: uint256, loss: uint256):
     assert msg.sender == self.fundManager.address, "!fund manager"
     # can't have both gain and loss > 0
     assert (gain >= 0 and loss == 0) or (gain == 0 and loss >= 0), "gain and loss > 0"
+    assert gain == msg.value, "gain != msg.value"
 
     # calculate current locked profit
     lockedProfit: uint256 = self._calcLockedProfit()
+    diff: uint256 = msg.value # actual amount transferred if gain > 0
 
     if gain > 0:
-        assert msg.sender.balance >= gain, "gain < bal"
-
-        # TODO: transfer from fund manager?
-
-        # free funds = bal + debt + gain - (locked profit + gain)
-        self.debt += gain
-        self.lockedProfit = lockedProfit + gain
+        # free funds = bal + diff + debt - (locked profit + diff)
+        self.balanceOfVault += diff
+        self.lockedProfit = lockedProfit + diff
     elif loss > 0:
         # free funds = bal + debt - loss - (locked profit - loss)
         self.debt -= loss
@@ -798,8 +799,11 @@ def report(gain: uint256, loss: uint256):
 
     self.lastReport = block.timestamp
 
+    # check ETH balance >= balanceOfVault
+    assert self.balance >= self.balanceOfVault, "bal < vault"
+
     # log updated debt and lockedProfit
-    log Report(msg.sender, self.debt, gain, loss, self.lockedProfit)
+    log Report(msg.sender, self.balanceOfVault, self.debt, gain, loss, diff, self.lockedProfit)
 
 
 @external

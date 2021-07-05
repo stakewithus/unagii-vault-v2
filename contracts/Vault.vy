@@ -107,9 +107,11 @@ event Repay:
 
 event Report:
     fundManager: indexed(address)
+    balanceOfVault: uint256
     debt: uint256
     gain: uint256
     loss: uint256
+    diff: uint256
     lockedProfit: uint256
 
 
@@ -840,15 +842,16 @@ def report(gain: uint256, loss: uint256):
 
     # calculate current locked profit
     lockedProfit: uint256 = self._calcLockedProfit()
+    diff: uint256 = 0 # actual amount transferred if gain > 0
 
     if gain > 0:
-        assert self.token.balanceOf(msg.sender) >= gain, "gain < bal"
+        diff = self.token.balanceOf(self)
+        self._safeTransferFrom(self.token.address, msg.sender, self, gain)
+        diff = self.token.balanceOf(self) - diff
 
-        # TODO: transfer from fund manager?
-
-        # free funds = bal + debt + gain - (locked profit + gain)
-        self.debt += gain
-        self.lockedProfit = lockedProfit + gain
+        # free funds = bal + diff + debt - (locked profit + diff)
+        self.balanceOfVault += diff
+        self.lockedProfit = lockedProfit + diff
     elif loss > 0:
         # free funds = bal + debt - loss - (locked profit - loss)
         self.debt -= loss
@@ -861,8 +864,11 @@ def report(gain: uint256, loss: uint256):
 
     self.lastReport = block.timestamp
 
+    # check token balance >= balanceOfVault
+    assert self.token.balanceOf(self) >= self.balanceOfVault, "bal < vault"
+
     # log updated debt and lockedProfit
-    log Report(msg.sender, self.debt, gain, loss, self.lockedProfit)
+    log Report(msg.sender, self.balanceOfVault, self.debt, gain, loss, diff, self.lockedProfit)
 
 
 @external
