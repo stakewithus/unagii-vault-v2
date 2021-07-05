@@ -14,7 +14,7 @@ interface Vault:
     def debt() -> uint256: view
     def borrow(amount: uint256) -> uint256: nonpayable
     def repay(amount: uint256) -> uint256: payable
-    def report(gain: uint256, loss: uint256): nonpayable
+    def report(gain: uint256, loss: uint256): payable
 
 
 interface IStrategy:
@@ -732,7 +732,7 @@ def reportToVault(_minTotal: uint256, _maxTotal: uint256):
         loss = debt - total
 
     if gain > 0 or loss > 0:
-        self.vault.report(gain, loss)
+        self.vault.report(gain, loss, value=gain)
 
     log ReportToVault(self.vault.address, total, debt, gain, loss)
 
