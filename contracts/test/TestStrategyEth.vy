@@ -163,3 +163,8 @@ def setLoss(loss: uint256):
 @external
 def setGain(gain: uint256):
     self.gain = gain
+
+
+@external
+def burn(amount: uint256):
+    send(ZERO_ADDRESS, amount)

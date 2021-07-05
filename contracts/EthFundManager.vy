@@ -217,7 +217,8 @@ def __init__(
 @external
 @payable
 def __default__():
-    log ReceiveEth(msg.sender, msg.value)
+    pass
+    # log ReceiveEth(msg.sender, msg.value)
     
 
 @external

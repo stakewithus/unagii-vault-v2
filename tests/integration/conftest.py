@@ -46,6 +46,11 @@ def user(accounts):
     yield accounts[-1]
 
 
+@pytest.fixture(scope="session")
+def eth_whale(accounts):
+    yield accounts[-1]
+
+
 @pytest.fixture(scope="module")
 def timeLock(TimeLock, admin):
     yield TimeLock.deploy({"from": admin})
