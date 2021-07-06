@@ -13,7 +13,7 @@ def test_migrate(strategy, ethFundManager, admin, treasury, eth_whale):
     eth_whale.transfer(fundManager, deposit_amount)
 
     # transfer to strategy
-    strategy.deposit(2 ** 256 - 1, amount, {"from": admin})
+    strategy.deposit(2 ** 256 - 1, deposit_amount, {"from": admin})
 
     # new strategy
     timeLock = fundManager.timeLock()

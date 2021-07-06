@@ -1,5 +1,5 @@
 import brownie
-from brownie import StrategyConvexAlUsdusdc
+from brownie import StrategyCompLevUsdc
 import pytest
 
 
@@ -14,13 +14,11 @@ def test_migrate(strategy, usdcFundManager, admin, treasury, usdc, usdc_whale):
     token.transfer(fundManager, deposit_amount, {"from": whale})
 
     # transfer to strategy
-    strategy.deposit(2 ** 256 - 1, amount, {"from": admin})
+    strategy.deposit(2 ** 256 - 1, deposit_amount, {"from": admin})
 
     # new strategy
     timeLock = fundManager.timeLock()
-    new_strategy = StrategyConvexAlUsdusdc.deploy(
-        fundManager, treasury, {"from": admin}
-    )
+    new_strategy = StrategyCompLevUsdc.deploy(fundManager, treasury, {"from": admin})
     fundManager.approveStrategy(new_strategy, {"from": timeLock})
     new_strategy.authorize(strategy, True, {"from": admin})
 
