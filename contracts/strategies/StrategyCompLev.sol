@@ -208,7 +208,7 @@ contract StrategyCompLev is Strategy {
 
     // @dev Execute manual recovery by admin
     // @dev `_amount` must be >= balance of token
-    function supplyManaul(uint _amount) external onlyAuthorized {
+    function supplyManual(uint _amount) external onlyAuthorized {
         _supply(_amount);
     }
 
