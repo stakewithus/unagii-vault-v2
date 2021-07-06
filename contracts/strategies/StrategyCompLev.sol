@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 pragma solidity 0.7.6;
 
-// TODO: uniswap v3?
 import "../interfaces/uniswap/UniswapV2Router.sol";
 import "../interfaces/compound/CErc20.sol";
 import "../interfaces/compound/Comptroller.sol";
@@ -46,11 +45,11 @@ contract StrategyCompLev is Strategy {
     using SafeERC20 for IERC20;
     using SafeMath for uint;
 
-    // Uniswap //
-    // TODO: check contract addresses still active
-    UniswapV2Router public uniswap =
-        UniswapV2Router(0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D);
+    // Uniswap and Sushiswap //
+    // UNISWAP = 0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D;
+    // SUSHISWAP = 0xd9e1cE17f2641f24aE83637ab66a2cca9C378B9F;
     address private constant WETH = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
+    address public dex;
 
     // Compound //
     Comptroller private constant comptroller =
@@ -68,18 +67,23 @@ contract StrategyCompLev is Strategy {
         require(_cToken != address(0), "cToken = zero address");
         cToken = CErc20(_cToken);
         IERC20(_token).safeApprove(_cToken, type(uint).max);
-        // These tokens are never held by this contract
-        // so the risk of them getting stolen is minimal
-        comp.safeApprove(address(uniswap), type(uint).max);
+
+        _setDex(0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D); // Uniswap
     }
 
-    function setUniswap(address _uni) external onlyTimeLock {
-        if (address(uniswap) != address(0)) {
-            comp.safeApprove(address(uniswap), 0);
+    function _setDex(address _dex) private {
+        if (dex != address(0)) {
+            comp.safeApprove(_dex, 0);
         }
 
-        uniswap = UniswapV2Router(_uni);
-        comp.safeApprove(address(uniswap), type(uint).max);
+        dex = _dex;
+
+        comp.safeApprove(_dex, type(uint).max);
+    }
+
+    function setDex(address _dex) external onlyTimeLockOrAdmin {
+        require(_dex != address(0), "dex = 0 address");
+        _setDex(_dex);
     }
 
     function _totalAssets() private view returns (uint) {
@@ -548,7 +552,7 @@ contract StrategyCompLev is Strategy {
         path[1] = WETH;
         path[2] = _to;
 
-        uniswap.swapExactTokensForTokens(
+        UniswapV2Router(dex).swapExactTokensForTokens(
             _amount,
             1,
             path,
@@ -650,7 +654,6 @@ contract StrategyCompLev is Strategy {
 
     function migrate(address _strategy) external override onlyFundManager {
         Strategy strat = Strategy(_strategy);
-        // TODO: is this checking interface type or address?
         require(address(strat.token()) == address(token), "strategy token != token");
         require(
             address(strat.fundManager()) == address(fundManager),
