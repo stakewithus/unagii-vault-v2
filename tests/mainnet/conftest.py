@@ -38,6 +38,24 @@ def daiFundManager(admin, guardian, worker, dai):
 
 
 @pytest.fixture(scope="session")
+def usdcFundManager(admin, guardian, worker, usdc):
+    fundManager = FundManager.deploy(
+        usdc, guardian, worker, ZERO_ADDRESS, {"from": admin}
+    )
+    fundManager.initialize({"from": admin})
+    yield fundManager
+
+
+@pytest.fixture(scope="session")
+def usdtFundManager(admin, guardian, worker, usdt):
+    fundManager = FundManager.deploy(
+        usdt, guardian, worker, ZERO_ADDRESS, {"from": admin}
+    )
+    fundManager.initialize({"from": admin})
+    yield fundManager
+
+
+@pytest.fixture(scope="session")
 def wbtcFundManager(admin, guardian, worker, wbtc):
     fundManager = FundManager.deploy(
         wbtc, guardian, worker, ZERO_ADDRESS, {"from": admin}
@@ -51,11 +69,6 @@ def ethFundManager(admin, guardian, worker):
     fundManager = EthFundManager.deploy(guardian, worker, ZERO_ADDRESS, {"from": admin})
     fundManager.initialize({"from": admin})
     yield fundManager
-
-
-@pytest.fixture(scope="session")
-def dai_whale(accounts):
-    yield accounts.at("0xF977814e90dA44bFA03b6295A0616a897441aceC", force=True)
 
 
 @pytest.fixture(scope="session")
@@ -74,10 +87,25 @@ def usdt():
 
 
 @pytest.fixture(scope="session")
-def wbtc_whale(accounts):
+def wbtc():
+    yield interface.IERC20("0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599")
+
+
+@pytest.fixture(scope="session")
+def dai_whale(accounts):
     yield accounts.at("0xF977814e90dA44bFA03b6295A0616a897441aceC", force=True)
 
 
 @pytest.fixture(scope="session")
-def wbtc():
-    yield interface.IERC20("0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599")
+def usdc_whale(accounts):
+    yield accounts.at("0xF977814e90dA44bFA03b6295A0616a897441aceC", force=True)
+
+
+@pytest.fixture(scope="session")
+def usdt_whale(accounts):
+    yield accounts.at("0xF977814e90dA44bFA03b6295A0616a897441aceC", force=True)
+
+
+@pytest.fixture(scope="session")
+def wbtc_whale(accounts):
+    yield accounts.at("0xF977814e90dA44bFA03b6295A0616a897441aceC", force=True)
