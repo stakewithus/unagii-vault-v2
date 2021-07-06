@@ -21,6 +21,8 @@ def test_calc_locked_profit(chain, vault, token, testFundManager, gain, dt):
 
     # report
     token.mint(fundManager, gain)
+    token.approve(vault, gain, {"from": fundManager})
+
     vault.report(gain, 0, {"from": fundManager})
 
     chain.mine(timestamp=chain.time() + dt)

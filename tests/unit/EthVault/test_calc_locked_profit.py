@@ -22,7 +22,7 @@ def test_calc_locked_profit(chain, ethVault, testEthFundManager, gain, dt, user)
 
     # report
     user.transfer(fundManager, gain)
-    vault.report(gain, 0, {"from": fundManager})
+    vault.report(gain, 0, {"from": fundManager, "value": gain})
 
     chain.mine(timestamp=chain.time() + dt)
 

@@ -41,54 +41,56 @@ def test_report(vault, token, testFundManager, user, debt, gain, loss):
         }
 
     # test gain
-    token.mint(testFundManager, gain)
+    token.mint(fundManager, gain)
+    token.approve(vault, gain, {"from": fundManager})
 
     before = snapshot()
-    tx = vault.report(gain, 0, {"from": testFundManager})
+    tx = vault.report(gain, 0, {"from": fundManager})
     after = snapshot()
 
-    assert after["token"]["vault"] == before["token"]["vault"]
-    assert after["token"]["fundManager"] == before["token"]["fundManager"]
-    assert after["vault"]["balanceOfVault"] == before["vault"]["balanceOfVault"]
-    assert after["vault"]["debt"] == before["vault"]["debt"] + gain
+    assert after["token"]["vault"] == before["token"]["vault"] + gain
+    assert after["token"]["fundManager"] == before["token"]["fundManager"] - gain
+    assert after["vault"]["balanceOfVault"] == before["vault"]["balanceOfVault"] + gain
+    assert after["vault"]["debt"] == before["vault"]["debt"]
     assert after["vault"]["lockedProfit"] >= before["vault"]["lockedProfit"] + gain
 
     assert vault.lastReport() == tx.timestamp
 
     assert tx.events["Report"].values() == [
-        testFundManager.address,
+        fundManager.address,
+        vault.balanceOfVault(),
         vault.debt(),
         gain,
         0,
+        gain,
         vault.lockedProfit(),
     ]
 
     # test loss
-    if loss > vault.debt():
-        with brownie.reverts("Integer underflow"):
-            vault.report(0, loss, {"from": testFundManager})
-        return
+    _loss = min(loss, vault.debt())
 
     before = snapshot()
-    tx = vault.report(0, loss, {"from": testFundManager})
+    tx = vault.report(0, _loss, {"from": fundManager})
     after = snapshot()
 
     assert after["token"]["vault"] == before["token"]["vault"]
     assert after["token"]["fundManager"] == before["token"]["fundManager"]
     assert after["vault"]["balanceOfVault"] == before["vault"]["balanceOfVault"]
-    assert after["vault"]["debt"] == before["vault"]["debt"] - loss
-    if before["vault"]["lockedProfit"] > loss:
-        assert after["vault"]["lockedProfit"] == before["vault"]["lockedProfit"] - loss
+    assert after["vault"]["debt"] == before["vault"]["debt"] - _loss
+    if before["vault"]["lockedProfit"] > _loss:
+        assert after["vault"]["lockedProfit"] == before["vault"]["lockedProfit"] - _loss
     else:
         assert after["vault"]["lockedProfit"] == 0
 
     assert vault.lastReport() == tx.timestamp
 
     assert tx.events["Report"].values() == [
-        testFundManager.address,
+        fundManager.address,
+        vault.balanceOfVault(),
         vault.debt(),
         0,
-        loss,
+        _loss,
+        0,
         vault.lockedProfit(),
     ]
 
@@ -101,8 +103,3 @@ def test_report_not_fund_manager(vault, user):
 def test_report_non_zero_gain_and_loss(vault, testFundManager):
     with brownie.reverts("gain and loss > 0"):
         vault.report(1, 1, {"from": testFundManager})
-
-
-def test_report_balance_less_than_gain(vault, testFundManager):
-    with brownie.reverts("gain < bal"):
-        vault.report(1, 0, {"from": testFundManager})
