@@ -11,7 +11,7 @@ def test_skim(strategy, wbtcFundManager, admin, wbtc, wbtc_whale):
     amount = 10 ** 8
     token.transfer(fundManager, amount, {"from": whale})
 
-    strategy.deposit(2 ** 256 - 1, 1, {"from": admin})
+    strategy.deposit(2 ** 256 - 1, amount, {"from": admin})
 
     def snapshot():
         return {

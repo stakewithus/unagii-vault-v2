@@ -9,7 +9,7 @@ def test_skim(strategy, ethFundManager, admin, eth_whale):
 
     amount = 10 ** 18
     eth_whale.transfer(fundManager, amount)
-    strategy.deposit(2 ** 256 - 1, 1, {"from": admin})
+    strategy.deposit(2 ** 256 - 1, amount, {"from": admin})
 
     def snapshot():
         return {

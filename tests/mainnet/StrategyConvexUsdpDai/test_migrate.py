@@ -14,7 +14,7 @@ def test_migrate(strategy, daiFundManager, admin, treasury, dai, dai_whale):
     token.transfer(fundManager, deposit_amount, {"from": whale})
 
     # transfer to strategy
-    strategy.deposit(2 ** 256 - 1, 1, {"from": admin})
+    strategy.deposit(2 ** 256 - 1, amount, {"from": admin})
 
     # new strategy
     timeLock = fundManager.timeLock()

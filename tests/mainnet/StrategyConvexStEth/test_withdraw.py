@@ -12,7 +12,7 @@ def test_withdraw(strategy, ethFundManager, admin, eth_whale):
     eth_whale.transfer(fundManager, deposit_amount)
 
     # transfer to strategy
-    strategy.deposit(2 ** 256 - 1, 1, {"from": admin})
+    strategy.deposit(2 ** 256 - 1, deposit_amount, {"from": admin})
 
     def snapshot():
         return {

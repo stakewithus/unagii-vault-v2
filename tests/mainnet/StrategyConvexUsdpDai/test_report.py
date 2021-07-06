@@ -11,7 +11,7 @@ def test_report(strategy, daiFundManager, admin, dai, dai_whale):
     amount = 10 ** 18
     token.transfer(fundManager, amount, {"from": whale})
 
-    strategy.deposit(2 ** 256 - 1, 1, {"from": admin})
+    strategy.deposit(2 ** 256 - 1, amount, {"from": admin})
 
     def snapshot():
         return {

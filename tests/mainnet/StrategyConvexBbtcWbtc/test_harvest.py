@@ -13,7 +13,7 @@ def test_harvest(strategy, wbtcFundManager, admin, wbtc, wbtc_whale):
     token.transfer(fundManager, deposit_amount, {"from": whale})
 
     # transfer to strategy
-    strategy.deposit(2 ** 256 - 1, 1, {"from": admin})
+    strategy.deposit(2 ** 256 - 1, deposit_amount, {"from": admin})
 
     def snapshot():
         return {
