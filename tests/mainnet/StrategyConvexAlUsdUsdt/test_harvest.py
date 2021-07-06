@@ -2,14 +2,14 @@ import brownie
 import pytest
 
 
-def test_harvest(strategy, usdcFundManager, admin, usdc, usdc_whale):
-    token = usdc
-    whale = usdc_whale
+def test_harvest(strategy, usdtFundManager, admin, usdt, usdt_whale):
+    token = usdt
+    whale = usdt_whale
 
-    fundManager = usdcFundManager
+    fundManager = usdtFundManager
 
     # deposit into fund manager
-    deposit_amount = 10000 * 10 ** 6
+    deposit_amount = 10 ** 6
     token.transfer(fundManager, deposit_amount, {"from": whale})
 
     # transfer to strategy
