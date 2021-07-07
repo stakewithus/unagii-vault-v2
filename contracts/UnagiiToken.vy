@@ -57,8 +57,12 @@ totalSupply: public(uint256)
 # `nonces` track `permit` approvals with signature.
 nonces: public(HashMap[address, uint256])
 DOMAIN_SEPARATOR: public(bytes32)
-DOMAIN_TYPE_HASH: constant(bytes32) = keccak256('EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)')
-PERMIT_TYPE_HASH: constant(bytes32) = keccak256("Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)")
+DOMAIN_TYPE_HASH: constant(bytes32) = keccak256(
+    "EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)"
+)
+PERMIT_TYPE_HASH: constant(bytes32) = keccak256(
+    "Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)"
+)
 
 timeLock: public(address)
 nextTimeLock: public(address)
@@ -90,7 +94,7 @@ def __init__(token: address):
             keccak256(convert("unagii", Bytes[6])),
             keccak256(convert(VERSION, Bytes[28])),
             convert(chain.id, bytes32),
-            convert(self, bytes32)
+            convert(self, bytes32),
         )
     )
 
@@ -193,7 +197,15 @@ def decreaseAllowance(spender: address, amount: uint256) -> bool:
 
 
 @external
-def permit(owner: address, spender: address, amount: uint256, deadline: uint256, v: uint256, r: bytes32, s: bytes32):
+def permit(
+    owner: address,
+    spender: address,
+    amount: uint256,
+    deadline: uint256,
+    v: uint256,
+    r: bytes32,
+    s: bytes32,
+):
     """
     @notice Approves spender by owner's signature to expend owner's tokens.
             https://eips.ethereum.org/EIPS/eip-2612
@@ -204,7 +216,7 @@ def permit(owner: address, spender: address, amount: uint256, deadline: uint256,
 
     digest: bytes32 = keccak256(
         concat(
-            b'\x19\x01',
+            b"\x19\x01",
             self.DOMAIN_SEPARATOR,
             keccak256(
                 concat(
@@ -215,7 +227,7 @@ def permit(owner: address, spender: address, amount: uint256, deadline: uint256,
                     convert(self.nonces[owner], bytes32),
                     convert(deadline, bytes32),
                 )
-            )
+            ),
         )
     )
 
@@ -223,8 +235,8 @@ def permit(owner: address, spender: address, amount: uint256, deadline: uint256,
     _s: uint256 = convert(s, uint256)
     assert ecrecover(digest, v, _r, _s) == owner, "invalid signature"
 
-    self.allowance[owner][spender] = amount
     self.nonces[owner] += 1
+    self.allowance[owner][spender] = amount
     log Approval(owner, spender, amount)
 
 
