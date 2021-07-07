@@ -13,6 +13,7 @@ source venv/bin/activate
 # install vyper
 pip install vyper==0.2.12
 pip install eth-brownie
+pip install eth_account
 pip install black
 pip install blackadder
 pip install slither-analyzer
