@@ -6,6 +6,8 @@
 @license AGPL-3.0-or-later
 """
 
+VERSION: constant(String[28]) = "0.1.0"
+
 from vyper.interfaces import ERC20
 
 implements: ERC20
@@ -49,6 +51,15 @@ decimals: public(uint256)
 balanceOf: public(HashMap[address, uint256])
 allowance: public(HashMap[address, HashMap[address, uint256]])
 totalSupply: public(uint256)
+
+# EIP 2612 #
+# https://eips.ethereum.org/EIPS/eip-2612
+# `nonces` track `permit` approvals with signature.
+nonces: public(HashMap[address, uint256])
+DOMAIN_SEPARATOR: public(bytes32)
+DOMAIN_TYPE_HASH: constant(bytes32) = keccak256('EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)')
+PERMIT_TYPE_HASH: constant(bytes32) = keccak256("Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)")
+
 timeLock: public(address)
 nextTimeLock: public(address)
 minter: public(address)
@@ -72,6 +83,16 @@ def __init__(token: address):
         self.name = concat("unagii_", DetailedERC20(token).name(), "_v2")
         self.symbol = concat("u", DetailedERC20(token).symbol(), "v2")
         self.decimals = DetailedERC20(token).decimals()
+
+    self.DOMAIN_SEPARATOR = keccak256(
+        concat(
+            DOMAIN_TYPE_HASH,
+            keccak256(convert("unagii", Bytes[6])),
+            keccak256(convert(VERSION, Bytes[28])),
+            convert(chain.id, bytes32),
+            convert(self, bytes32)
+        )
+    )
 
 
 @external
@@ -171,7 +192,40 @@ def decreaseAllowance(spender: address, amount: uint256) -> bool:
     return True
 
 
-# TODO: permit?
+@external
+def permit(owner: address, spender: address, amount: uint256, deadline: uint256, v: uint256, r: bytes32, s: bytes32):
+    """
+    @notice Approves spender by owner's signature to expend owner's tokens.
+            https://eips.ethereum.org/EIPS/eip-2612
+    @dev Vyper does not have `uint8`, so replace `v: uint8` with `v: uint256`
+    """
+    assert owner != ZERO_ADDRESS, "owner = 0 address"
+    assert deadline >= block.timestamp, "expired"
+
+    digest: bytes32 = keccak256(
+        concat(
+            b'\x19\x01',
+            self.DOMAIN_SEPARATOR,
+            keccak256(
+                concat(
+                    PERMIT_TYPE_HASH,
+                    convert(owner, bytes32),
+                    convert(spender, bytes32),
+                    convert(amount, bytes32),
+                    convert(self.nonces[owner], bytes32),
+                    convert(deadline, bytes32),
+                )
+            )
+        )
+    )
+
+    _r: uint256 = convert(r, uint256)
+    _s: uint256 = convert(s, uint256)
+    assert ecrecover(digest, v, _r, _s) == owner, "invalid signature"
+
+    self.allowance[owner][spender] = amount
+    self.nonces[owner] += 1
+    log Approval(owner, spender, amount)
 
 
 @external
