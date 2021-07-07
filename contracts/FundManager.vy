@@ -23,6 +23,7 @@ interface IStrategy:
     def withdraw(amount: uint256) -> uint256: nonpayable
     def migrate(newVersion: address): nonpayable
 
+
 # interface to new version of FundManager used for migration
 interface FundManager:
     def token() -> address: view
@@ -35,6 +36,7 @@ interface FundManager:
     ) -> (bool, bool, bool, uint256, uint256, uint256, uint256): view
     def initialize(): nonpayable
 
+
 # maximum number of active strategies
 MAX_QUEUE: constant(uint256) = 20
 
@@ -42,11 +44,11 @@ MAX_QUEUE: constant(uint256) = 20
 struct Strategy:
     approved: bool
     active: bool
-    activated: bool # sent to True once after strategy is active
-    debtRatio: uint256 # ratio of total assets this strategy can borrow
-    debt: uint256 # current amount borrowed
-    minBorrow: uint256 # minimum amount to borrow per call to borrow()
-    maxBorrow: uint256 # maximum amount to borrow per call to borrow()
+    activated: bool  # sent to True once after strategy is active
+    debtRatio: uint256  # ratio of total assets this strategy can borrow
+    debt: uint256  # current amount borrowed
+    minBorrow: uint256  # minimum amount to borrow per call to borrow()
+    maxBorrow: uint256  # maximum amount to borrow per call to borrow()
 
 
 event SetNextTimeLock:
@@ -184,11 +186,11 @@ admin: public(address)
 guardian: public(address)
 worker: public(address)
 
-totalDebt: public(uint256) # sum of all debts of strategies
+totalDebt: public(uint256)  # sum of all debts of strategies
 MAX_TOTAL_DEBT_RATIO: constant(uint256) = 10000
-totalDebtRatio: public(uint256) # sum of all debtRatios of strategies
-strategies: public(HashMap[address, Strategy]) # all strategies
-queue: public(address[MAX_QUEUE]) # list of active strategies
+totalDebtRatio: public(uint256)  # sum of all debtRatios of strategies
+strategies: public(HashMap[address, Strategy])  # all strategies
+queue: public(address[MAX_QUEUE])  # list of active strategies
 
 # migration
 OLD_MAX_QUEUE: constant(uint256) = 20  # must be <= MAX_QUEUE
@@ -469,7 +471,7 @@ def _totalAssets() -> uint256:
     """
     @notice Total amount of token in this fund manager + total amount borrowed
             by strategies
-    @dev Returns total amount of token managed by this contract 
+    @dev Returns total amount of token managed by this contract
     """
     return self.token.balanceOf(self) + self.totalDebt
 
@@ -887,7 +889,9 @@ def _calcOutstandingDebt(strategy: address) -> uint256:
     if self.totalDebtRatio == 0:
         return self.strategies[strategy].debt
 
-    limit: uint256 = self.strategies[strategy].debtRatio * self.totalDebt / self.totalDebtRatio
+    limit: uint256 = (
+        self.strategies[strategy].debtRatio * self.totalDebt / self.totalDebtRatio
+    )
     debt: uint256 = self.strategies[strategy].debt
 
     if self.paused:

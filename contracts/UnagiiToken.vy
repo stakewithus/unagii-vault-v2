@@ -41,6 +41,7 @@ event AcceptTimeLock:
 event SetMinter:
     minter: address
 
+
 name: public(String[64])
 symbol: public(String[32])
 # Vyper does not support uint8
@@ -62,7 +63,7 @@ lastBlock: public(HashMap[address, uint256])
 def __init__(token: address):
     self.timeLock = msg.sender
     self.token = ERC20(token)
-    
+
     if token == ETH:
         self.name = "unagii_ETH_v2"
         self.symbol = "uETHv2"

@@ -100,7 +100,7 @@ def withdraw(amount: uint256) -> uint256:
     loss: uint256 = min(self.balance, self.loss)
     if loss > 0:
         self._sendEth(ZERO_ADDRESS, loss)
-    
+
     self._sendEth(self.fundManager.address, min(amount, self.balance))
 
     return loss

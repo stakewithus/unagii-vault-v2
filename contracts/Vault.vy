@@ -137,7 +137,7 @@ depositLimit: public(uint256)
 balanceOfVault: public(uint256)
 debt: public(uint256)  # debt to users (amount borrowed by fund manager)
 # minimum amount of token to be kept in this vault for cheap withdraw
-minReserve: public(uint256) 
+minReserve: public(uint256)
 MAX_MIN_RESERVE: constant(uint256) = 10000
 # timestamp of last report
 lastReport: public(uint256)
@@ -406,7 +406,7 @@ def setPause(paused: bool):
 @external
 def setMinReserve(minReserve: uint256):
     """
-    @notice Set minimum amount of token reserved in this vault for cheap 
+    @notice Set minimum amount of token reserved in this vault for cheap
             withdrawn by user
     @param minReserve Numerator to calculate min reserve
            0 = all funds can be transferred to fund manager
@@ -455,7 +455,7 @@ def setBlockDelay(delay: uint256):
 def setFeeOnTransfer(feeOnTransfer: bool):
     """
     @notice Enable calculation of actual amount transferred to this vault
-            if token has fee on transfer                    
+            if token has fee on transfer
     @param feeOnTransfer True = enable calculation
                           False = disable calculation
     """
@@ -484,7 +484,7 @@ def _totalAssets() -> uint256:
     @notice Total amount of token in this vault + amount in fund manager
     @dev State variable `balanceOfVault` is used to track balance of token in
          this contract instead of `token.balanceOf(self)`. This is done to
-         protect against uToken shares being diluted by directly sending token 
+         protect against uToken shares being diluted by directly sending token
          to this contract.
     @dev Returns total amount of token in this contract
     """
@@ -687,9 +687,11 @@ def withdraw(shares: uint256, _min: uint256) -> uint256:
     _shares: uint256 = min(shares, self.uToken.balanceOf(msg.sender))
     assert _shares > 0, "shares = 0"
 
-    amount: uint256 = self._calcWithdraw(_shares, self.uToken.totalSupply(), self._calcFreeFunds())
+    amount: uint256 = self._calcWithdraw(
+        _shares, self.uToken.totalSupply(), self._calcFreeFunds()
+    )
 
-    # withdraw from fund manager if amount to withdraw > balance of vault 
+    # withdraw from fund manager if amount to withdraw > balance of vault
     if amount > self.balanceOfVault:
         diff: uint256 = self.token.balanceOf(self)
         # loss = debt - total assets in fund manager + any loss from strategies
@@ -842,7 +844,7 @@ def report(gain: uint256, loss: uint256):
 
     # calculate current locked profit
     lockedProfit: uint256 = self._calcLockedProfit()
-    diff: uint256 = 0 # actual amount transferred if gain > 0
+    diff: uint256 = 0  # actual amount transferred if gain > 0
 
     if gain > 0:
         diff = self.token.balanceOf(self)
@@ -868,7 +870,9 @@ def report(gain: uint256, loss: uint256):
     assert self.token.balanceOf(self) >= self.balanceOfVault, "bal < vault"
 
     # log updated debt and lockedProfit
-    log Report(msg.sender, self.balanceOfVault, self.debt, gain, loss, diff, self.lockedProfit)
+    log Report(
+        msg.sender, self.balanceOfVault, self.debt, gain, loss, diff, self.lockedProfit
+    )
 
 
 @external
