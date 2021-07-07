@@ -158,7 +158,7 @@ contract StrategyConvexObtc is Strategy {
             uint shares = bal.mul(MUL).mul(1e18).div(pricePerShare);
             uint min = shares.mul(SLIP_MAX - slip) / SLIP_MAX;
 
-            CURVE_POOL.add_liquidity(amounts, min);
+            ZAP.add_liquidity(amounts, min);
         }
 
         uint lpBal = CURVE_LP.balanceOf(address(this));
@@ -234,7 +234,7 @@ contract StrategyConvexObtc is Strategy {
 
         if (shares > 0) {
             uint min = need.mul(SLIP_MAX - slip) / SLIP_MAX;
-            CURVE_POOL.remove_liquidity_one_coin(shares, int128(INDEX), min);
+            ZAP.remove_liquidity_one_coin(shares, int128(INDEX), min);
         }
 
         uint balAfter = token.balanceOf(address(this));
@@ -417,9 +417,9 @@ contract StrategyConvexObtc is Strategy {
     */
     function sweep(address _token) external override onlyAuthorized {
         require(_token != address(token), "protected token");
-        require(_token != address(CVX), "protected token");
-        require(_token != address(CRV), "protected token");
-        require(_token != address(BOR), "protected token");
+        for (uint i = 0; i < REWARDS.length; i++) {
+            require(_token != REWARDS[i], "protected token");
+        }
         IERC20(_token).safeTransfer(admin, IERC20(_token).balanceOf(address(this)));
     }
 }

@@ -414,8 +414,9 @@ contract StrategyConvexBbtc is Strategy {
     */
     function sweep(address _token) external override onlyAuthorized {
         require(_token != address(token), "protected token");
-        require(_token != address(CVX), "protected token");
-        require(_token != address(CRV), "protected token");
+        for (uint i = 0; i < REWARDS.length; i++) {
+            require(_token != REWARDS[i], "protected token");
+        }
         IERC20(_token).safeTransfer(admin, IERC20(_token).balanceOf(address(this)));
     }
 }
