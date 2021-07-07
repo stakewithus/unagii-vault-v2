@@ -5,7 +5,6 @@ pragma abicoder v2;
 import "../interfaces/uniswap/UniswapV2Router.sol";
 import "../interfaces/convex/BaseRewardPool.sol";
 import "../interfaces/convex/Booster.sol";
-import "../interfaces/curve/DepositBbtc.sol";
 import "../interfaces/curve/StableSwapSbtc.sol";
 import "../Strategy.sol";
 
@@ -39,7 +38,7 @@ contract StrategyConvexSbtc is Strategy {
     // Curve //
     // StableSwap
     StableSwapSbtc private constant CURVE_POOL =
-        StableSwapSbtc(0x42d7025938bEc20B69cBae5A77421082407f053A);
+        StableSwapSbtc(0x7fC77b5c7614E1533320Ea6DDc2Eb61fa00A9714);
     // LP token for curve pool bBTC/sbtcCRV
     IERC20 private constant CURVE_LP =
         IERC20(0x075b1bb99792c9E1041bA13afEf80C91a1e70fB3);
