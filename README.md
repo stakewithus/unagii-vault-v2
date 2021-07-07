@@ -1,5 +1,7 @@
 # unagii-vault-v2
 
+![unagii-v2](./doc/unagii-v2.png)
+
 ### Install
 
 ```shell
