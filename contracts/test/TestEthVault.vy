@@ -46,7 +46,9 @@ def repay(_amount: uint256) -> uint256:
 
 
 @external
+@payable
 def report(gain: uint256, loss: uint256):
+    assert gain == msg.value, "gain != msg.value"
     self.gain = gain
     self.loss = loss
 

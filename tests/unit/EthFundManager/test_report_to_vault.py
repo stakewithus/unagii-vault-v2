@@ -35,10 +35,10 @@ def test_report_to_vault(ethFundManager, testEthVault, admin, worker, user):
     # loss > 0
     vault.setDebt(1200)
 
-    total = 1000
+    total = 900
     debt = 1200
     gain = 0
-    loss = 200
+    loss = 300
 
     tx = fundManager.reportToVault(0, 2 ** 256 - 1, {"from": timeLock})
     assert tx.events["ReportToVault"].values() == [vault, total, debt, gain, loss]
