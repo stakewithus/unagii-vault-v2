@@ -62,3 +62,19 @@ solc-select use 0.8.4
 # slither
 slither contracts/Contract.sol
 ```
+
+### Deploy
+
+```shell
+brownie accounts new dev
+
+env $(cat .env) brownie run scripts/deploy_test_token.py --network ropsten
+```
+
+```shell
+# ropsten
+# TestToken
+0xfA4B8F893631814bF47E05a1a29d9d4365A90adD
+
+# mainnet
+```
