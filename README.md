@@ -70,6 +70,9 @@ brownie accounts new dev
 
 env $(cat .env) brownie run scripts/deploy_test_token.py --network ropsten
 env $(cat .env) brownie run scripts/deploy_u_token.py deploy_ropsten_utest --network ropsten
+env $(cat .env) brownie run scripts/deploy_vault.py deploy_ropsten_test_vault --network ropsten
+env $(cat .env) brownie run scripts/deploy_eth_vault.py deploy_ropsten_eth_vault --network ropsten
+
 ```
 
 ```shell
@@ -81,6 +84,11 @@ env $(cat .env) brownie run scripts/deploy_u_token.py deploy_ropsten_utest --net
 0x69c529Ec8e451D15c5EB394B3Edaca7304B7ff56
 # uETH
 0xDdC33E10f60EeC345440Dd49497b1dA38040bd54
+
+# TEST Vault
+0x7905D4638DD6B23fcDFBE3e04fEBC911aD87Cde7
+# ETH Vault
+0xFaEeE4847AEE7a7eC48eb1BB3103E84FB7b4a0D1
 
 # mainnet
 ```

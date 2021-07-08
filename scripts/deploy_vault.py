@@ -1,10 +1,56 @@
-from brownie import TestToken, accounts, network
+from brownie import Vault, accounts, network
+from brownie import ZERO_ADDRESS
+
+config = {
+    "ropsten": {
+        "TEST": {
+            "token": "0xfA4B8F893631814bF47E05a1a29d9d4365A90adD",
+            "uToken": "0x69c529Ec8e451D15c5EB394B3Edaca7304B7ff56",
+        },
+    },
+    "mainnet": {
+        "DAI": {
+            "token": "0x6B175474E89094C44DA98B954EEDEAC495271D0F",
+            "uToken": "",
+        },
+        "USDC": {
+            "token": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+            "uToken": "",
+        },
+        "USDT": {
+            "token": "0xdAC17F958D2ee523a2206206994597C13D831ec7",
+            "uToken": "",
+        },
+        "WBTC": {
+            "token": "0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599",
+            "uToken": "",
+        },
+    },
+}
 
 
-def main():
+def deploy_ropsten_test_vault():
+    deploy(config["ropsten"]["TEST"])
+
+
+def deploy_mainnet_dai_vault():
+    deploy(config["mainnet"]["DAI"])
+
+
+def deploy_mainnet_usdc_vault():
+    deploy(config["mainnet"]["USDC"])
+
+
+def deploy_mainnet_usdt_vault():
+    deploy(config["mainnet"]["USDT"])
+
+
+def deploy_mainnet_wbtc_vault():
+    deploy(config["mainnet"]["WBTC"])
+
+
+def deploy(args):
     network_name = network.show_active()
-
-    assert network_name == "ropsten"
     print(f"network: {network_name}")
 
     account = accounts.load("dev")
@@ -13,4 +59,8 @@ def main():
     print("ETH balance:", bal)
     print("-------------------")
 
-    TestToken.deploy("test", "TEST", 18, {"from": account})
+    guardian = account
+
+    Vault.deploy(
+        args["token"], args["uToken"], guardian, ZERO_ADDRESS, {"from": account}
+    )
