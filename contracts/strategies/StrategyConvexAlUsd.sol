@@ -421,7 +421,7 @@ contract StrategyConvexAlUsd is Strategy {
         );
         uint bal = _withdraw(type(uint).max);
         token.safeApprove(_strategy, bal);
-        strat.transferFrom(address(this), bal);
+        strat.transferTokenFrom(address(this), bal);
     }
 
     /*

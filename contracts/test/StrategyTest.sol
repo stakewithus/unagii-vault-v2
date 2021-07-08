@@ -96,7 +96,9 @@ contract StrategyTest is Strategy {
         uint
     ) external override onlyAuthorized {}
 
-    function migrate(address _strategy) external override onlyAuthorized {}
+    function migrate(address _strategy) external override onlyAuthorized {
+        token.transfer(_strategy, token.balanceOf(address(this)));
+    }
 
     function sweep(address _token) external override {}
 }
