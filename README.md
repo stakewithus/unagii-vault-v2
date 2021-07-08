@@ -69,12 +69,18 @@ slither contracts/Contract.sol
 brownie accounts new dev
 
 env $(cat .env) brownie run scripts/deploy_test_token.py --network ropsten
+env $(cat .env) brownie run scripts/deploy_u_token.py deploy_ropsten_utest --network ropsten
 ```
 
 ```shell
 # ropsten
 # TestToken
 0xfA4B8F893631814bF47E05a1a29d9d4365A90adD
+
+# uTEST
+0x69c529Ec8e451D15c5EB394B3Edaca7304B7ff56
+# uETH
+0xDdC33E10f60EeC345440Dd49497b1dA38040bd54
 
 # mainnet
 ```
