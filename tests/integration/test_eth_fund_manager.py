@@ -30,9 +30,7 @@ class StateMachine:
         cls.timeLock = timeLock
         cls.eth_whale = eth_whale
 
-        print("BAL", eth_whale.balance())
-
-        eth_whale.transfer(fundManager, 100000)
+        eth_whale.transfer(fundManager, 100)
 
         for i in range(k):
             strat = TestStrategyEth.deploy(fundManager, ETH, {"from": admin})
@@ -41,7 +39,7 @@ class StateMachine:
             fundManager.addStrategyToQueue(strat, 100, 0, 2 ** 256 - 1, {"from": admin})
 
     def setup(self):
-        self.totalAssets = 100000
+        self.totalAssets = 100
         self.bal = self.totalAssets
         self.totalDebt = 0
 

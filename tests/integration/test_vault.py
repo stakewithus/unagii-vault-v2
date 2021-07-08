@@ -167,7 +167,7 @@ class StateMachine:
         self.fundManager.reportToVault(0, 2 ** 256 - 1, {"from": self.admin})
 
         self.totalAssets += expected_gain
-        self.debt += expected_gain
+        self.balanceOfVault += expected_gain
 
     def rule_report_loss(self, loss):
         # can't lose more than debt or token balance of fund manager
