@@ -26,21 +26,13 @@ cp .env.sample .env
 npm i
 ```
 
+### Test
+
 ```shell
-# black format python
-black --check --include "(tests|scripts)" .
-# format vyper
-blackadder --fast --include '\.vy$' contracts
-
-# select solc compiler
-solc-select install 0.8.4
-solc-select use 0.8.4
-
-# slither
-slither contracts/Contract.sol
+brownie test tests/path-to-test-file-or-folder
 ```
 
-### Test
+### Mainnet Test
 
 ```shell
 source .env
@@ -55,4 +47,18 @@ ganache-cli \
 
 env $(cat .env) brownie test tests/mainnet/test.py --network mainnet-fork -s
 
+```
+
+```shell
+# black format python
+black --check --include "(tests|scripts)" .
+# format vyper
+blackadder --fast --include '\.vy$' contracts
+
+# select solc compiler
+solc-select install 0.8.4
+solc-select use 0.8.4
+
+# slither
+slither contracts/Contract.sol
 ```
