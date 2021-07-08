@@ -42,7 +42,6 @@ def test_migrate(strategy, daiFundManager, admin, treasury, dai, dai_whale):
     #     print(e)
 
     assert after["token"]["strategy"] == 0
-    # TODO: fix
     assert after["strategy"]["totalAssets"] <= 10 ** 9  # dust
     assert after["token"]["new_strategy"] >= 0.99 * before["strategy"]["totalAssets"]
     assert after["new_strategy"]["totalAssets"] == after["token"]["new_strategy"]
