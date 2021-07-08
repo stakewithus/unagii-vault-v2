@@ -68,12 +68,15 @@ slither contracts/Contract.sol
 ```shell
 brownie accounts new dev
 
+brownie run scripts/flat.py
+
 env $(cat .env) brownie run scripts/deploy_test_token.py --network ropsten
 env $(cat .env) brownie run scripts/deploy_u_token.py deploy_ropsten_utest --network ropsten
 env $(cat .env) brownie run scripts/deploy_vault.py deploy_ropsten_test_vault --network ropsten
 env $(cat .env) brownie run scripts/deploy_eth_vault.py deploy_ropsten_eth_vault --network ropsten
 env $(cat .env) brownie run scripts/deploy_fund_manager.py deploy_ropsten_test_fund_manager --network ropsten
 env $(cat .env) brownie run scripts/deploy_eth_fund_manager.py --network ropsten
+env $(cat .env) brownie run scripts/deploy_strategy_test.py --network ropsten
 ```
 
 ```shell
@@ -95,6 +98,12 @@ env $(cat .env) brownie run scripts/deploy_eth_fund_manager.py --network ropsten
 0xe9558bC2fC2d8203bFC467Ab67f7016c90400549
 # ETH FundManager
 0x9Fb96bc1F352F26c0f624556ED39B65fa0a6Ac69
+
+# StrategyTest
+0x904a1698b721b4f10A0aC23Ff65BdB3673d7B152
+0x446F3C16c87A5DdeD516D404121e7bB847748048
+0x4C11CF6c73347Ae013E88dB97b4f285a8DE48322
+# StrategyEthTest
 
 # mainnet
 ```
