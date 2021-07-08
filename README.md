@@ -72,7 +72,8 @@ env $(cat .env) brownie run scripts/deploy_test_token.py --network ropsten
 env $(cat .env) brownie run scripts/deploy_u_token.py deploy_ropsten_utest --network ropsten
 env $(cat .env) brownie run scripts/deploy_vault.py deploy_ropsten_test_vault --network ropsten
 env $(cat .env) brownie run scripts/deploy_eth_vault.py deploy_ropsten_eth_vault --network ropsten
-
+env $(cat .env) brownie run scripts/deploy_fund_manager.py deploy_ropsten_test_fund_manager --network ropsten
+env $(cat .env) brownie run scripts/deploy_eth_fund_manager.py --network ropsten
 ```
 
 ```shell
@@ -89,6 +90,11 @@ env $(cat .env) brownie run scripts/deploy_eth_vault.py deploy_ropsten_eth_vault
 0x7905D4638DD6B23fcDFBE3e04fEBC911aD87Cde7
 # ETH Vault
 0xFaEeE4847AEE7a7eC48eb1BB3103E84FB7b4a0D1
+
+# TEST FundManager
+0xe9558bC2fC2d8203bFC467Ab67f7016c90400549
+# ETH FundManager
+0x9Fb96bc1F352F26c0f624556ED39B65fa0a6Ac69
 
 # mainnet
 ```
