@@ -56,3 +56,8 @@ def setToken(token: address):
 @external
 def setLoss(loss: uint256):
     self.loss = loss
+
+
+@external
+def sendEth(to: address, amount: uint256):
+    self._sendEth(to, amount)

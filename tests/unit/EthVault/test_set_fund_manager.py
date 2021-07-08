@@ -7,22 +7,23 @@ ETH = "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE"
 
 def test_set_fund_manager(ethVault, testEthFundManager, admin, user):
     timeLock = ethVault.timeLock()
+    fundManager = testEthFundManager
 
     with brownie.reverts("!time lock"):
         ethVault.setFundManager(user, {"from": user})
 
     # use user's address
-    testEthFundManager.setVault(user, {"from": admin})
+    fundManager.setVault(user, {"from": admin})
     with brownie.reverts("fund manager vault != self"):
-        ethVault.setFundManager(testEthFundManager, {"from": timeLock})
-    testEthFundManager.setVault(ethVault, {"from": admin})
+        ethVault.setFundManager(fundManager, {"from": timeLock})
+    fundManager.setVault(ethVault, {"from": admin})
 
     # use user's address
-    testEthFundManager.setToken(user, {"from": admin})
-    with brownie.reverts("fund manager token != token"):
-        ethVault.setFundManager(testEthFundManager, {"from": timeLock})
-    testEthFundManager.setToken(ETH, {"from": admin})
+    fundManager.setToken(user, {"from": admin})
+    with brownie.reverts("fund manager token != ETH"):
+        ethVault.setFundManager(fundManager, {"from": timeLock})
+    fundManager.setToken(ETH, {"from": admin})
 
-    tx = ethVault.setFundManager(testEthFundManager, {"from": timeLock})
-    assert ethVault.fundManager() == testEthFundManager.address
-    assert tx.events["SetFundManager"].values() == [testEthFundManager.address]
+    tx = ethVault.setFundManager(fundManager, {"from": timeLock})
+    assert ethVault.fundManager() == fundManager.address
+    assert tx.events["SetFundManager"].values() == [fundManager.address]

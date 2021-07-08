@@ -2,15 +2,19 @@ import brownie
 import pytest
 
 
-def test_skim(ethVault, admin, user):
+def test_skim(ethVault, admin, user, testEthFundManager):
     vault = ethVault
     timeLock = vault.timeLock()
+    fundManager = testEthFundManager
 
     # not auth
     with brownie.reverts("!auth"):
         vault.skim({"from": user})
 
-    user.transfer(vault, 123)
+    vault.setFundManager(fundManager, {"from": timeLock})
+
+    user.transfer(fundManager, 123)
+    fundManager.sendEth(vault, 123)
 
     diff = vault.balance() - vault.balanceOfVault()
 
@@ -18,7 +22,6 @@ def test_skim(ethVault, admin, user):
         return {
             "vault": {"balanceOfVault": vault.balanceOfVault()},
             "eth": {
-                "timeLock": timeLock.balance(),
                 "admin": admin.balance(),
                 "vault": vault.balance(),
             },
