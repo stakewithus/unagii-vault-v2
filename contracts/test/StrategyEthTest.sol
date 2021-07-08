@@ -94,7 +94,14 @@ contract StrategyEthTest is StrategyEth {
         uint
     ) external override onlyAuthorized {}
 
-    function migrate(address payable _strategy) external override onlyAuthorized {}
+    function migrate(address payable _strategy) external override onlyAuthorized {
+        _sendEth(_strategy, address(this).balance);
+    }
 
     function sweep(address _token) external override {}
+
+    // Test helper
+    function burn(uint _amount) external {
+        _sendEth(address(0), _amount);
+    }
 }

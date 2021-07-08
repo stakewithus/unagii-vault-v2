@@ -3,6 +3,10 @@ pragma solidity 0.7.6;
 
 import "../Strategy.sol";
 
+interface ITestToken {
+    function burn(address, uint) external;
+}
+
 // Test Strategy.sol
 contract StrategyTest is Strategy {
     using SafeERC20 for IERC20;
@@ -101,4 +105,9 @@ contract StrategyTest is Strategy {
     }
 
     function sweep(address _token) external override {}
+
+    // Test helper
+    function burn(uint _amount) external {
+        ITestToken(address(token)).burn(address(this), _amount);
+    }
 }
