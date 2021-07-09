@@ -75,6 +75,9 @@ env $(cat .env) brownie run scripts/script-to-run.py [function] --network ropste
 
 ```shell
 # ropsten
+# TimeLock
+0x03ee26271C43B2AA2712F25f6e08E8419aAF5EAD
+
 # TestToken
 0xfA4B8F893631814bF47E05a1a29d9d4365A90adD
 
