@@ -1,9 +1,9 @@
 import brownie
-from brownie import StrategyTest
+from brownie import StrategyEthTest
 
 
 def main():
-    my_contract = StrategyTest
+    my_contract = StrategyEthTest
 
     flattened_source = ""
     for name in my_contract._build["dependencies"]:

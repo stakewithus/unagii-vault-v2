@@ -70,13 +70,7 @@ brownie accounts new dev
 
 brownie run scripts/flat.py
 
-env $(cat .env) brownie run scripts/deploy_test_token.py --network ropsten
-env $(cat .env) brownie run scripts/deploy_u_token.py deploy_ropsten_utest --network ropsten
-env $(cat .env) brownie run scripts/deploy_vault.py deploy_ropsten_test_vault --network ropsten
-env $(cat .env) brownie run scripts/deploy_eth_vault.py deploy_ropsten_eth_vault --network ropsten
-env $(cat .env) brownie run scripts/deploy_fund_manager.py deploy_ropsten_test_fund_manager --network ropsten
-env $(cat .env) brownie run scripts/deploy_eth_fund_manager.py --network ropsten
-env $(cat .env) brownie run scripts/deploy_strategy_test.py --network ropsten
+env $(cat .env) brownie run scripts/script-to-run.py [function] --network ropsten
 ```
 
 ```shell
@@ -104,6 +98,9 @@ env $(cat .env) brownie run scripts/deploy_strategy_test.py --network ropsten
 0x446F3C16c87A5DdeD516D404121e7bB847748048
 0x4C11CF6c73347Ae013E88dB97b4f285a8DE48322
 # StrategyEthTest
+0x77845D098a8a789F0A141dD7c9FB5204C1fe8e58
+0x86dbA3AA9b04B2758555337AD58b61b4cA03ADd5
+0xa46E8Ed416A8dccebAADf320529cBF46eBcf7995
 
 # mainnet
 ```
