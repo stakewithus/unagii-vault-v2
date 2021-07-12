@@ -1,9 +1,9 @@
 import brownie
-from brownie import StrategyCompLevUsdc
+from brownie import StrategyConvexAlUsdUsdc
 
 
 def main():
-    my_contract = StrategyCompLevUsdc
+    my_contract = StrategyConvexAlUsdUsdc
 
     flattened_source = ""
     for name in my_contract._build["dependencies"]:
