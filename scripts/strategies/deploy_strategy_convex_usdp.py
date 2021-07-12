@@ -1,4 +1,9 @@
-from brownie import StrategyConvexAlUsdDai, StrategyConvexAlUsdUsdc, accounts, network
+from brownie import (
+    StrategyConvexUsdpDai,
+    StrategyConvexUsdpUsdc,
+    accounts,
+    network,
+)
 from brownie import ZERO_ADDRESS
 
 config = {
@@ -14,11 +19,11 @@ config = {
 
 
 def dai():
-    deploy(StrategyConvexAlUsdDai, config["mainnet"]["DAI"])
+    deploy(StrategyConvexUsdpDai, config["mainnet"]["DAI"])
 
 
 def usdc():
-    deploy(StrategyConvexAlUsdUsdc, config["mainnet"]["USDC"])
+    deploy(StrategyConvexUsdpUsdc, config["mainnet"]["USDC"])
 
 
 def deploy(Strategy, args):
