@@ -130,17 +130,20 @@ env $(cat .env) brownie run scripts/script-to-run.py [function] --network ropste
 
 # StrategyCompLevDai
 0xC1B8F4Ac6c4aF37bD5Fca280F27Db7b950872417
-# StrategyCompLevUsdc
-0x5EF8f1A715Cab61Ecf71FD307ccf40685868EF43
-
 # StrategyConvexAlUsdDai
 0x9c9462314607D4D1759a6F1563ABB6025b561d5B
 # StrategyConvexUsdpDai
 0x5E22A1De3593ffacACA6a11AEabe07f222314cEc
+
+# StrategyCompLevUsdc
+0x5EF8f1A715Cab61Ecf71FD307ccf40685868EF43
 # StrategyConvexAlUsdUsdc
 0x47629E022e1b345f52F695935cf28e6942aD3804
 # StrategyConvexUsdpUsdc
 0xA15EF9f3e3De3AcebFF5478C66eDD021D1f51BE2
+
+#StrategyConvexStEth
+0x302Ef51E94360fE890336812B09dF3d22d1024E8
 
 # mainnet
 ```
