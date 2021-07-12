@@ -1,6 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 pragma solidity 0.7.6;
-pragma abicoder v2;
 
 import "../interfaces/uniswap/UniswapV2Router.sol";
 import "../interfaces/convex/BaseRewardPool.sol";
@@ -70,9 +69,9 @@ contract StrategyConvexSbtc is Strategy {
         INDEX = _index;
         MUL = MULS[_index];
 
-        PoolInfo memory poolInfo = BOOSTER.poolInfo(PID);
-        require(address(CURVE_LP) == poolInfo.lptoken, "curve pool lp != pool info lp");
-        require(address(REWARD) == poolInfo.crvRewards, "reward != pool info reward");
+        (address lptoken, , , address crvRewards, , ) = BOOSTER.poolInfo(PID);
+        require(address(CURVE_LP) == lptoken, "curve pool lp != pool info lp");
+        require(address(REWARD) == crvRewards, "reward != pool info reward");
 
         // deposit token into curve pool
         IERC20(_token).safeApprove(address(CURVE_POOL), type(uint).max);

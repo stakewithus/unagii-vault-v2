@@ -1,6 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 pragma solidity 0.7.6;
-pragma abicoder v2;
 
 import "../interfaces/uniswap/UniswapV2Router.sol";
 import "../interfaces/convex/BaseRewardPool.sol";
@@ -57,9 +56,9 @@ contract StrategyConvexStEth is StrategyEth {
     constructor(address _fundManager, address _treasury)
         StrategyEth(_fundManager, _treasury)
     {
-        PoolInfo memory poolInfo = BOOSTER.poolInfo(PID);
-        require(address(CURVE_LP) == poolInfo.lptoken, "curve pool lp != pool info lp");
-        require(address(REWARD) == poolInfo.crvRewards, "reward != pool info reward");
+        (address lptoken, , , address crvRewards, , ) = BOOSTER.poolInfo(PID);
+        require(address(CURVE_LP) == lptoken, "curve pool lp != pool info lp");
+        require(address(REWARD) == crvRewards, "reward != pool info reward");
 
         // deposit into BOOSTER
         CURVE_LP.safeApprove(address(BOOSTER), type(uint).max);
