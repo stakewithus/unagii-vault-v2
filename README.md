@@ -128,5 +128,10 @@ env $(cat .env) brownie run scripts/script-to-run.py [function] --network ropste
 # eth fund manager
 0x09f15F979Bf1b0CC8c8a19ed2E2feFF8EdE60e54
 
+# StrategyCompLevDai
+0xC1B8F4Ac6c4aF37bD5Fca280F27Db7b950872417
+# StrategyCompLevUsdc
+0x5EF8f1A715Cab61Ecf71FD307ccf40685868EF43
+
 # mainnet
 ```
