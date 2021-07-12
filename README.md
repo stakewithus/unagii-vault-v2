@@ -109,12 +109,17 @@ env $(cat .env) brownie run scripts/script-to-run.py [function] --network ropste
 
 # udai
 0xffd51A24C65CC6981F3A543320fDadaf57ffFD7A
-
 # uusdc
 0x8ae16964763Bab7D73c5ECEBe7A51E6827BaED66
-
 # ueth
 0x5a6170496aAEC8649B25ec0cd53e55bC38525B00
+
+# dai vault
+0x55Ece7dC08f1950245102aD92968bDaE1b359A0a
+# usdc vault
+0xa32b1c0703B80E7bF40D172CC86Da8C620024AE6
+# eth vault
+0x7F129B99d81e5ac772B24BFb6af2f71309851F4C
 
 # mainnet
 ```

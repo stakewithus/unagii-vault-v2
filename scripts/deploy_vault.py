@@ -11,11 +11,11 @@ config = {
     "mainnet": {
         "DAI": {
             "token": "0x6B175474E89094C44DA98B954EEDEAC495271D0F",
-            "uToken": "",
+            "uToken": "0xffd51A24C65CC6981F3A543320fDadaf57ffFD7A",
         },
         "USDC": {
             "token": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
-            "uToken": "",
+            "uToken": "0x8ae16964763Bab7D73c5ECEBe7A51E6827BaED66",
         },
         "USDT": {
             "token": "0xdAC17F958D2ee523a2206206994597C13D831ec7",

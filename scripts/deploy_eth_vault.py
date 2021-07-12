@@ -9,7 +9,7 @@ config = {
     },
     "mainnet": {
         "ETH": {
-            "uToken": "",
+            "uToken": "0x5a6170496aAEC8649B25ec0cd53e55bC38525B00",
         },
     },
 }
