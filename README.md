@@ -121,5 +121,12 @@ env $(cat .env) brownie run scripts/script-to-run.py [function] --network ropste
 # eth vault
 0x7F129B99d81e5ac772B24BFb6af2f71309851F4C
 
+# dai fund manager
+0x8a90faDe80feadCDD595c4f3611eB1886c924b61
+# usdc fund manager
+0xf01c9a51ff69fC2982156be9D558d56002328Fcc
+# eth fund manager
+0x09f15F979Bf1b0CC8c8a19ed2E2feFF8EdE60e54
+
 # mainnet
 ```
