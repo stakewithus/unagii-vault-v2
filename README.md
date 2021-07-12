@@ -105,5 +105,16 @@ env $(cat .env) brownie run scripts/script-to-run.py [function] --network ropste
 0x86dbA3AA9b04B2758555337AD58b61b4cA03ADd5
 0xa46E8Ed416A8dccebAADf320529cBF46eBcf7995
 
+# mainnet (dev)
+
+# udai
+0xffd51A24C65CC6981F3A543320fDadaf57ffFD7A
+
+# uusdc
+0x8ae16964763Bab7D73c5ECEBe7A51E6827BaED66
+
+# ueth
+0x5a6170496aAEC8649B25ec0cd53e55bC38525B00
+
 # mainnet
 ```
