@@ -137,7 +137,6 @@ env $(cat .env) brownie run scripts/script-to-run.py [function] --network ropste
 0xBd998633af470836fEf1C0E6b5c0A0AC3E325C39
 # wbtc fund manager
 0xd5A84Cbb69351c6991BA56CF78052f59092d404C
-
 # eth fund manager
 0x09f15F979Bf1b0CC8c8a19ed2E2feFF8EdE60e54
 
@@ -154,6 +153,9 @@ env $(cat .env) brownie run scripts/script-to-run.py [function] --network ropste
 0x47629E022e1b345f52F695935cf28e6942aD3804
 # StrategyConvexUsdpUsdc
 0xA15EF9f3e3De3AcebFF5478C66eDD021D1f51BE2
+
+# StrategyConvexAlUsdUsdt
+0x4787b5c60cE2cB244A8421c703ccEeE4B9c04c92
 
 #StrategyConvexStEth
 0x302Ef51E94360fE890336812B09dF3d22d1024E8

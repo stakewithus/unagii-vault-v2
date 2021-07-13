@@ -1,6 +1,7 @@
 from brownie import (
     StrategyConvexAlUsdDai,
     StrategyConvexAlUsdUsdc,
+    StrategyConvexAlUsdUsdt,
     accounts,
     network,
 )
@@ -14,6 +15,9 @@ config = {
         "USDC": {
             "fundManager": "0xf01c9a51ff69fC2982156be9D558d56002328Fcc",
         },
+        "USDT": {
+            "fundManager": "0xBd998633af470836fEf1C0E6b5c0A0AC3E325C39",
+        },
     },
 }
 
@@ -24,6 +28,10 @@ def dai():
 
 def usdc():
     deploy(StrategyConvexAlUsdUsdc, config["mainnet"]["USDC"])
+
+
+def usdt():
+    deploy(StrategyConvexAlUsdUsdt, config["mainnet"]["USDT"])
 
 
 def deploy(Strategy, args):
