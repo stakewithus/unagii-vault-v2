@@ -111,6 +111,10 @@ env $(cat .env) brownie run scripts/script-to-run.py [function] --network ropste
 0xffd51A24C65CC6981F3A543320fDadaf57ffFD7A
 # uusdc
 0x8ae16964763Bab7D73c5ECEBe7A51E6827BaED66
+# usdt
+0x91Ea2CEbB595677368B2D5aa373eE836f90E7269
+# wbtc
+0x7f880118123547EA36F20C56617db899B50Fd6eb
 # ueth
 0x5a6170496aAEC8649B25ec0cd53e55bC38525B00
 
