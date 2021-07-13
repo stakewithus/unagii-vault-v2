@@ -133,6 +133,11 @@ env $(cat .env) brownie run scripts/script-to-run.py [function] --network ropste
 0x8a90faDe80feadCDD595c4f3611eB1886c924b61
 # usdc fund manager
 0xf01c9a51ff69fC2982156be9D558d56002328Fcc
+# usdt fund manager
+0xBd998633af470836fEf1C0E6b5c0A0AC3E325C39
+# wbtc fund manager
+0xd5A84Cbb69351c6991BA56CF78052f59092d404C
+
 # eth fund manager
 0x09f15F979Bf1b0CC8c8a19ed2E2feFF8EdE60e54
 

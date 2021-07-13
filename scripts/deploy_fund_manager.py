@@ -24,23 +24,23 @@ config = {
 }
 
 
-def deploy_ropsten_test_fund_manager():
+def test():
     deploy(config["ropsten"]["TEST"])
 
 
-def deploy_mainnet_dai_fund_manager():
+def dai():
     deploy(config["mainnet"]["DAI"])
 
 
-def deploy_mainnet_usdc_fund_manager():
+def usdc():
     deploy(config["mainnet"]["USDC"])
 
 
-def deploy_mainnet_usdt_fund_manager():
+def usdt():
     deploy(config["mainnet"]["USDT"])
 
 
-def deploy_mainnet_wbtc_fund_manager():
+def wbtc():
     deploy(config["mainnet"]["WBTC"])
 
 
