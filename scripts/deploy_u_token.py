@@ -15,31 +15,31 @@ config = {
 }
 
 
-def deploy_ropsten_utest():
+def utest():
     deploy(config["ropsten"]["TEST"])
 
 
-def deploy_ropsten_ueth():
+def ropsten_ueth():
     deploy(config["ropsten"]["ETH"])
 
 
-def deploy_mainnet_udai():
+def udai():
     deploy(config["mainnet"]["DAI"])
 
 
-def deploy_mainnet_uusdc():
+def uusdc():
     deploy(config["mainnet"]["USDC"])
 
 
-def deploy_mainnet_uusdt():
+def uusdt():
     deploy(config["mainnet"]["USDT"])
 
 
-def deploy_mainnet_uwbtc():
+def uwbtc():
     deploy(config["mainnet"]["WBTC"])
 
 
-def deploy_mainnet_ueth():
+def mainnet_ueth():
     deploy(config["mainnet"]["ETH"])
 
 
