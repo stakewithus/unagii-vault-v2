@@ -19,33 +19,33 @@ config = {
         },
         "USDT": {
             "token": "0xdAC17F958D2ee523a2206206994597C13D831ec7",
-            "uToken": "",
+            "uToken": "0x91Ea2CEbB595677368B2D5aa373eE836f90E7269",
         },
         "WBTC": {
             "token": "0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599",
-            "uToken": "",
+            "uToken": "0x7f880118123547EA36F20C56617db899B50Fd6eb",
         },
     },
 }
 
 
-def deploy_ropsten_test_vault():
+def test():
     deploy(config["ropsten"]["TEST"])
 
 
-def deploy_mainnet_dai_vault():
+def dai():
     deploy(config["mainnet"]["DAI"])
 
 
-def deploy_mainnet_usdc_vault():
+def usdc():
     deploy(config["mainnet"]["USDC"])
 
 
-def deploy_mainnet_usdt_vault():
+def usdt():
     deploy(config["mainnet"]["USDT"])
 
 
-def deploy_mainnet_wbtc_vault():
+def wbtc():
     deploy(config["mainnet"]["WBTC"])
 
 

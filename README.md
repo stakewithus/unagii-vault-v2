@@ -122,6 +122,10 @@ env $(cat .env) brownie run scripts/script-to-run.py [function] --network ropste
 0x55Ece7dC08f1950245102aD92968bDaE1b359A0a
 # usdc vault
 0xa32b1c0703B80E7bF40D172CC86Da8C620024AE6
+# usdt vault
+0x28bCDbB64Ab1193bfD3C993351A2859E531F7005
+# wbtc vault
+0xe801F6b268F1D8586Dbc03cd93D3ed4b9508eB2c
 # eth vault
 0x7F129B99d81e5ac772B24BFb6af2f71309851F4C
 
