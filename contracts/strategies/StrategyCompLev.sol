@@ -298,7 +298,7 @@ contract StrategyCompLev is Strategy {
         uint supplied = _getSupplied();
         uint borrowed = _getBorrowed();
         uint unleveraged = supplied.sub(borrowed); // supply with 0 leverage
-        require(_targetSupply >= unleveraged, "leverage");
+        require(_targetSupply >= supplied, "leverage");
         uint marketCol = _getMarketCollateralRatio();
         uint safeCol = _getSafeCollateralRatio(marketCol);
         uint lev = _getMaxLeverageRatio(safeCol);
