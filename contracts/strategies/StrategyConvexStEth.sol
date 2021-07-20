@@ -380,6 +380,11 @@ contract StrategyConvexStEth is StrategyEth {
             address(strat.fundManager()) == address(fundManager),
             "strategy fund manager != fund manager"
         );
+
+        if (claimRewardsOnMigrate) {
+            _claimRewards(1);
+        }
+
         uint bal = _withdraw(type(uint).max);
         // WARNING: may lose all ETH if sent to wrong address
         _sendEth(address(strat), bal);

@@ -45,6 +45,8 @@ abstract contract StrategyEth {
     uint private constant PERF_FEE_CAP = 2000; // Upper limit to performance fee
     uint internal constant PERF_FEE_MAX = 10000;
 
+    bool public claimRewardsOnMigrate = true;
+
     constructor(address _fundManager, address _treasury) {
         // Don't allow accidentally sending perf fee to 0 address
         require(_treasury != address(0), "treasury = 0 address");
@@ -163,6 +165,15 @@ abstract contract StrategyEth {
         fundManager = IEthFundManager(_fundManager);
 
         emit SetFundManager(_fundManager);
+    }
+
+    /*
+    @notice Set `claimRewardsOnMigrate`. If `false` skip call to `claimRewards`
+            when `migrate` is called.
+    @param _claimRewards Boolean to call or skip call to `claimRewards`
+    */
+    function setClaimRewardsOnMigrate(bool _claimRewards) external onlyTimeLockOrAdmin {
+        claimRewardsOnMigrate = _claimRewards;
     }
 
     /*
