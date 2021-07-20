@@ -117,6 +117,7 @@ abstract contract Strategy {
     @param _admin Address of admin
     */
     function setAdmin(address _admin) external onlyTimeLockOrAdmin {
+        require(_admin != address(0), "admin = 0 address");
         admin = _admin;
         emit SetAdmin(_admin);
     }
@@ -127,6 +128,7 @@ abstract contract Strategy {
     @param _authorized Boolean
     */
     function authorize(address _addr, bool _authorized) external onlyTimeLockOrAdmin {
+        require(_addr != address(0), "addr = 0 address");
         authorized[_addr] = _authorized;
         emit Authorize(_addr, _authorized);
     }
