@@ -52,7 +52,7 @@ contract StrategyConvexStEth is StrategyEth {
     0 - ETH
     1 - stETH
     */
-    uint private constant INDEX = 0; // index of token
+    uint private constant INDEX; // index of token
 
     constructor(address _fundManager, address _treasury)
         StrategyEth(_fundManager, _treasury)
