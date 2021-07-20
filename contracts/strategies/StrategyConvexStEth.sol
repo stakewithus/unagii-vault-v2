@@ -15,16 +15,17 @@ contract StrategyConvexStEth is StrategyEth {
     // UNISWAP = 0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D;
     // SUSHISWAP = 0xd9e1cE17f2641f24aE83637ab66a2cca9C378B9F;
     address private constant WETH = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
+    uint private constant NUM_REWARDS = 3;
     // address of DEX (uniswap or sushiswap) to use for selling reward tokens
     // CRV, CVX, LDO
-    address[3] public dex;
+    address[NUM_REWARDS] public dex;
 
     address private constant CRV = 0xD533a949740bb3306d119CC777fa900bA034cd52;
     address private constant CVX = 0x4e3FBD56CD56c3e72c1403e103b45Db9da5B9D2B;
     address private constant LDO = 0x5A98FcBEA516Cf06857215779Fd812CA3beF1B32;
 
     // Solc 0.7 cannot create constant arrays
-    address[3] private REWARDS = [CRV, CVX, LDO];
+    address[NUM_REWARDS] private REWARDS = [CRV, CVX, LDO];
 
     // Convex //
     Booster private constant BOOSTER =
@@ -290,7 +291,7 @@ contract StrategyConvexStEth is StrategyEth {
             "get reward failed"
         );
 
-        for (uint i = 0; i < REWARDS.length; i++) {
+        for (uint i = 0; i < NUM_REWARDS; i++) {
             uint rewardBal = IERC20(REWARDS[i]).balanceOf(address(this));
             if (rewardBal > 0) {
                 _swap(dex[i], REWARDS[i], rewardBal);
@@ -395,7 +396,7 @@ contract StrategyConvexStEth is StrategyEth {
     @param _token Address of token to transfer
     */
     function sweep(address _token) external override onlyAuthorized {
-        for (uint i = 0; i < REWARDS.length; i++) {
+        for (uint i = 0; i < NUM_REWARDS; i++) {
             require(_token != REWARDS[i], "protected token");
         }
         IERC20(_token).safeTransfer(admin, IERC20(_token).balanceOf(address(this)));
