@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+// version 0.1.1
 pragma solidity 0.7.6;
 
 import "../interfaces/uniswap/UniswapV2Router.sol";
@@ -418,6 +419,11 @@ contract StrategyConvexAlUsd is Strategy {
             address(strat.fundManager()) == address(fundManager),
             "strategy fund manager != fund manager"
         );
+
+        if (claimRewardsOnMigrate) {
+            _claimRewards(1);
+        }
+
         uint bal = _withdraw(type(uint).max);
         token.safeApprove(_strategy, bal);
         strat.transferTokenFrom(address(this), bal);

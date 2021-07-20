@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 pragma solidity 0.7.6;
 
-// version 0.1.0
+// version 0.1.1
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
@@ -42,6 +42,8 @@ abstract contract Strategy {
     uint public perfFee = 1000;
     uint private constant PERF_FEE_CAP = 2000; // Upper limit to performance fee
     uint internal constant PERF_FEE_MAX = 10000;
+
+    bool public claimRewardsOnMigrate = true;
 
     constructor(
         address _token,
@@ -163,6 +165,15 @@ abstract contract Strategy {
         token.safeApprove(_fundManager, type(uint).max);
 
         emit SetFundManager(_fundManager);
+    }
+
+    /*
+    @notice Set `claimRewardsOnMigrate`. If `false` skip call to `claimRewards`
+            when `migrate` is called.
+    @param _claimRewards Boolean to call or skip call to `claimRewards`
+    */
+    function setClaimRewardsOnMigrate(bool _claimRewards) external onlyTimeLockOrAdmin {
+        claimRewardsOnMigrate = _claimRewards;
     }
 
     /*
