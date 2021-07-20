@@ -87,7 +87,7 @@ contract StrategyCompLev is Strategy {
         _setDex(_dex);
     }
 
-    function _totalAssets() private view returns (uint) {
+    function _totalAssets() private view returns (uint total) {
         // WARNING: This returns balance last time someone transacted with cToken
         (uint error, uint cTokenBal, uint borrowed, uint exchangeRate) = cToken
         .getAccountSnapshot(address(this));
@@ -101,9 +101,7 @@ contract StrategyCompLev is Strategy {
             // something is wrong, return 0
             return 0;
         }
-        uint bal = token.balanceOf(address(this));
-        // supplied >= borrowed
-        return bal.add(supplied - borrowed);
+        total = token.balanceOf(address(this)).add(supplied - borrowed);
     }
 
     /*
