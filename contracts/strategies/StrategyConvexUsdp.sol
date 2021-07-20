@@ -106,7 +106,7 @@ contract StrategyConvexUsdp is Strategy {
         reward.safeApprove(_dex, type(uint).max);
     }
 
-    function setDex(uint _i, address _dex) external onlyTimeLockOrAdmin {
+    function setDex(uint _i, address _dex) external onlyTimeLock {
         require(_dex != address(0), "dex = 0 address");
         _setDex(_i, _dex);
     }

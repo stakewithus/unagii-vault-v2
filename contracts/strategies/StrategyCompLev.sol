@@ -82,7 +82,7 @@ contract StrategyCompLev is Strategy {
         comp.safeApprove(_dex, type(uint).max);
     }
 
-    function setDex(address _dex) external onlyTimeLockOrAdmin {
+    function setDex(address _dex) external onlyTimeLock {
         require(_dex != address(0), "dex = 0 address");
         _setDex(_dex);
     }
