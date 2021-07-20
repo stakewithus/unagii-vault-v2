@@ -122,7 +122,7 @@ contract StrategyConvexBbtc is Strategy {
         shouldClaimExtras = _shouldClaimExtras;
     }
 
-    function _totalAssets() private view returns (uint) {
+    function _totalAssets() private view returns (uint total) {
         /*
         s0 = shares in curve pool
         p0 = price per share of curve pool
@@ -132,11 +132,8 @@ contract StrategyConvexBbtc is Strategy {
         */
         // amount of Curve LP tokens in Convex
         uint lpBal = REWARD.balanceOf(address(this));
-        uint bal = lpBal.mul(CURVE_POOL.get_virtual_price()) / (MUL * 1e18);
-
-        bal = bal.add(token.balanceOf(address(this)));
-
-        return bal;
+        total = lpBal.mul(CURVE_POOL.get_virtual_price()) / (MUL * 1e18);
+        total = total.add(token.balanceOf(address(this)));
     }
 
     function totalAssets() external view override returns (uint) {
@@ -247,13 +244,17 @@ contract StrategyConvexBbtc is Strategy {
         return _amount;
     }
 
-    function withdraw(uint _amount) external override onlyFundManager returns (uint) {
+    function withdraw(uint _amount)
+        external
+        override
+        onlyFundManager
+        returns (uint loss)
+    {
         require(_amount > 0, "withdraw = 0");
 
         // availabe <= _amount
         uint available = _withdraw(_amount);
 
-        uint loss = 0;
         uint debt = fundManager.getDebt(address(this));
         uint total = _totalAssets();
         if (debt > total) {
@@ -265,8 +266,6 @@ contract StrategyConvexBbtc is Strategy {
         }
 
         emit Withdraw(_amount, available, loss);
-
-        return loss;
     }
 
     function repay(uint _amount, uint _min) external override onlyAuthorized {
