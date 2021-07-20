@@ -507,13 +507,17 @@ contract StrategyCompLev is Strategy {
     @dev Returns current loss = debt to fund manager - total assets
     @dev Caller should implement guard against slippage
     */
-    function withdraw(uint _amount) external override onlyFundManager returns (uint) {
+    function withdraw(uint _amount)
+        external
+        override
+        onlyFundManager
+        returns (uint loss)
+    {
         require(_amount > 0, "withdraw = 0");
 
         // availabe <= _amount
         uint available = _withdraw(_amount);
 
-        uint loss = 0;
         uint debt = fundManager.getDebt(address(this));
         uint total = _totalAssets();
         if (debt > total) {
@@ -525,8 +529,6 @@ contract StrategyCompLev is Strategy {
         }
 
         emit Withdraw(_amount, available, loss);
-
-        return loss;
     }
 
     function repay(uint _amount, uint _min) external override {
