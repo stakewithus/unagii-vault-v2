@@ -660,6 +660,11 @@ contract StrategyCompLev is Strategy {
             address(strat.fundManager()) == address(fundManager),
             "strategy fund manager != fund manager"
         );
+
+        if (claimRewardsOnMigrate) {
+            _claimRewards(1);
+        }
+
         uint bal = _withdraw(type(uint).max);
         token.safeApprove(_strategy, bal);
         strat.transferTokenFrom(address(this), bal);
