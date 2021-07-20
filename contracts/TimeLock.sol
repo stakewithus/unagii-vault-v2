@@ -73,7 +73,7 @@ contract TimeLock {
     function _getTxHash(
         address target,
         uint value,
-        bytes memory data,
+        bytes calldata data,
         uint eta,
         uint nonce
     ) private pure returns (bytes32) {
@@ -101,7 +101,7 @@ contract TimeLock {
     function _queue(
         address target,
         uint value,
-        bytes memory data,
+        bytes calldata data,
         uint delay,
         uint nonce
     ) private {
