@@ -187,6 +187,7 @@ contract TimeLock {
         uint eta,
         uint nonce
     ) external payable onlyAdmin {
+        require(address(this).balance >= value, "bal < value");
         _execute(target, value, data, eta, nonce);
     }
 
@@ -205,6 +206,13 @@ contract TimeLock {
         require(data.length == targets.length, "data.length != targets.length");
         require(etas.length == targets.length, "etas.length != targets.length");
         require(nonces.length == targets.length, "nonces.length != targets.length");
+
+        // check total value <= balance
+        uint totalValue;
+        for (uint i = 0; i < targets.length; i++) {
+            totalValue += values[i];
+        }
+        require(address(this).balance >= totalValue, "bal < total value");
 
         for (uint i = 0; i < targets.length; i++) {
             _execute(targets[i], values[i], data[i], etas[i], nonces[i]);

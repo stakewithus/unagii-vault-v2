@@ -22,6 +22,11 @@ def test_batch_execute(chain, timeLock, txTest, admin):
 
     chain.sleep(max(delays))
 
+    with brownie.reverts("bal < total value"):
+        timeLock.batchExecute(
+            targets, values, data, etas, nonces, {"from": admin, "value": values[0]}
+        )
+
     tx = timeLock.batchExecute(
         targets, values, data, etas, nonces, {"from": admin, "value": sum(values)}
     )

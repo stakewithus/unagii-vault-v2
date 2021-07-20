@@ -15,8 +15,13 @@ def test_execute(chain, timeLock, txTest, admin):
     eta = tx.timestamp + delay
     txHash = timeLock.getTxHash(txTest, value, data, eta, nonce)
 
+    with brownie.reverts("bal < value"):
+        timeLock.execute(txTest, value, data, eta, nonce, {"from": admin, "value": 0})
+
     with brownie.reverts("eta < now"):
-        timeLock.execute(txTest, value, data, eta, nonce, {"from": admin})
+        timeLock.execute(
+            txTest, value, data, eta, nonce, {"from": admin, "value": value}
+        )
 
     chain.sleep(delay)
 
