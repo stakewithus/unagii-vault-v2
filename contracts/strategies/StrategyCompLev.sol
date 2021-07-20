@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 pragma solidity 0.7.6;
+// version 0.1.1
 
 import "../interfaces/uniswap/UniswapV2Router.sol";
 import "../interfaces/compound/CErc20.sol";
@@ -73,7 +74,7 @@ contract StrategyCompLev is Strategy {
 
     function _setDex(address _dex) private {
         if (dex != address(0)) {
-            comp.safeApprove(_dex, 0);
+            comp.safeApprove(dex, 0);
         }
 
         dex = _dex;
