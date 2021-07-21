@@ -3,7 +3,6 @@ pragma solidity 0.7.6;
 
 import "../StrategyEth.sol";
 
-// Test Strategy.sol
 contract StrategyEthTest is StrategyEth {
     using SafeERC20 for IERC20;
 
@@ -52,17 +51,25 @@ contract StrategyEthTest is StrategyEth {
         emit Repay(_amount, repaid);
     }
 
-    function claimRewards(uint) external override onlyAuthorized {
+    function _claimRewards(uint) internal {
         emit ClaimRewards(0);
     }
 
-    function skim() external override onlyAuthorized {
+    function claimRewards(uint _minProfit) external override onlyAuthorized {
+        _claimRewards(_minProfit);
+    }
+
+    function _skim() internal {
         uint total = _totalAssets();
         uint debt = fundManager.getDebt(address(this));
         emit Skim(total, debt, 0);
     }
 
-    function report(uint _minTotal, uint _maxTotal) external override onlyAuthorized {
+    function skim() external override onlyAuthorized {
+        _skim();
+    }
+
+    function _report(uint, uint) internal {
         uint total = _totalAssets();
 
         uint gain = 0;
@@ -88,11 +95,19 @@ contract StrategyEthTest is StrategyEth {
         emit Report(gain, loss, free, total, debt);
     }
 
+    function report(uint _minTotal, uint _maxTotal) external override onlyAuthorized {
+        _report(_minTotal, _maxTotal);
+    }
+
     function harvest(
-        uint,
-        uint,
-        uint
-    ) external override onlyAuthorized {}
+        uint _minProfit,
+        uint _minTotal,
+        uint _maxTotal
+    ) external override onlyAuthorized {
+        _claimRewards(_minProfit);
+        _skim();
+        _report(_minTotal, _maxTotal);
+    }
 
     function migrate(address payable _strategy) external override onlyAuthorized {
         _sendEth(_strategy, address(this).balance);

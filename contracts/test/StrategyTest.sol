@@ -7,7 +7,6 @@ interface ITestToken {
     function burn(address, uint) external;
 }
 
-// Test Strategy.sol
 contract StrategyTest is Strategy {
     using SafeERC20 for IERC20;
 
@@ -58,17 +57,25 @@ contract StrategyTest is Strategy {
         emit Repay(_amount, repaid);
     }
 
-    function claimRewards(uint) external override onlyAuthorized {
+    function _claimRewards(uint) internal {
         emit ClaimRewards(0);
     }
 
-    function skim() external override onlyAuthorized {
+    function claimRewards(uint _minProfit) external override onlyAuthorized {
+        _claimRewards(_minProfit);
+    }
+
+    function _skim() internal {
         uint total = _totalAssets();
         uint debt = fundManager.getDebt(address(this));
         emit Skim(total, debt, 0);
     }
 
-    function report(uint _minTotal, uint _maxTotal) external override onlyAuthorized {
+    function skim() external override onlyAuthorized {
+        _skim();
+    }
+
+    function _report(uint, uint) internal {
         uint total = _totalAssets();
 
         uint gain = 0;
@@ -94,11 +101,19 @@ contract StrategyTest is Strategy {
         emit Report(gain, loss, free, total, debt);
     }
 
+    function report(uint _minTotal, uint _maxTotal) external override onlyAuthorized {
+        _report(_minTotal, _maxTotal);
+    }
+
     function harvest(
-        uint,
-        uint,
-        uint
-    ) external override onlyAuthorized {}
+        uint _minProfit,
+        uint _minTotal,
+        uint _maxTotal
+    ) external override onlyAuthorized {
+        _claimRewards(_minProfit);
+        _skim();
+        _report(_minTotal, _maxTotal);
+    }
 
     function migrate(address _strategy) external override onlyAuthorized {
         token.transfer(_strategy, token.balanceOf(address(this)));
