@@ -6,7 +6,7 @@
 @license AGPL-3.0-or-later
 """
 
-VERSION: constant(String[28]) = "0.1.0"
+VERSION: constant(String[28]) = "0.1.1"
 
 from vyper.interfaces import ERC20
 
