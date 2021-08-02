@@ -217,8 +217,7 @@ def __init__(guardian: address, worker: address, oldFundManager: address):
 @external
 @payable
 def __default__():
-    pass
-    # log ReceiveEth(msg.sender, msg.value)
+    log ReceiveEth(msg.sender, msg.value)
 
 
 @external
