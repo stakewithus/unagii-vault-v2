@@ -8,7 +8,7 @@ def test_skim(ethVault, admin, user, testEthFundManager):
     fundManager = testEthFundManager
 
     # not auth
-    with brownie.reverts("!auth"):
+    with brownie.reverts("!time lock"):
         vault.skim({"from": user})
 
     vault.setFundManager(fundManager, {"from": timeLock})

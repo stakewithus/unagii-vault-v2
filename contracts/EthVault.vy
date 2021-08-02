@@ -832,7 +832,7 @@ def skim():
     @notice Transfer excess ETH sent to this contract to admin or time lock
     @dev actual ETH balance must be >= `balanceOfVault`
     """
-    assert msg.sender in [self.timeLock, self.admin], "!auth"
+    assert msg.sender == self.timeLock, "!time lock"
     self._sendEth(msg.sender, self.balance - self.balanceOfVault)
 
 
