@@ -1,4 +1,5 @@
 import brownie
+from brownie import ZERO_ADDRESS
 import pytest
 
 
@@ -15,4 +16,5 @@ def test_accept_time_lock(ethFundManager, user):
 
     tx = fundManager.acceptTimeLock({"from": nextTimeLock})
     assert fundManager.timeLock() == nextTimeLock
+    assert fundManager.nextTimeLock() == ZERO_ADDRESS
     assert tx.events["AcceptTimeLock"].values() == [nextTimeLock]

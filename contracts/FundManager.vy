@@ -416,6 +416,7 @@ def acceptTimeLock():
     """
     assert msg.sender == self.nextTimeLock, "!next time lock"
     self.timeLock = msg.sender
+    self.nextTimeLock = ZERO_ADDRESS
     log AcceptTimeLock(msg.sender)
 
 

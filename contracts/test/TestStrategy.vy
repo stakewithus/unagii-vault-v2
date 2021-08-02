@@ -48,6 +48,7 @@ def setNextTimeLock(nextTimeLock: address):
 @external
 def acceptTimeLock():
     assert msg.sender == self.nextTimeLock, "!next time lock"
+    self.nextTimeLock = ZERO_ADDRESS
     self.timeLock = msg.sender
 
 

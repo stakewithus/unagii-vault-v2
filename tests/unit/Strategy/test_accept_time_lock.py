@@ -1,4 +1,5 @@
 import brownie
+from brownie import ZERO_ADDRESS
 import pytest
 
 
@@ -13,4 +14,5 @@ def test_accept_time_lock(strategyTest, user):
 
     tx = strategyTest.acceptTimeLock({"from": user})
     assert strategyTest.timeLock() == user
+    assert strategyTest.nextTimeLock() == ZERO_ADDRESS
     assert tx.events["AcceptTimeLock"].values() == [user]

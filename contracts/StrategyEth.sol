@@ -114,6 +114,7 @@ abstract contract StrategyEth {
     function acceptTimeLock() external {
         require(msg.sender == nextTimeLock, "!next time lock");
         timeLock = msg.sender;
+        nextTimeLock = address(0);
         emit AcceptTimeLock(msg.sender);
     }
 

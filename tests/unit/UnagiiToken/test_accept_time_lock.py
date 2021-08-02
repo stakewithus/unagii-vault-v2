@@ -1,4 +1,5 @@
 import brownie
+from brownie import ZERO_ADDRESS
 import pytest
 
 
@@ -12,4 +13,5 @@ def test_accept_time_lock(uToken, user):
 
     tx = uToken.acceptTimeLock({"from": user})
     assert uToken.timeLock() == user
+    assert uToken.nextTimeLock() == ZERO_ADDRESS
     assert tx.events["AcceptTimeLock"].values() == [user]

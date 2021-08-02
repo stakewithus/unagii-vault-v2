@@ -58,6 +58,7 @@ contract TimeLock {
     function acceptAdmin() external {
         require(msg.sender == nextAdmin, "!next admin");
         admin = msg.sender;
+        nextAdmin = address(0);
         emit AcceptAdmin(msg.sender);
     }
 
