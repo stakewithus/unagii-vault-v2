@@ -920,6 +920,7 @@ def getDebt(strategy: address) -> uint256:
 
 
 @external
+@nonreentrant("lock")
 def borrow(amount: uint256) -> uint256:
     """
     @notice Borrow `token` from fund manager
