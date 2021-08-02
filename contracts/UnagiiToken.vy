@@ -99,6 +99,20 @@ def __init__(token: address):
     )
 
 
+@internal
+@view
+def _getDomainSeparator() -> bytes32:
+    return keccak256(
+        concat(
+            DOMAIN_TYPE_HASH,
+            keccak256(convert("unagii", Bytes[6])),
+            keccak256(convert(VERSION, Bytes[28])),
+            convert(chain.id, bytes32),
+            convert(self, bytes32),
+        )
+    )
+
+
 @external
 def setName(name: String[42]):
     assert msg.sender == self.timeLock, "!time lock"
@@ -217,7 +231,7 @@ def permit(
     digest: bytes32 = keccak256(
         concat(
             b"\x19\x01",
-            self.DOMAIN_SEPARATOR,
+            self._getDomainSeparator(), # chain id may be different after fork, recompute domain separator
             keccak256(
                 concat(
                     PERMIT_TYPE_HASH,
