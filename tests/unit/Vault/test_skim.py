@@ -6,7 +6,7 @@ def test_skim(vault, token, admin, user):
     timeLock = vault.timeLock()
 
     # not auth
-    with brownie.reverts("!auth"):
+    with brownie.reverts("!time lock"):
         vault.skim({"from": user})
 
     token.mint(vault, 123)
