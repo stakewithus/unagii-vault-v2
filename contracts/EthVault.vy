@@ -1,7 +1,7 @@
 # @version 0.2.12
 
 """
-@title Unagii EthVault V2
+@title Unagii EthVault V2 0.1.1
 @author stakewith.us
 @license AGPL-3.0-or-later
 """
