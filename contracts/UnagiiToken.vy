@@ -211,6 +211,25 @@ def decreaseAllowance(spender: address, amount: uint256) -> bool:
     return True
 
 
+@internal
+@view
+def _recover(digest: bytes32, v: uint256, r: bytes32, s: bytes32) -> address: 
+    """
+    @dev ECDSA signature malleability.
+         Code ported from Solidity
+         https://github.com/OpenZeppelin/openzeppelin-contracts/blob/v3.4.0/contracts/cryptography/ECDSA.sol#L53
+    """
+    _r: uint256 = convert(r, uint256)
+    _s: uint256 = convert(s, uint256)
+
+    # 0x7FF... is intentionally not stored as constant(uint256) so that code is
+    # compared with OpenZeppelin's Solidity code
+    assert _s <= convert(0x7FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF5D576E7357A4501DDFE92F46681B20A0, uint256), "invalid signature s"
+    assert v == 27 or v == 28, "invalid signature v"
+
+    return ecrecover(digest, v, _r, _s)
+
+
 @external
 def permit(
     owner: address,
@@ -246,9 +265,9 @@ def permit(
         )
     )
 
-    _r: uint256 = convert(r, uint256)
-    _s: uint256 = convert(s, uint256)
-    assert ecrecover(digest, v, _r, _s) == owner, "invalid signature"
+    # owner cannot = ZERO_ADDRESS from check above
+    # this will fail if _recover() returns ZERO_ADDRESS
+    assert self._recover(digest, v, r, s) == owner, "invalid signature"
 
     self.nonces[owner] += 1
     self.allowance[owner][spender] = amount

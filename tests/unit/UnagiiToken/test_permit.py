@@ -20,7 +20,7 @@ def test_deadline(uToken, user):
 
 def sign(chain, uToken, owner, spender, allowance, deadline, nonce):
     name = "unagii"
-    version = "0.1.0"
+    version = "0.1.1"
 
     data = {
         "types": {
@@ -42,6 +42,7 @@ def sign(chain, uToken, owner, spender, allowance, deadline, nonce):
             "name": name,
             "version": version,
             # "chainId": chain.id,
+            # https://github.com/trufflesuite/ganache/issues/1643
             "chainId": 1,
             "verifyingContract": str(uToken),
         },
