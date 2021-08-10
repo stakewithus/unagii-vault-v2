@@ -9,17 +9,17 @@ config = {
     },
     "mainnet": {
         "ETH": {
-            "uToken": "0x5a6170496aAEC8649B25ec0cd53e55bC38525B00",
+            "uToken": "0xDe07f45688cb6CfAaC398c1485860e186D55996D",
         },
     },
 }
 
 
-def deploy_ropsten_eth_vault():
+def ropsten_eth():
     deploy(config["ropsten"]["ETH"])
 
 
-def deploy_mainnet_eth_vault():
+def mainnet_eth():
     deploy(config["mainnet"]["ETH"])
 
 

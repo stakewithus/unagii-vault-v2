@@ -11,19 +11,19 @@ config = {
     "mainnet": {
         "DAI": {
             "token": "0x6B175474E89094C44DA98B954EEDEAC495271D0F",
-            "uToken": "0xffd51A24C65CC6981F3A543320fDadaf57ffFD7A",
+            "uToken": "0x634b0273D7060313FAA60f96705116c9DE50fA1f",
         },
         "USDC": {
             "token": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
-            "uToken": "0x8ae16964763Bab7D73c5ECEBe7A51E6827BaED66",
+            "uToken": "0x49b09e7E434a3A4A924A3b640cBBA54bF93B5677",
         },
         "USDT": {
             "token": "0xdAC17F958D2ee523a2206206994597C13D831ec7",
-            "uToken": "0x91Ea2CEbB595677368B2D5aa373eE836f90E7269",
+            "uToken": "0xBF8734c5A7b3e6D88aa0110beBB37844AC043d0A",
         },
         "WBTC": {
             "token": "0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599",
-            "uToken": "0x7f880118123547EA36F20C56617db899B50Fd6eb",
+            "uToken": "0x7F20551E082ba3E035F2890cBD1EC4E275b9C8C0",
         },
     },
 }

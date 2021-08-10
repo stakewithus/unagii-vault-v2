@@ -8,7 +8,7 @@ from brownie import ZERO_ADDRESS
 config = {
     "mainnet": {
         "ETH": {
-            "fundManager": "0x09f15F979Bf1b0CC8c8a19ed2E2feFF8EdE60e54",
+            "fundManager": "0x9501B3a6DcE1Bbe6094356391F3992e08EE90E3a",
         },
     },
 }

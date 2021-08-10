@@ -111,6 +111,62 @@ env $(cat .env) brownie run scripts/script-to-run.py [function] --network ropste
 0x1133b7AA55fB87Af5dE48A6C908E6436d09F1644
 0x4Da0f9627616951BD694fEc66e1A24715dB584b0
 
+# mainnet
+# time lock
+0x6e8a1e3b0B59C029809eDEE5bb9dF96FF34812a9
+
+# udai
+0x634b0273D7060313FAA60f96705116c9DE50fA1f
+# uusdc
+0x49b09e7E434a3A4A924A3b640cBBA54bF93B5677
+# uusdt
+0xBF8734c5A7b3e6D88aa0110beBB37844AC043d0A
+# uwbtc
+0x7F20551E082ba3E035F2890cBD1EC4E275b9C8C0
+# ueth
+0xDe07f45688cb6CfAaC398c1485860e186D55996D
+
+# dai vault
+0x9ce3018375d305CE3C3303A26eF62D3d2EB8561A
+# usdc vault
+0x7f75d72886D6A8677321E5602d18948aBCb4281A
+# usdt vault
+0x1Eb06EaE3263a35619dC87812a8e7Ec811B59E63
+# wbtc vault
+0xB088D7C71ea9eBAed981c103Fc3019B59950d2C9
+# eth vault
+0x8eF11c51a666C53Aeeec504f120cd1435E451342
+
+# dai fund manager
+0x7C765C474D231fd915dc78832b478F309071cba7
+# usdc fund manager
+0xb00AA15F78A278Be2FCb2aa7de899F3F863780f8
+# usdt fund manager
+0xdF60b2CC40AFd588Bf650977A2d6C6AF39939f4C
+# wbtc fund manager
+0x0349Cf57BaE5C0d9be56b9C478Ea3797c7BcFddB
+# eth fund manager
+0x9501B3a6DcE1Bbe6094356391F3992e08EE90E3a
+
+# StrategyCompLevDai
+# StrategyConvexAlUsdDai
+0x994cC3a3fC0e1cB9A16f5eD06Cf52169c09ab480
+# StrategyConvexUsdpDai
+0xfE9672948C47AaD16F38210951AB4f0BB384149a
+# StrategyCompLevUsdc
+# StrategyConvexAlUsdUsdc
+0x159569426128deF2afBd3F5da5d230298f1D5Ab7
+# StrategyConvexUsdpUsdc
+0x5434096Ec6cBa8962B6630a495d508eBBcF891Da
+# StrategyConvexAlUsdUsdt
+0x48424fb48C1d148B38A9d6f29D05aD09003c9Af0
+# StrategyConvexUsdpUsdt
+0x9A03A2EF8A4C6ec8C2878dFB59DA42B246E7CE59
+# StrategyConvexBbtcWbtc
+0x07dA6bBA8529FC564f930aB7cCb7d7abbe6Ff56b
+#StrategyConvexStEth
+0xe859231d5ef4051D300698B9D46C421de1D7D5e0
+
 # mainnet (dev)
 
 # udai
@@ -170,6 +226,4 @@ env $(cat .env) brownie run scripts/script-to-run.py [function] --network ropste
 
 #StrategyConvexStEth
 0x302Ef51E94360fE890336812B09dF3d22d1024E8
-
-# mainnet
 ```

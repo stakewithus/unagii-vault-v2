@@ -8,7 +8,7 @@ from brownie import ZERO_ADDRESS
 config = {
     "mainnet": {
         "WBTC": {
-            "fundManager": "0xd5A84Cbb69351c6991BA56CF78052f59092d404C",
+            "fundManager": "0x0349Cf57BaE5C0d9be56b9C478Ea3797c7BcFddB",
         },
     },
 }
