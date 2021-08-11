@@ -4,10 +4,10 @@ from brownie import ZERO_ADDRESS
 config = {
     "mainnet": {
         "DAI": {
-            "fundManager": "0x8a90faDe80feadCDD595c4f3611eB1886c924b61",
+            "fundManager": "0x7C765C474D231fd915dc78832b478F309071cba7",
         },
         "USDC": {
-            "fundManager": "0xf01c9a51ff69fC2982156be9D558d56002328Fcc",
+            "fundManager": "0xb00AA15F78A278Be2FCb2aa7de899F3F863780f8",
         },
     },
 }
