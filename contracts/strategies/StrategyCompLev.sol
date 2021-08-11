@@ -69,7 +69,7 @@ contract StrategyCompLev is Strategy {
         cToken = CErc20(_cToken);
         IERC20(_token).safeApprove(_cToken, type(uint).max);
 
-        _setDex(0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D); // Uniswap
+        _setDex(0xd9e1cE17f2641f24aE83637ab66a2cca9C378B9F); // Sushiswap
     }
 
     function _setDex(address _dex) private {
