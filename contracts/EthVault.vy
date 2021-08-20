@@ -1,7 +1,7 @@
 # @version 0.2.12
 
 """
-@title Unagii EthVault V2 0.1.1
+@title Unagii EthVault V2 0.1.2
 @author stakewith.us
 @license AGPL-3.0-or-later
 """
@@ -682,6 +682,7 @@ def _calcMinReserve() -> uint256:
 
 
 @external
+@view
 def calcMinReserve() -> uint256:
     return self._calcMinReserve()
 
