@@ -170,6 +170,6 @@ solc-select use 0.8.4
 slither contracts/Contract.sol
 
 # check code size
-cat build/contracts/Contract.json | jq -r '.deployedBytecode' | wc -c
 # divide output by 2 to get size in bytes
+vyper contracts/Contract.vy -f bytecode | wc -c
 ```
