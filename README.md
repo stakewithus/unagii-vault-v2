@@ -169,7 +169,6 @@ solc-select use 0.8.4
 # slither
 slither contracts/Contract.sol
 
-# check code size
-# divide output by 2 to get size in bytes
-vyper contracts/Contract.vy -f bytecode | wc -c
+# check code size (max 2457 bytes)
+brownie compile -s
 ```
