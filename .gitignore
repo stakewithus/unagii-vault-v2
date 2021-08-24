@@ -19,5 +19,6 @@ artifacts
 types
 dist
 
+tmp
 memo
 flat.sol
