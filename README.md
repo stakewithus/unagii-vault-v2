@@ -49,20 +49,6 @@ env $(cat .env) brownie test tests/mainnet/test.py --network mainnet-fork -s
 
 ```
 
-```shell
-# black format python
-black --check --include "(tests|scripts)" .
-# format vyper
-blackadder --fast --include '\.vy$' contracts
-
-# select solc compiler
-solc-select install 0.8.4
-solc-select use 0.8.4
-
-# slither
-slither contracts/Contract.sol
-```
-
 ### Deploy
 
 ```shell
@@ -166,4 +152,24 @@ env $(cat .env) brownie run scripts/script-to-run.py [function] --network ropste
     dev_strategyConvexStEth: "0x302Ef51E94360fE890336812B09dF3d22d1024E8",
   }
 }
+```
+
+### Misc
+
+```shell
+# black format python
+black --check --include "(tests|scripts)" .
+# format vyper
+blackadder --fast --include '\.vy$' contracts
+
+# select solc compiler
+solc-select install 0.8.4
+solc-select use 0.8.4
+
+# slither
+slither contracts/Contract.sol
+
+# check code size
+cat build/contracts/Contract.json | jq -r '.deployedBytecode' | wc -c
+# divide output by 2 to get size in bytes
 ```
