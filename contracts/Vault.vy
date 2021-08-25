@@ -126,7 +126,7 @@ event Repay:
 
 
 event Report:
-    fundManager: indexed(address)
+    strategy: indexed(address)
     balanceOfVault: uint256
     debt: uint256
     gain: uint256
@@ -948,11 +948,11 @@ def report(gain: uint256, loss: uint256):
     @notice Report profit or loss
     @param gain Profit since last report
     @param loss Loss since last report
-    @dev Only fund manager can call
+    @dev Only active strategy can call
     @dev Locks profit to be release over time
     """
     assert self.initialized, "!initialized"
-    assert msg.sender == self.fundManager.address, "!fund manager"
+    assert self.strategies[msg.sender].active, "!active"
     # can't have both gain and loss > 0
     assert (gain >= 0 and loss == 0) or (gain == 0 and loss >= 0), "gain and loss > 0"
 
