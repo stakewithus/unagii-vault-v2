@@ -25,7 +25,7 @@ struct Strategy:
 
 
 interface IStrategy:
-    def fundManager() -> address: view
+    def vault() -> address: view
     def token() -> address: view
     def withdraw(amount: uint256) -> uint256: nonpayable
     def migrate(newVersion: address): nonpayable
@@ -51,19 +51,11 @@ interface Vault:
     def oldVault() -> address: view
     def token() -> address: view
     def uToken() -> address: view
-    def fundManager() -> address: view
     def initialize(): nonpayable
     def balanceOfVault() -> uint256: view
     def debt() -> uint256: view
     def lockedProfit() -> uint256: view
     def lastReport() -> uint256: view
-
-
-interface FundManager:
-    def vault() -> address: view
-    def token() -> address: view
-    # returns loss = debt - total assets in fund manager
-    def withdraw(amount: uint256) -> uint256: nonpayable
 
 
 event Migrate:
@@ -87,10 +79,6 @@ event SetGuardian:
 
 event SetAdmin:
     admin: address
-
-
-event SetFundManager:
-    fundManager: address
 
 
 event SetPause:
@@ -179,7 +167,6 @@ paused: public(bool)
 
 token: public(ERC20)
 uToken: public(UnagiiToken)
-fundManager: public(FundManager)
 # privileges: time lock >= admin >= guardian
 timeLock: public(address)
 nextTimeLock: public(address)
@@ -190,7 +177,7 @@ depositLimit: public(uint256)
 # token balance of vault tracked internally to protect against share dilution
 # from sending tokens directly to this contract
 balanceOfVault: public(uint256)
-debt: public(uint256)  # debt to users (amount borrowed by fund manager)
+debt: public(uint256)  # debt to users (amount borrowed by strategies)
 # minimum amount of token to be kept in this vault for cheap withdraw
 minReserve: public(uint256)
 MAX_MIN_RESERVE: constant(uint256) = 10000
@@ -306,12 +293,6 @@ def initialize():
 
         assert self.uToken.minter() == self, "minter != self"
 
-        assert (
-            self.fundManager.address == self.oldVault.fundManager()
-        ), "fund manager != old vault fund manager"
-        if self.fundManager.address != ZERO_ADDRESS:
-            assert self.fundManager.vault() == self, "fund manager vault != self"
-
         # check balance of old vault >= old balanceOfVault
         bal: uint256 = self.token.balanceOf(self.oldVault.address)
         balOfVault: uint256 = self.oldVault.balanceOfVault()
@@ -338,7 +319,6 @@ def initialize():
 # ut = unagi token
 # v1 = vault 1
 # v2 = vault 2
-# f = fund manager
 #
 # action                         | caller
 # ----------------------------------------
@@ -346,7 +326,6 @@ def initialize():
 # 2. v1.setPause(true)           | admin
 # 3. ut.setMinter(v2)            | time lock
 # 4. f.setVault(v2)              | time lock
-# 5. v2.setFundManager(f)        | time lock
 # 6. t.approve(v2, bal)          | v1
 # 7. t.transferFrom(v1, v2, bal) | v2
 # 8. v2 copy states from v1      | v2
@@ -374,13 +353,6 @@ def migrate(vault: address):
     assert Vault(vault).uToken() == self.uToken.address, "new vault uToken != uToken"
     # minter is set to new vault
     assert self.uToken.minter() == vault, "minter != new vault"
-    # new vault's fund manager is set to current fund manager
-    assert (
-        Vault(vault).fundManager() == self.fundManager.address
-    ), "new vault fund manager != fund manager"
-    if self.fundManager.address != ZERO_ADDRESS:
-        # fund manager's vault is set to new vault
-        assert self.fundManager.vault() == vault, "fund manager vault != new vault"
 
     # check balance of vault >= balanceOfVault
     bal: uint256 = self.token.balanceOf(self)
@@ -440,23 +412,6 @@ def setGuardian(guardian: address):
 
 
 @external
-def setFundManager(fundManager: address):
-    """
-    @notice Set fund manager
-    @param fundManager Address of new fund manager
-    """
-    assert msg.sender == self.timeLock, "!time lock"
-
-    assert FundManager(fundManager).vault() == self, "fund manager vault != self"
-    assert (
-        FundManager(fundManager).token() == self.token.address
-    ), "fund manager token != token"
-
-    self.fundManager = FundManager(fundManager)
-    log SetFundManager(fundManager)
-
-
-@external
 def setPause(paused: bool):
     assert msg.sender in [self.timeLock, self.admin, self.guardian], "!auth"
     self.paused = paused
@@ -469,8 +424,8 @@ def setMinReserve(minReserve: uint256):
     @notice Set minimum amount of token reserved in this vault for cheap
             withdrawn by user
     @param minReserve Numerator to calculate min reserve
-           0 = all funds can be transferred to fund manager
-           MAX_MIN_RESERVE = 0 tokens can be transferred to fund manager
+           0 = all funds can be transferred to strategies
+           MAX_MIN_RESERVE = 0 tokens can be transferred to strategies
     """
     assert msg.sender in [self.timeLock, self.admin], "!auth"
     assert minReserve <= MAX_MIN_RESERVE, "min reserve > max"
@@ -541,7 +496,7 @@ def setWhitelist(addr: address, approved: bool):
 @view
 def _totalAssets() -> uint256:
     """
-    @notice Total amount of token in this vault + amount in fund manager
+    @notice Total amount of token in this vault + amount in strategies
     @dev State variable `balanceOfVault` is used to track balance of token in
          this contract instead of `token.balanceOf(self)`. This is done to
          protect against uToken shares being diluted by directly sending token
@@ -615,7 +570,7 @@ def _calcSharesToMint(
     # s = shares to mint
     # T = total shares before mint
     # a = deposit amount
-    # P = total amount of underlying token in vault + fund manager before deposit
+    # P = total amount of token in vault + strategies before deposit
     # s / (T + s) = a / (P + a)
     # sP = aT
     # a = 0               | mint s = 0
@@ -653,7 +608,7 @@ def _calcWithdraw(shares: uint256, totalSupply: uint256, freeFunds: uint256) -> 
     # s = shares
     # T = total supply of shares
     # a = amount to withdraw
-    # P = total amount of underlying token in vault + fund manager
+    # P = total amount of token in vault + strategies
     # s / T = a / P (constraints T >= s, P >= a)
     # sP = aT
     # s = 0               | a = 0
@@ -790,11 +745,11 @@ def withdraw(shares: uint256, _min: uint256) -> uint256:
         _shares, self.uToken.totalSupply(), self._calcFreeFunds()
     )
 
-    # withdraw from fund manager if amount to withdraw > balance of vault
+    # withdraw from strategies if amount to withdraw > balance of vault
     if amount > self.balanceOfVault:
         diff: uint256 = self.token.balanceOf(self)
-        # loss = debt - total assets in fund manager + any loss from strategies
-        loss: uint256 = self.fundManager.withdraw(amount - self.balanceOfVault)
+        # loss = debt - total assets in strategies + any loss from strategies
+        loss: uint256 = self._withdraw(amount - self.balanceOfVault)
         diff = self.token.balanceOf(self) - diff
 
         # diff + loss may be >= amount
@@ -918,7 +873,7 @@ def repay(amount: uint256) -> uint256:
     """
     @notice Repay token to vault
     @dev Only approved and active strategy can repay
-    @dev Returns actual amount that was repaid by fund manager
+    @dev Returns actual amount that was repaid
     """
     assert self.initialized, "!initialized"
     assert self.strategies[msg.sender].approved, "!strategy"
@@ -1040,7 +995,7 @@ def approveStrategy(strategy: address):
     assert msg.sender == self.timeLock, "!time lock"
 
     assert not self.strategies[strategy].approved, "approved"
-    assert IStrategy(strategy).fundManager() == self, "strategy fund manager != this"
+    assert IStrategy(strategy).vault() == self, "strategy vault != this"
     assert IStrategy(strategy).token() == self.token.address, "strategy token != token"
 
     self.strategies[strategy] = Strategy(
