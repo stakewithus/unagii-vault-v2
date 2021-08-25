@@ -19,6 +19,7 @@ struct Strategy:
     activated: bool  # sent to True once after strategy is active
     debtRatio: uint256  # ratio of total assets this strategy can borrow
     debt: uint256  # current amount borrowed
+    # TODO: remove, use debtRatio to control borrow amount?
     minBorrow: uint256  # minimum amount to borrow per call to borrow()
     maxBorrow: uint256  # maximum amount to borrow per call to borrow()
 
