@@ -8,6 +8,11 @@
 
 from vyper.interfaces import ERC20
 
+# ERC20 selectors
+APPROVE: constant(Bytes[4]) = method_id("approve(address,uint256)")
+TRANSFER: constant(Bytes[4]) = method_id("transfer(address,uint256)")
+TRANSFER_FROM: constant(Bytes[4]) = method_id("transferFrom(address,address,uint256)")
+
 # maximum number of active strategies
 MAX_QUEUE: constant(uint256) = 20
 MAX_TOTAL_DEBT_RATIO: constant(uint256) = 10000
@@ -234,8 +239,7 @@ def _safeApprove(token: address, spender: address, amount: uint256):
     res: Bytes[32] = raw_call(
         token,
         concat(
-            # TODO: inline computed method id
-            method_id("approve(address,uint256)"),
+            APPROVE,
             convert(spender, bytes32),
             convert(amount, bytes32),
         ),
@@ -250,7 +254,7 @@ def _safeTransfer(token: address, receiver: address, amount: uint256):
     res: Bytes[32] = raw_call(
         token,
         concat(
-            method_id("transfer(address,uint256)"),
+            TRANSFER,
             convert(receiver, bytes32),
             convert(amount, bytes32),
         ),
@@ -267,7 +271,7 @@ def _safeTransferFrom(
     res: Bytes[32] = raw_call(
         token,
         concat(
-            method_id("transferFrom(address,address,uint256)"),
+            TRANSFER_FROM,
             convert(owner, bytes32),
             convert(receiver, bytes32),
             convert(amount, bytes32),
