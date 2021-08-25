@@ -721,7 +721,7 @@ def deposit(amount: uint256, _min: uint256) -> uint256:
     self.balanceOfVault += diff
     self.uToken.mint(msg.sender, shares)
 
-    # check token balance >= balanceOfVault
+    # check token balance >= balanceOfVault (TODO: can remove this if mint against balance diff)
     assert self.token.balanceOf(self) >= self.balanceOfVault, "bal < vault"
 
     log Deposit(msg.sender, _amount, diff, shares)
