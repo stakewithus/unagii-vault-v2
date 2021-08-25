@@ -234,6 +234,7 @@ def _safeApprove(token: address, spender: address, amount: uint256):
     res: Bytes[32] = raw_call(
         token,
         concat(
+            # TODO: inline computed method id
             method_id("approve(address,uint256)"),
             convert(spender, bytes32),
             convert(amount, bytes32),
