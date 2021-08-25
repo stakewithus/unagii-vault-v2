@@ -116,15 +116,13 @@ event Withdraw:
 
 
 event Borrow:
-    fundManager: indexed(address)
+    strategy: indexed(address)
     amount: uint256
-    borrowed: uint256
 
 
 event Repay:
-    fundManager: indexed(address)
+    strategy: indexed(address)
     amount: uint256
-    repaid: uint256
 
 
 event Report:
@@ -847,86 +845,99 @@ def calcMinReserve() -> uint256:
 
 @internal
 @view
-def _calcMaxBorrow() -> uint256:
+def _calcMaxBorrow(strategy: address) -> uint256:
     """
-    @notice Calculate amount of token available for fund manager to borrow
-    @dev Returns amount of token fund manager can borrow
+    @notice Calculate how much `token` strategy can borrow
+    @param strategy Address of strategy
+    @dev Returns amount of `token` that `strategy` can borrow
     """
-    if (
-        (not self.initialized)
-        or self.paused
-        or self.fundManager.address == ZERO_ADDRESS
-    ):
+    if (not self.initialized) or self.paused or self.totalDebtRatio == 0:
         return 0
+    
+    minReserve: uint256 = self._calcMinReserve()
+    if self.balanceOfVault <= minReserve:
+        return 0
+    
+    free: uint256 = self.balanceOfVault - minReserve
 
-    minBal: uint256 = self._calcMinReserve()
+    # strategy debtRatio > 0 only if strategy is active
+    limit: uint256 = (
+        self.strategies[strategy].debtRatio * free / self.totalDebtRatio
+    )
+    debt: uint256 = self.strategies[strategy].debt
 
-    if self.balanceOfVault > minBal:
-        return self.balanceOfVault - minBal
-    return 0
+    if debt >= limit:
+        return 0
+    
+    # available: uint256 = min(limit - debt, self.token.balanceOf(self))
+
+    # if available < self.strategies[strategy].minBorrow:
+    #     return 0
+    # else:
+    #     return min(available, self.strategies[strategy].maxBorrow)
+
+    return limit - debt
 
 
 @external
 @view
-def calcMaxBorrow() -> uint256:
-    return self._calcMaxBorrow()
+def calcMaxBorrow(strategy: address) -> uint256:
+    return self._calcMaxBorrow(strategy)
 
 
 @external
-def borrow(amount: uint256) -> uint256:
+def borrow(amount: uint256):
     """
     @notice Borrow token from vault
-    @dev Only fund manager can borrow
-    @dev Returns actual amount that was given to fund manager
+    @dev Only active strategy can borrow
+    @dev Returns amount that was sent
     """
     # TODO: remove initialized?
     assert self.initialized, "!initialized"
     assert not self.paused, "paused"
-    assert msg.sender == self.fundManager.address, "!fund manager"
+    assert self.strategies[msg.sender].active, "!active"
 
-    available: uint256 = self._calcMaxBorrow()
-    _amount: uint256 = min(amount, available)
-    assert _amount > 0, "borrow = 0"
+    available: uint256 = self._calcMaxBorrow(msg.sender)
+    assert amount <= available, "borrow > available"
 
-    self._safeTransfer(self.token.address, msg.sender, _amount)
+    self._safeTransfer(self.token.address, msg.sender, amount)
 
-    self.balanceOfVault -= _amount
+    self.balanceOfVault -= amount
     # include fee on trasfer to debt
-    self.debt += _amount
+    self.debt += amount
+    self.strategies[msg.sender].debt += amount
 
-    # check token balance >= balanceOfVault
+    # check token balance >= balanceOfVault (TODO: remove)
     assert self.token.balanceOf(self) >= self.balanceOfVault, "bal < vault"
 
-    log Borrow(msg.sender, amount, _amount)
-
-    return _amount
+    log Borrow(msg.sender, amount)
 
 
 @external
 def repay(amount: uint256) -> uint256:
     """
     @notice Repay token to vault
-    @dev Only fund manager can borrow
+    @dev Only approved and active strategy can repay
     @dev Returns actual amount that was repaid by fund manager
     """
     assert self.initialized, "!initialized"
-    assert msg.sender == self.fundManager.address, "!fund manager"
+    assert self.strategies[msg.sender].approved, "!strategy"
 
-    _amount: uint256 = min(amount, self.debt)
-    assert _amount > 0, "repay = 0"
+    assert amount > 0, "repay = 0"
 
     diff: uint256 = self.token.balanceOf(self)
-    self._safeTransferFrom(self.token.address, msg.sender, self, _amount)
+    self._safeTransferFrom(self.token.address, msg.sender, self, amount)
     diff = self.token.balanceOf(self) - diff
 
     self.balanceOfVault += diff
     # exclude fee on transfer from debt payment
     self.debt -= diff
+    self.strategies[msg.sender].debt -= diff
 
     # check token balance >= balanceOfVault
     assert self.token.balanceOf(self) >= self.balanceOfVault, "bal < vault"
 
-    log Repay(msg.sender, amount, diff)
+    log Repay(msg.sender, diff)
 
     return diff
 
