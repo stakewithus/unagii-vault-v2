@@ -630,45 +630,31 @@ def deposit(amount: uint256, _min: uint256) -> uint256:
     @param _min Minimum amount of uToken to be minted
     @dev Returns actual amount of uToken minted
     """
-    assert self.initialized, "!initialized"
     assert not self.paused, "paused"
+    assert amount > 0, "deposit = 0"
+
     # check block delay or whitelisted
     assert (
         block.number >= self.uToken.lastBlock(msg.sender) + self.blockDelay
         or self.whitelist[msg.sender]
     ), "block < delay"
 
-    _amount: uint256 = min(amount, self.token.balanceOf(msg.sender))
-    assert _amount > 0, "deposit = 0"
-
     totalSupply: uint256 = self.uToken.totalSupply()
     freeFunds: uint256 = self._calcFreeFunds()
 
-    # amount of tokens that this vault received
-    diff: uint256 = 0
-    if self.feeOnTransfer:
-        # actual amount transferred may be less than `amount`
-        # if token has fee on transfer
-        diff = self.token.balanceOf(self)
-        self._safeTransferFrom(self.token.address, msg.sender, self, _amount)
-        diff = self.token.balanceOf(self) - diff
-    else:
-        self._safeTransferFrom(self.token.address, msg.sender, self, _amount)
-        diff = _amount
-
-    assert diff > 0, "diff = 0"
+    balBefore: uint256 = self.token.balanceOf(self)
+    self._safeTransferFrom(self.token.address, msg.sender, self, amount)
+    balAfter: uint256 = self.token.balanceOf(self)
+    diff: uint256 = balAfter - balBefore
 
     # calculate with free funds before deposit
     shares: uint256 = self._calcSharesToMint(diff, totalSupply, freeFunds)
     assert shares >= _min, "shares < min"
 
-    self.balanceOfVault += diff
+    self.balanceOfVault = balAfter
     self.uToken.mint(msg.sender, shares)
 
-    # check token balance >= balanceOfVault (TODO: can remove this if mint against balance diff)
-    assert self.token.balanceOf(self) >= self.balanceOfVault, "bal < vault"
-
-    log Deposit(msg.sender, _amount, diff, shares)
+    log Deposit(msg.sender, amount, diff, shares)
 
     return shares
 
