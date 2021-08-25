@@ -839,6 +839,7 @@ def borrow(amount: uint256) -> uint256:
     @dev Only fund manager can borrow
     @dev Returns actual amount that was given to fund manager
     """
+    # TODO: remove initialized?
     assert self.initialized, "!initialized"
     assert not self.paused, "paused"
     assert msg.sender == self.fundManager.address, "!fund manager"
