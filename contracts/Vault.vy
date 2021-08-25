@@ -989,6 +989,12 @@ def report(gain: uint256, loss: uint256):
     )
 
 
+# TODO:
+@external
+def sync(strategy: address, minTotal: uint256, maxTotal: uint256):
+    pass
+
+
 # array functions tested in test/Array.vy
 @internal
 def _pack():
