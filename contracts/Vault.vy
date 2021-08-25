@@ -175,8 +175,8 @@ uToken: public(UnagiiToken)
 # privileges: time lock >= admin >= guardian
 timeLock: public(address)
 nextTimeLock: public(address)
-guardian: public(address)
 admin: public(address)
+guardian: public(address)
 
 depositLimit: public(uint256)
 # token balance of vault tracked internally to protect against share dilution
