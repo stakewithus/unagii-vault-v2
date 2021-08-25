@@ -342,7 +342,7 @@ def initialize():
 #    - debt                      |
 #    - locked profit             |
 
-
+# TODO: Migration contract
 @external
 def migrate(vault: address):
     """
