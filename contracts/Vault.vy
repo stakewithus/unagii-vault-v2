@@ -178,7 +178,6 @@ nextTimeLock: public(address)
 admin: public(address)
 guardian: public(address)
 
-depositLimit: public(uint256)
 # token balance of vault tracked internally to protect against share dilution
 # from sending tokens directly to this contract
 balanceOfVault: public(uint256)
@@ -450,16 +449,6 @@ def setLockedProfitDegradation(degradation: uint256):
 
 
 @external
-def setDepositLimit(limit: uint256):
-    """
-    @notice Set limit to total deposit
-    @param limit Limit for total deposit
-    """
-    assert msg.sender in [self.timeLock, self.admin], "!auth"
-    self.depositLimit = limit
-
-
-@external
 def setBlockDelay(delay: uint256):
     """
     @notice Set block delay, used to protect against flash attacks
@@ -651,9 +640,6 @@ def deposit(amount: uint256, _min: uint256) -> uint256:
 
     _amount: uint256 = min(amount, self.token.balanceOf(msg.sender))
     assert _amount > 0, "deposit = 0"
-
-    # check deposit limit TODO: remove?
-    assert self._totalAssets() + _amount <= self.depositLimit, "deposit limit"
 
     totalSupply: uint256 = self.uToken.totalSupply()
     freeFunds: uint256 = self._calcFreeFunds()
