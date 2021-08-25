@@ -729,6 +729,45 @@ def deposit(amount: uint256, _min: uint256) -> uint256:
     return shares
 
 
+@internal
+def _withdraw(amount: uint256) -> uint256:
+    """
+    @notice Withdraw `token` from active strategies
+    @param amount Amount of `token` to withdraw
+    @dev Returns sum of losses from active strategies that were withdrawn.
+    """
+    _amount: uint256 = amount
+    totalLoss: uint256 = 0
+    for strategy in self.queue:
+        if strategy == ZERO_ADDRESS:
+            break
+
+        bal: uint256 = self.token.balanceOf(self)
+        if bal >= _amount:
+            break
+
+        debt: uint256 = self.strategies[strategy].debt
+        need: uint256 = min(_amount - bal, debt)
+        if need == 0:
+            continue
+
+        # loss must be <= debt
+        loss: uint256 = IStrategy(strategy).withdraw(need)
+        diff: uint256 = self.token.balanceOf(self) - bal
+
+        if loss > 0:
+            _amount -= loss
+            totalLoss += loss
+            self.strategies[strategy].debt -= loss
+            self.totalDebt -= loss
+
+        self.strategies[strategy].debt -= diff
+        self.totalDebt -= diff
+
+
+    return totalLoss
+
+
 @external
 @nonreentrant("lock")
 def withdraw(shares: uint256, _min: uint256) -> uint256:
