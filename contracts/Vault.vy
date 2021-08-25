@@ -652,7 +652,7 @@ def deposit(amount: uint256, _min: uint256) -> uint256:
     _amount: uint256 = min(amount, self.token.balanceOf(msg.sender))
     assert _amount > 0, "deposit = 0"
 
-    # check deposit limit
+    # check deposit limit TODO: remove?
     assert self._totalAssets() + _amount <= self.depositLimit, "deposit limit"
 
     totalSupply: uint256 = self.uToken.totalSupply()
