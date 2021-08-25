@@ -1171,18 +1171,6 @@ def forceUpdateBalanceOfVault():
 
 
 @external
-def skim():
-    """
-    @notice Transfer excess token sent to this contract to admin or time lock
-    @dev actual token balance must be >= `balanceOfVault`
-    """
-    assert msg.sender == self.timeLock, "!time lock"
-    self._safeTransfer(
-        self.token.address, msg.sender, self.token.balanceOf(self) - self.balanceOfVault
-    )
-
-
-@external
 def sweep(token: address):
     """
     @notice Transfer any token (except `token`) accidentally sent to this contract
