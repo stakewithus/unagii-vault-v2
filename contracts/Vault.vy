@@ -203,7 +203,6 @@ oldVault: public(Vault)
 MIN_OLD_BAL: constant(uint256) = 9990
 MAX_MIN_OLD_BAL: constant(uint256) = 10000
 
-totalDebt: public(uint256)  # sum of all debts of strategies
 totalDebtRatio: public(uint256)  # sum of all debtRatios of strategies
 strategies: public(HashMap[address, Strategy])  # all strategies
 queue: public(address[MAX_QUEUE])  # list of active strategies
@@ -713,10 +712,10 @@ def _withdraw(amount: uint256) -> uint256:
             _amount -= loss
             totalLoss += loss
             self.strategies[strategy].debt -= loss
-            self.totalDebt -= loss
+            self.debt -= loss
 
         self.strategies[strategy].debt -= diff
-        self.totalDebt -= diff
+        self.debt -= diff
 
 
     return totalLoss
