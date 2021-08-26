@@ -775,10 +775,43 @@ def repay(amount: uint256) -> uint256:
 #     )
 
 
-# # TODO:
-# @external
-# def sync(strategy: address, minTotal: uint256, maxTotal: uint256):
-#     pass
+event Sync:
+    strategy: indexed(address)
+    balanceOfVault: uint256
+    debt: uint256
+    gain: uint256
+    loss: uint256
+    lockedProfit: uint256
+
+@external
+def sync(strategy: address, minTotal: uint256, maxTotal: uint256):
+    # TODO: assert worker
+    assert self.strategies[strategy].active, "!active"
+
+    debt: uint256 = self.strategies[strategy].debt
+    total: uint256 = IStrategy(strategy).totalAssets()
+
+    assert total >= minTotal and total <= maxTotal, "total out of range"
+
+    gain: uint256 = 0
+    loss: uint256 = 0
+    locked: uint256 = self._calcLockedProfit()
+
+    if total > debt:
+        gain = total - debt
+        self.lockedProfit = locked + gain
+    elif total < debt:
+        loss = debt - total
+        if loss > locked:
+            self.lockedProfit = 0
+        else:
+            self.lockedProfit -= loss
+
+    self.lastReport = block.timestamp
+
+    log Sync(
+        strategy, self.balanceOfVault, self.debt, gain, loss, lockedProfit
+    )
 
 
 # # array functions tested in test/Array.vy
