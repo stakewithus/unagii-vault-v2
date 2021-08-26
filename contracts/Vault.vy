@@ -441,40 +441,6 @@ def calcSharesToMint(amount: uint256) -> uint256:
     )
 
 
-# @internal
-# @pure
-# def _calcWithdraw(shares: uint256, totalSupply: uint256, freeFunds: uint256) -> uint256:
-#     """
-#     @notice Calculate amount of token to withdraw
-#     @param shares Amount of uToken shares to burn
-#     @param totalSupply Total amount of shares before burn
-#     @param freeFunds Free funds
-#     @dev Returns amount of token to withdraw
-#     @dev Calculated with `freeFunds`, not `totalAssets`
-#     """
-#     # s = shares
-#     # T = total supply of shares
-#     # a = amount to withdraw
-#     # P = total amount of token in vault + strategies
-#     # s / T = a / P (constraints T >= s, P >= a)
-#     # sP = aT
-#     # s = 0               | a = 0
-#     # s > 0, T = 0, P = 0 | invalid (violates constraint T >= s)
-#     # s > 0, T = 0, P > 0 | invalid (violates constraint T >= s)
-#     # s > 0, T > 0, P = 0 | a = 0
-#     # s > 0, T > 0, P > 0 | a = sP / T
-#     if shares == 0:
-#         return 0
-#     # invalid if total supply = 0
-#     return shares * freeFunds / totalSupply
-
-
-# @external
-# @view
-# def calcWithdraw(shares: uint256) -> uint256:
-#     return self._calcWithdraw(shares, self.uToken.totalSupply(), self._calcFreeFunds())
-
-
 # TODO: deposit(from, to, amount, min) ?
 @external
 @nonreentrant("lock")
@@ -515,101 +481,129 @@ def deposit(amount: uint256, _min: uint256) -> uint256:
     return shares
 
 
-# @internal
-# def _withdraw(amount: uint256) -> (uint256, uint256):
-#     """
-#     @notice Withdraw `token` from active strategies
-#     @param amount Amount of `token` to withdraw
-#     @dev Returns (withdrawn, loss)
-#          withdrawn = actual amount withdrawn
-#          loss = sum of losses from active strategies
-#     """
-#     remaining: uint256 = amount
-#     withdrawn: uint256 = 0
-#     totalLoss: uint256 = 0
-#     for strategy in self.queue:
-#         if strategy == ZERO_ADDRESS:
-#             break
+@internal
+@pure
+def _calcWithdraw(shares: uint256, totalSupply: uint256, freeFunds: uint256) -> uint256:
+    """
+    @notice Calculate amount of token to withdraw
+    @param shares Amount of uToken shares to burn
+    @param totalSupply Total amount of shares before burn
+    @param freeFunds Free funds
+    @dev Returns amount of token to withdraw
+    @dev Calculated with `freeFunds`, not `totalAssets`
+    """
+    # s = shares
+    # T = total supply of shares
+    # a = amount to withdraw
+    # P = total amount of token in vault + strategies
+    # s / T = a / P (constraints T >= s, P >= a)
+    # sP = aT
+    # s = 0               | a = 0
+    # s > 0, T = 0, P = 0 | invalid (violates constraint T >= s)
+    # s > 0, T = 0, P > 0 | invalid (violates constraint T >= s)
+    # s > 0, T > 0, P = 0 | a = 0
+    # s > 0, T > 0, P > 0 | a = sP / T
 
-#         bal: uint256 = self.token.balanceOf(self)
-#         if bal >= amount:
-#             break
-
-#         # need: uint256 = min(need - bal, self.strategies[strategy].debt)
-#         # if need == 0:
-#         #     continue
-
-#         # loss must be <= debt
-#         loss: uint256 = IStrategy(strategy).withdraw(need)
-#         diff: uint256 = self.token.balanceOf(self) - bal
-
-#         withdrawn += diff
-#         remaining -= diff
-
-#         if loss > 0:
-#             need -= loss
-#             totalLoss += loss
-#             self.strategies[strategy].debt -= loss
-#             self.debt -= loss
-
-#         self.strategies[strategy].debt -= diff
-#         self.debt -= diff
+    # invalid if total supply = 0
+    return shares * freeFunds / totalSupply
 
 
-#     return (withdrawn, totalLoss)
+@external
+@view
+def calcWithdraw(shares: uint256) -> uint256:
+    return self._calcWithdraw(shares, self.uToken.totalSupply(), self._calcFreeFunds())
+
+
+@internal
+def _withdraw(amount: uint256) -> uint256:
+    """
+    @notice Withdraw `token` from active strategies
+    @param amount Amount of `token` to withdraw
+    @dev Returns sum of losses from active strategies
+    """
+    _amount: uint256 = amount
+    loss: uint256 = 0
+    # TODO: assert self.balanceOfVault == self.token.balanceOf(self)
+    # bal: uint256 = self.token.balanceOf(self)
+    bal: uint256 = self.balanceOfVault
+
+    for strat in self.queue:
+        # reached end of queue
+        if strat == ZERO_ADDRESS:
+            break
+
+        # done withdrawing
+        if bal >= _amount:
+            break
+        
+        need: uint256 = min(_amount - bal, self.strategies[strat].debt)
+        if need == 0:
+            continue
+
+        _loss: uint256 = IStrategy(strat).withdraw(need)
+        diff: uint256 = self.token.balanceOf(self) - bal
+
+        if _loss > 0:
+            self.strategies[strat].debt -= _loss
+            loss += _loss
+            _amount -= _loss
+        
+        self.strategies[strat].debt -= diff
+        bal += diff # bal + self.token.balanceOf(self) - bal = self.token.balanceOf(self)
+    
+    if loss > 0:
+        self.debt -= loss
+    
+    self.balanceOfVault = bal # = self.token.balanceOf(self)
+    
+    return loss
 
 
 # # TODO: withdraw(from, to, amount, min) ?
-# @external
-# @nonreentrant("lock")
-# def withdraw(shares: uint256, _min: uint256) -> uint256:
-#     """
-#     @notice Withdraw token from vault
-#     @param shares Amount of uToken to burn
-#     @param _min Minimum amount of token that msg.sender will receive
-#     @dev Returns actual amount of token transferred to msg.sender
-#     """
-#     assert shares > 0, "shares = 0"
+@external
+@nonreentrant("lock")
+def withdraw(shares: uint256, _min: uint256) -> uint256:
+    """
+    @notice Withdraw token from vault
+    @param shares Amount of uToken to burn
+    @param _min Minimum amount of token that msg.sender will receive
+    @dev Returns actual amount of token transferred to msg.sender
+    """
+    assert shares > 0, "shares = 0"
 
-#     # check block delay or whitelisted
-#     assert (
-#         block.number >= self.uToken.lastBlock(msg.sender) + self.blockDelay
-#         or self.whitelist[msg.sender]
-#     ), "block < delay"
+    # check block delay or whitelisted
+    assert (
+        block.number >= self.uToken.lastBlock(msg.sender) + self.blockDelay
+        # or self.whitelist[msg.sender]
+    ), "block < delay"
 
-#     amount: uint256 = self._calcWithdraw(
-#         shares, self.uToken.totalSupply(), self._calcFreeFunds()
-#     )
+    # TODO: assert balanceOfVault == self.token.balanceOf(self)
 
-#     # withdraw from strategies if amount to withdraw > balance of vault
-#     if amount > self.balanceOfVault:
-#         diff: uint256 = self.token.balanceOf(self)
-#         # loss = debt - total assets in strategies + any loss from strategies
-#         loss: uint256 = self._withdraw(amount - self.balanceOfVault)
-#         diff = self.token.balanceOf(self) - diff
+    amount: uint256 = self._calcWithdraw(
+        shares, self.uToken.totalSupply(), self._calcFreeFunds()
+    )
 
-#         # diff + loss may be >= amount
-#         if loss > 0:
-#             # msg.sender must cover all of loss
-#             amount -= loss
-#             self.debt -= loss
+    # withdraw from strategies if amount to withdraw > balance of vault
+    if amount > self.balanceOfVault:
+        loss: uint256 = self._withdraw(amount - self.balanceOfVault)
 
-#         self.debt -= diff
-#         self.balanceOfVault += diff
+        if loss > 0:
+            # msg.sender must cover all of loss
+            amount -= loss
 
-#         if amount > self.balanceOfVault:
-#             amount = self.balanceOfVault
+        if amount > self.balanceOfVault:
+            amount = self.balanceOfVault
 
-#     self.uToken.burn(msg.sender, shares)
+    self.uToken.burn(msg.sender, shares)
 
-#     assert amount >= _min, "amount < min"
-#     self.balanceOfVault -= amount
+    assert amount >= _min, "amount < min"
+    self.balanceOfVault -= amount
 
-#     self._safeTransfer(self.token.address, msg.sender, amount)
+    self._safeTransfer(self.token.address, msg.sender, amount)
 
-#     log Withdraw(msg.sender, shares, amount)
+    log Withdraw(msg.sender, shares, amount)
 
-#     return amount
+    return amount
 
 
 # @internal
