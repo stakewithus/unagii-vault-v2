@@ -16,6 +16,7 @@ TRANSFER_FROM: constant(Bytes[4]) = method_id("transferFrom(address,address,uint
 # maximum number of active strategies
 MAX_QUEUE: constant(uint256) = 20
 MAX_TOTAL_DEBT_RATIO: constant(uint256) = 10000
+MAX_MIN_RESERVE: constant(uint256) = 10000
 
 
 struct Strategy:
@@ -178,6 +179,8 @@ guardian: public(address)
 # from sending tokens directly to this contract
 balanceOfVault: public(uint256)
 debt: public(uint256)  # debt to users (amount borrowed by strategies)
+# minimum amount of token to be kept in this vault for cheap withdraw
+minReserve: public(uint256)
 # timestamp of last report
 lastReport: public(uint256)
 # profit locked from report, released over time at a rate set by lockedProfitDegradation
@@ -192,6 +195,7 @@ blockDelay: public(uint256)
 # whitelisted address can bypass block delay check
 whitelist: public(HashMap[address, bool])
 
+totalDebtRatio: public(uint256)
 strategies: public(HashMap[address, Strategy])  # all strategies
 queue: public(address[MAX_QUEUE])  # list of active strategies
 
@@ -301,6 +305,20 @@ def setPause(paused: bool):
     assert msg.sender in [self.timeLock, self.admin, self.guardian], "!auth"
     self.paused = paused
     log SetPause(paused)
+
+
+@external
+def setMinReserve(minReserve: uint256):
+    """
+    @notice Set minimum amount of token reserved in this vault for cheap
+            withdrawn by user
+    @param minReserve Numerator to calculate min reserve
+           0 = all funds can be transferred to fund manager
+           MAX_MIN_RESERVE = 0 tokens can be transferred to fund manager
+    """
+    assert msg.sender in [self.timeLock, self.admin], "!auth"
+    assert minReserve <= MAX_MIN_RESERVE, "min reserve > max"
+    self.minReserve = minReserve
 
 
 @external
@@ -607,92 +625,83 @@ def withdraw(shares: uint256, _min: uint256) -> uint256:
     return amount
 
 
-# @internal
-# @view
-# def _calcMinReserve() -> uint256:
-#     """
-#     @notice Calculate minimum amount of token that is reserved in vault for
-#             cheap withdraw by users
-#     @dev Returns min reserve
-#     """
-#     freeFunds: uint256 = self._calcFreeFunds()
-#     return freeFunds * self.minReserve / MAX_MIN_RESERVE
+@internal
+@view
+def _calcMinReserve() -> uint256:
+    """
+    @notice Calculate minimum amount of token that is reserved in vault for
+            cheap withdraw by users
+    @dev Returns min reserve
+    """
+    freeFunds: uint256 = self._calcFreeFunds()
+    return freeFunds * self.minReserve / MAX_MIN_RESERVE
 
 
-# @external
-# @view
-# def calcMinReserve() -> uint256:
-#     return self._calcMinReserve()
+@external
+@view
+def calcMinReserve() -> uint256:
+    return self._calcMinReserve()
 
 
-# @internal
-# @view
-# def _calcMaxBorrow(strategy: address) -> uint256:
-#     """
-#     @notice Calculate how much `token` strategy can borrow
-#     @param strategy Address of strategy
-#     @dev Returns amount of `token` that `strategy` can borrow
-#     """
-#     if (not self.initialized) or self.paused or self.totalDebtRatio == 0:
-#         return 0
+@internal
+@view
+def _calcMaxBorrow(strategy: address) -> uint256:
+    """
+    @notice Calculate how much `token` strategy can borrow
+    @param strategy Address of strategy
+    @dev Returns amount of `token` that `strategy` can borrow
+    """
+    if self.paused or self.totalDebtRatio == 0:
+        return 0
     
-#     minReserve: uint256 = self._calcMinReserve()
-#     if self.balanceOfVault <= minReserve:
-#         return 0
+    minReserve: uint256 = self._calcMinReserve()
+    if self.balanceOfVault <= minReserve:
+        return 0
     
-#     free: uint256 = self.balanceOfVault - minReserve
+    free: uint256 = self.balanceOfVault - minReserve
 
-#     # strategy debtRatio > 0 only if strategy is active
-#     limit: uint256 = (
-#         self.strategies[strategy].debtRatio * free / self.totalDebtRatio
-#     )
-#     debt: uint256 = self.strategies[strategy].debt
+    # strategy debtRatio > 0 only if strategy is active
+    limit: uint256 = (
+        self.strategies[strategy].debtRatio * free / self.totalDebtRatio
+    )
+    debt: uint256 = self.strategies[strategy].debt
 
-#     if debt >= limit:
-#         return 0
-    
-#     # available: uint256 = min(limit - debt, self.token.balanceOf(self))
+    if debt >= limit:
+        return 0
 
-#     # if available < self.strategies[strategy].minBorrow:
-#     #     return 0
-#     # else:
-#     #     return min(available, self.strategies[strategy].maxBorrow)
-
-#     return limit - debt
+    return limit - debt
 
 
-# @external
-# @view
-# def calcMaxBorrow(strategy: address) -> uint256:
-#     return self._calcMaxBorrow(strategy)
+@external
+@view
+def calcMaxBorrow(strategy: address) -> uint256:
+    return self._calcMaxBorrow(strategy)
 
 
-# @external
-# def borrow(amount: uint256):
-#     """
-#     @notice Borrow token from vault
-#     @dev Only active strategy can borrow
-#     @dev Returns amount that was sent
-#     """
-#     # TODO: remove initialized?
-#     assert self.initialized, "!initialized"
-#     assert not self.paused, "paused"
-#     assert self.strategies[msg.sender].active, "!active"
+@external
+def borrow(amount: uint256) -> uint256:
+    """
+    @notice Borrow token from vault
+    @dev Only active strategy can borrow
+    @dev Returns amount that was sent
+    """
+    assert not self.paused, "paused"
+    assert self.strategies[msg.sender].active, "!active"
 
-#     available: uint256 = self._calcMaxBorrow(msg.sender)
-#     assert amount <= available, "borrow > available"
+    available: uint256 = self._calcMaxBorrow(msg.sender)
+    _amount: uint256 = min(amount, available)
+    assert _amount > 0, "borrow = 0"
 
-#     self._safeTransfer(self.token.address, msg.sender, amount)
+    self._safeTransfer(self.token.address, msg.sender, _amount)
 
-#     self.balanceOfVault -= amount
-#     # include fee on trasfer to debt
-#     self.debt += amount
-#     self.strategies[msg.sender].debt += amount
+    self.balanceOfVault -= amount
+    # include fee on trasfer to debt
+    self.debt += amount
+    self.strategies[msg.sender].debt += amount
 
-#     # check token balance >= balanceOfVault (TODO: remove)
-#     assert self.token.balanceOf(self) >= self.balanceOfVault, "bal < vault"
+    log Borrow(msg.sender, _amount)
 
-#     log Borrow(msg.sender, amount)
+    return _amount
 
 
 # @external
