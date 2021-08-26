@@ -998,29 +998,28 @@ def repay(amount: uint256) -> uint256:
 #     log SetMinMaxBorrow(strategy, minBorrow, maxBorrow)
 
 
-# @external
-# def forceUpdateBalanceOfVault():
-#     """
-#     @notice Force `balanceOfVault` to equal `token.balanceOf(self)`
-#     @dev Only use in case of emergency if `balanceOfVault` is > actual balance
-#     """
-#     assert self.initialized, "!initialized"
-#     assert msg.sender in [self.timeLock, self.admin], "!auth"
+@external
+def forceUpdateBalanceOfVault():
+    """
+    @notice Force `balanceOfVault` to equal `token.balanceOf(self)`
+    @dev Only use in case of emergency if `balanceOfVault` is > actual balance
+    """
+    assert msg.sender in [self.timeLock, self.admin], "!auth"
 
-#     bal: uint256 = self.token.balanceOf(self)
-#     assert bal < self.balanceOfVault, "bal >= vault"
+    bal: uint256 = self.token.balanceOf(self)
+    assert bal < self.balanceOfVault, "bal >= vault"
 
-#     self.balanceOfVault = bal
-#     log ForceUpdateBalanceOfVault(bal)
+    self.balanceOfVault = bal
+    log ForceUpdateBalanceOfVault(bal)
 
 
-# @external
-# def sweep(token: address):
-#     """
-#     @notice Transfer any token (except `token`) accidentally sent to this contract
-#             to admin or time lock
-#     @dev Cannot transfer `token`
-#     """
-#     assert msg.sender in [self.timeLock, self.admin], "!auth"
-#     assert token != self.token.address, "protected"
-#     self._safeTransfer(token, msg.sender, ERC20(token).balanceOf(self))
+@external
+def sweep(token: address):
+    """
+    @notice Transfer any token (except `token`) accidentally sent to this contract
+            to admin or time lock
+    @dev Cannot transfer `token`
+    """
+    assert msg.sender in [self.timeLock, self.admin], "!auth"
+    assert token != self.token.address, "protected"
+    self._safeTransfer(token, msg.sender, ERC20(token).balanceOf(self))
