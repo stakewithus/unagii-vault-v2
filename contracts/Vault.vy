@@ -483,17 +483,16 @@ def deposit(amount: uint256, _min: uint256) -> uint256:
     totalSupply: uint256 = self.uToken.totalSupply()
     freeFunds: uint256 = self._calcFreeFunds()
 
-    balBefore: uint256 = self.token.balanceOf(self)
+    bal: uint256 = self.token.balanceOf(self)
     self._safeTransferFrom(self.token.address, msg.sender, self, amount)
-    balAfter: uint256 = self.token.balanceOf(self)
-    diff: uint256 = balAfter - balBefore
+    diff: uint256 = self.token.balanceOf(self) - bal
 
     # calculate with free funds before deposit
     shares: uint256 = self._calcSharesToMint(diff, totalSupply, freeFunds)
     assert shares >= _min, "shares < min"
 
     # update balanceOfVault after amount of shares is computed
-    self.balanceOfVault = balAfter
+    self.balanceOfVault = bal + diff
     self.uToken.mint(msg.sender, shares)
 
     log Deposit(msg.sender, amount, diff, shares)
@@ -704,33 +703,29 @@ def borrow(amount: uint256) -> uint256:
     return _amount
 
 
-# @external
-# def repay(amount: uint256) -> uint256:
-#     """
-#     @notice Repay token to vault
-#     @dev Only approved and active strategy can repay
-#     @dev Returns actual amount that was repaid
-#     """
-#     assert self.initialized, "!initialized"
-#     assert self.strategies[msg.sender].approved, "!strategy"
+@external
+def repay(amount: uint256) -> uint256:
+    """
+    @notice Repay token to vault
+    @dev Only approved and active strategy can repay
+    @dev Returns actual amount that was repaid
+    """
+    assert self.strategies[msg.sender].approved, "!strategy"
 
-#     assert amount > 0, "repay = 0"
+    assert amount > 0, "repay = 0"
 
-#     diff: uint256 = self.token.balanceOf(self)
-#     self._safeTransferFrom(self.token.address, msg.sender, self, amount)
-#     diff = self.token.balanceOf(self) - diff
+    bal: uint256 = self.token.balanceOf(self)
+    self._safeTransferFrom(self.token.address, msg.sender, self, amount)
+    diff: uint256 = self.token.balanceOf(self) - bal
 
-#     self.balanceOfVault += diff
-#     # exclude fee on transfer from debt payment
-#     self.debt -= diff
-#     self.strategies[msg.sender].debt -= diff
+    self.balanceOfVault = bal + diff
+    # exclude fee on transfer from debt payment
+    self.debt -= diff
+    self.strategies[msg.sender].debt -= diff
 
-#     # check token balance >= balanceOfVault
-#     assert self.token.balanceOf(self) >= self.balanceOfVault, "bal < vault"
+    log Repay(msg.sender, diff)
 
-#     log Repay(msg.sender, diff)
-
-#     return diff
+    return diff
 
 
 # @external
