@@ -620,7 +620,7 @@ def _calcWithdraw(shares: uint256, totalSupply: uint256, freeFunds: uint256) -> 
 def calcWithdraw(shares: uint256) -> uint256:
     return self._calcWithdraw(shares, self.uToken.totalSupply(), self._calcFreeFunds())
 
-
+# TODO: deposit(from, to, amount, min) ?
 @external
 @nonreentrant("lock")
 def deposit(amount: uint256, _min: uint256) -> uint256:
@@ -698,6 +698,7 @@ def _withdraw(amount: uint256) -> uint256:
     return totalLoss
 
 
+# TODO: withdraw(from, to, amount, min) ?
 @external
 @nonreentrant("lock")
 def withdraw(shares: uint256, _min: uint256) -> uint256:
@@ -707,18 +708,16 @@ def withdraw(shares: uint256, _min: uint256) -> uint256:
     @param _min Minimum amount of token that msg.sender will receive
     @dev Returns actual amount of token transferred to msg.sender
     """
-    assert self.initialized, "!initialized"
+    assert shares > 0, "shares = 0"
+
     # check block delay or whitelisted
     assert (
         block.number >= self.uToken.lastBlock(msg.sender) + self.blockDelay
         or self.whitelist[msg.sender]
     ), "block < delay"
 
-    _shares: uint256 = min(shares, self.uToken.balanceOf(msg.sender))
-    assert _shares > 0, "shares = 0"
-
     amount: uint256 = self._calcWithdraw(
-        _shares, self.uToken.totalSupply(), self._calcFreeFunds()
+        shares, self.uToken.totalSupply(), self._calcFreeFunds()
     )
 
     # withdraw from strategies if amount to withdraw > balance of vault
@@ -740,19 +739,15 @@ def withdraw(shares: uint256, _min: uint256) -> uint256:
         if amount > self.balanceOfVault:
             amount = self.balanceOfVault
 
-    self.uToken.burn(msg.sender, _shares)
+    self.uToken.burn(msg.sender, shares)
 
     assert amount >= _min, "amount < min"
     self.balanceOfVault -= amount
 
     self._safeTransfer(self.token.address, msg.sender, amount)
 
-    # check token balance >= balanceOfVault
-    assert self.token.balanceOf(self) >= self.balanceOfVault, "bal < vault"
+    log Withdraw(msg.sender, shares, amount)
 
-    log Withdraw(msg.sender, _shares, amount)
-
-    # actual amount received by msg.sender may be less if fee on transfer
     return amount
 
 
