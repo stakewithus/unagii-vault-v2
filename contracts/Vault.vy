@@ -454,6 +454,8 @@ def deposit(amount: uint256, _min: uint256) -> uint256:
     assert not self.paused, "paused"
     assert amount > 0, "deposit = 0"
 
+    # TODO: assert self.token.balanceOf(self) >= self.balanceOfVault
+
     # check block delay or whitelisted
     assert (
         block.number >= self.uToken.lastBlock(msg.sender) + self.blockDelay
@@ -523,9 +525,8 @@ def _withdraw(amount: uint256) -> uint256:
     """
     _amount: uint256 = amount
     loss: uint256 = 0
-    # TODO: assert self.balanceOfVault == self.token.balanceOf(self)
-    # bal: uint256 = self.token.balanceOf(self)
-    bal: uint256 = self.balanceOfVault
+    # TODO: assert self.token.balanceOf(self) >= self.balanceOfVault
+    bal: uint256 = self.token.balanceOf(self)
 
     for strat in self.queue:
         # reached end of queue
@@ -549,7 +550,7 @@ def _withdraw(amount: uint256) -> uint256:
             _amount -= _loss
         
         self.strategies[strat].debt -= diff
-        bal += diff # bal + self.token.balanceOf(self) - bal = self.token.balanceOf(self)
+        bal += diff # = self.token.balanceOf(self)
     
     if loss > 0:
         self.debt -= loss
@@ -577,7 +578,7 @@ def withdraw(shares: uint256, _min: uint256) -> uint256:
         # or self.whitelist[msg.sender]
     ), "block < delay"
 
-    # TODO: assert balanceOfVault == self.token.balanceOf(self)
+    # TODO: assert self.token.balanceOf(self) >= self.balanceOfVault
 
     amount: uint256 = self._calcWithdraw(
         shares, self.uToken.totalSupply(), self._calcFreeFunds()
