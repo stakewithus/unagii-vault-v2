@@ -651,6 +651,7 @@ def deposit(amount: uint256, _min: uint256) -> uint256:
     shares: uint256 = self._calcSharesToMint(diff, totalSupply, freeFunds)
     assert shares >= _min, "shares < min"
 
+    # update balanceOfVault after amount of shares is computed
     self.balanceOfVault = balAfter
     self.uToken.mint(msg.sender, shares)
 
