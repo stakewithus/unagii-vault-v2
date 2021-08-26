@@ -21,12 +21,8 @@ MAX_TOTAL_DEBT_RATIO: constant(uint256) = 10000
 struct Strategy:
     approved: bool
     active: bool
-    activated: bool  # sent to True once after strategy is active
     debtRatio: uint256  # ratio of total assets this strategy can borrow
     debt: uint256  # current amount borrowed
-    # TODO: remove, use debtRatio to control borrow amount?
-    minBorrow: uint256  # minimum amount to borrow per call to borrow()
-    maxBorrow: uint256  # maximum amount to borrow per call to borrow()
 
 
 interface IStrategy:
@@ -182,9 +178,6 @@ guardian: public(address)
 # from sending tokens directly to this contract
 balanceOfVault: public(uint256)
 debt: public(uint256)  # debt to users (amount borrowed by strategies)
-# minimum amount of token to be kept in this vault for cheap withdraw
-minReserve: public(uint256)
-MAX_MIN_RESERVE: constant(uint256) = 10000
 # timestamp of last report
 lastReport: public(uint256)
 # profit locked from report, released over time at a rate set by lockedProfitDegradation
@@ -198,24 +191,15 @@ lockedProfitDegradation: public(uint256)
 blockDelay: public(uint256)
 # whitelisted address can bypass block delay check
 whitelist: public(HashMap[address, bool])
-# set to true if token has fee on transfer
-feeOnTransfer: public(bool)
 
-# address of old Vault contract, used for migration
-oldVault: public(Vault)
-# constants used for protection when migrating vault funds
-MIN_OLD_BAL: constant(uint256) = 9990
-MAX_MIN_OLD_BAL: constant(uint256) = 10000
-
-totalDebtRatio: public(uint256)  # sum of all debtRatios of strategies
 strategies: public(HashMap[address, Strategy])  # all strategies
 queue: public(address[MAX_QUEUE])  # list of active strategies
 
 @external
-def __init__(token: address, uToken: address, guardian: address, oldVault: address):
+def __init__(token: address, uToken: address):
     self.timeLock = msg.sender
     self.admin = msg.sender
-    self.guardian = guardian
+    self.guardian = msg.sender
     self.token = ERC20(token)
     self.uToken = UnagiiToken(uToken)
 
@@ -223,14 +207,8 @@ def __init__(token: address, uToken: address, guardian: address, oldVault: addre
 
     self.paused = True
     self.blockDelay = 1
-    self.minReserve = 500  # 5% of free funds
     # 6 hours
     self.lockedProfitDegradation = convert(MAX_DEGRADATION / 21600, uint256)
-
-    if oldVault != ZERO_ADDRESS:
-        self.oldVault = Vault(oldVault)
-        assert self.oldVault.token() == token, "old vault token != token"
-        assert self.oldVault.uToken() == uToken, "old vault uToken != uToken"
 
 
 @internal
@@ -281,194 +259,72 @@ def _safeTransferFrom(
         assert convert(res, bool), "transferFrom failed"
 
 
-# @external
-# def initialize():
-#     """
-#     @notice Initialize vault. Transfer tokens and copy states if old vault is set.
-#     """
-#     assert not self.initialized, "initialized"
-
-#     if self.oldVault.address == ZERO_ADDRESS:
-#         assert msg.sender in [self.timeLock, self.admin], "!auth"
-#         self.lastReport = block.timestamp
-#     else:
-#         assert msg.sender == self.oldVault.address, "!old vault"
-
-#         assert self.uToken.minter() == self, "minter != self"
-
-#         # check balance of old vault >= old balanceOfVault
-#         bal: uint256 = self.token.balanceOf(self.oldVault.address)
-#         balOfVault: uint256 = self.oldVault.balanceOfVault()
-#         assert bal >= balOfVault, "bal < vault"
-
-#         diff: uint256 = self.token.balanceOf(self)
-#         self._safeTransferFrom(self.token.address, self.oldVault.address, self, bal)
-#         diff = self.token.balanceOf(self) - diff
-
-#         # diff may be <= balOfVault if fee on transfer
-#         assert diff >= balOfVault * MIN_OLD_BAL / MAX_MIN_OLD_BAL, "diff < min"
-
-#         self.balanceOfVault = min(balOfVault, diff)
-#         self.debt = self.oldVault.debt()
-#         self.lockedProfit = self.oldVault.lockedProfit()
-#         self.lastReport = self.oldVault.lastReport()
-
-#     self.initialized = True
+@external
+def setNextTimeLock(nextTimeLock: address):
+    """
+    @notice Set next time lock
+    @param nextTimeLock Address of next time lock
+    """
+    assert msg.sender == self.timeLock, "!time lock"
+    self.nextTimeLock = nextTimeLock
+    log SetNextTimeLock(nextTimeLock)
 
 
-# # Migration steps from this vault to new vault
-# #
-# # t = token
-# # ut = unagi token
-# # v1 = vault 1
-# # v2 = vault 2
-# #
-# # action                         | caller
-# # ----------------------------------------
-# # 1. v2.setPause(true)           | admin
-# # 2. v1.setPause(true)           | admin
-# # 3. ut.setMinter(v2)            | time lock
-# # 4. f.setVault(v2)              | time lock
-# # 6. t.approve(v2, bal)          | v1
-# # 7. t.transferFrom(v1, v2, bal) | v2
-# # 8. v2 copy states from v1      | v2
-# #    - balanceOfVault            |
-# #    - debt                      |
-# #    - locked profit             |
-# #    - last report               |
-# # 9. v1 set state = 0            | v1
-# #    - balanceOfVault            |
-# #    - debt                      |
-# #    - locked profit             |
-
-# # TODO: Migration contract
-# @external
-# def migrate(vault: address):
-#     """
-#     @notice Migrate to new vault
-#     @param vault Address of new vault
-#     """
-#     assert msg.sender == self.timeLock, "!time lock"
-#     assert self.initialized, "!initialized"
-#     assert self.paused, "!paused"
-
-#     assert Vault(vault).token() == self.token.address, "new vault token != token"
-#     assert Vault(vault).uToken() == self.uToken.address, "new vault uToken != uToken"
-#     # minter is set to new vault
-#     assert self.uToken.minter() == vault, "minter != new vault"
-
-#     # check balance of vault >= balanceOfVault
-#     bal: uint256 = self.token.balanceOf(self)
-#     assert bal >= self.balanceOfVault, "bal < vault"
-
-#     assert Vault(vault).oldVault() == self, "old vault != self"
-
-#     self._safeApprove(self.token.address, vault, bal)
-#     Vault(vault).initialize()
-
-#     # check all tokens where transferred
-#     assert self.token.balanceOf(self) == 0, "bal != 0"
-
-#     log Migrate(vault, self.balanceOfVault, self.debt, self.lockedProfit)
-
-#     # reset state
-#     self.balanceOfVault = 0
-#     self.debt = 0
-#     self.lockedProfit = 0
+@external
+def acceptTimeLock():
+    """
+    @notice Accept time lock
+    @dev Only `nextTimeLock` can claim time lock
+    """
+    assert msg.sender == self.nextTimeLock, "!next time lock"
+    self.timeLock = msg.sender
+    self.nextTimeLock = ZERO_ADDRESS
+    log AcceptTimeLock(msg.sender)
 
 
-# @external
-# def setNextTimeLock(nextTimeLock: address):
-#     """
-#     @notice Set next time lock
-#     @param nextTimeLock Address of next time lock
-#     """
-#     assert msg.sender == self.timeLock, "!time lock"
-#     self.nextTimeLock = nextTimeLock
-#     log SetNextTimeLock(nextTimeLock)
+@external
+def setAdmin(admin: address):
+    assert msg.sender in [self.timeLock, self.admin], "!auth"
+    self.admin = admin
+    log SetAdmin(admin)
 
 
-# @external
-# def acceptTimeLock():
-#     """
-#     @notice Accept time lock
-#     @dev Only `nextTimeLock` can claim time lock
-#     """
-#     assert msg.sender == self.nextTimeLock, "!next time lock"
-#     self.timeLock = msg.sender
-#     self.nextTimeLock = ZERO_ADDRESS
-#     log AcceptTimeLock(msg.sender)
+@external
+def setGuardian(guardian: address):
+    assert msg.sender in [self.timeLock, self.admin], "!auth"
+    self.guardian = guardian
+    log SetGuardian(guardian)
 
 
-# @external
-# def setAdmin(admin: address):
-#     assert msg.sender in [self.timeLock, self.admin], "!auth"
-#     self.admin = admin
-#     log SetAdmin(admin)
+@external
+def setPause(paused: bool):
+    assert msg.sender in [self.timeLock, self.admin, self.guardian], "!auth"
+    self.paused = paused
+    log SetPause(paused)
 
 
-# @external
-# def setGuardian(guardian: address):
-#     assert msg.sender in [self.timeLock, self.admin], "!auth"
-#     self.guardian = guardian
-#     log SetGuardian(guardian)
+@external
+def setLockedProfitDegradation(degradation: uint256):
+    """
+    @notice Set locked profit degradation (rate locked profit is released)
+    @param degradation Rate of degradation
+                 0 = profit is locked forever
+                 MAX_DEGRADATION = 100% of profit is released 1 block after report
+    """
+    assert msg.sender in [self.timeLock, self.admin], "!auth"
+    assert degradation <= MAX_DEGRADATION, "degradation > max"
+    self.lockedProfitDegradation = degradation
 
 
-# @external
-# def setPause(paused: bool):
-#     assert msg.sender in [self.timeLock, self.admin, self.guardian], "!auth"
-#     self.paused = paused
-#     log SetPause(paused)
-
-
-# @external
-# def setMinReserve(minReserve: uint256):
-#     """
-#     @notice Set minimum amount of token reserved in this vault for cheap
-#             withdrawn by user
-#     @param minReserve Numerator to calculate min reserve
-#            0 = all funds can be transferred to strategies
-#            MAX_MIN_RESERVE = 0 tokens can be transferred to strategies
-#     """
-#     assert msg.sender in [self.timeLock, self.admin], "!auth"
-#     assert minReserve <= MAX_MIN_RESERVE, "min reserve > max"
-#     self.minReserve = minReserve
-
-
-# @external
-# def setLockedProfitDegradation(degradation: uint256):
-#     """
-#     @notice Set locked profit degradation (rate locked profit is released)
-#     @param degradation Rate of degradation
-#                  0 = profit is locked forever
-#                  MAX_DEGRADATION = 100% of profit is released 1 block after report
-#     """
-#     assert msg.sender in [self.timeLock, self.admin], "!auth"
-#     assert degradation <= MAX_DEGRADATION, "degradation > max"
-#     self.lockedProfitDegradation = degradation
-
-
-# @external
-# def setBlockDelay(delay: uint256):
-#     """
-#     @notice Set block delay, used to protect against flash attacks
-#     @param delay Number of blocks to delay before user can deposit / withdraw
-#     """
-#     assert msg.sender in [self.timeLock, self.admin], "!auth"
-#     assert delay >= 1, "delay = 0"
-#     self.blockDelay = delay
-
-
-# @external
-# def setFeeOnTransfer(feeOnTransfer: bool):
-#     """
-#     @notice Enable calculation of actual amount transferred to this vault
-#             if token has fee on transfer
-#     @param feeOnTransfer True = enable calculation
-#                           False = disable calculation
-#     """
-#     assert msg.sender in [self.timeLock, self.admin], "!auth"
-#     self.feeOnTransfer = feeOnTransfer
+@external
+def setBlockDelay(delay: uint256):
+    """
+    @notice Set block delay, used to protect against flash attacks
+    @param delay Number of blocks to delay before user can deposit / withdraw
+    """
+    assert msg.sender in [self.timeLock, self.admin], "!auth"
+    assert delay >= 1, "delay = 0"
+    self.blockDelay = delay
 
 
 # @external
@@ -485,106 +341,104 @@ def _safeTransferFrom(
 #     log SetWhitelist(addr, approved)
 
 
-# @internal
-# @view
-# def _totalAssets() -> uint256:
-#     """
-#     @notice Total amount of token in this vault + amount in strategies
-#     @dev State variable `balanceOfVault` is used to track balance of token in
-#          this contract instead of `token.balanceOf(self)`. This is done to
-#          protect against uToken shares being diluted by directly sending token
-#          to this contract.
-#     @dev Returns total amount of token in this contract
-#     """
-#     return self.balanceOfVault + self.debt
+@internal
+@view
+def _totalAssets() -> uint256:
+    """
+    @notice Total amount of token in this vault + amount in strategies
+    @dev State variable `balanceOfVault` is used to track balance of token in
+         this contract instead of `token.balanceOf(self)`. This is done to
+         protect against uToken shares being diluted by directly sending token
+         to this contract.
+    @dev Returns total amount of token in this contract
+    """
+    return self.balanceOfVault + self.debt
 
 
-# @external
-# @view
-# def totalAssets() -> uint256:
-#     return self._totalAssets()
+@external
+@view
+def totalAssets() -> uint256:
+    return self._totalAssets()
 
 
-# @internal
-# @view
-# def _calcLockedProfit() -> uint256:
-#     """
-#     @notice Calculated locked profit
-#     @dev Returns amount of profit locked from last report. Profit is released
-#          over time, depending on the release rate `lockedProfitDegradation`.
-#          Profit is locked after `report` to protect against sandwich attack.
-#     """
-#     lockedFundsRatio: uint256 = (
-#         block.timestamp - self.lastReport
-#     ) * self.lockedProfitDegradation
+@internal
+@view
+def _calcLockedProfit() -> uint256:
+    """
+    @notice Calculated locked profit
+    @dev Returns amount of profit locked from last report. Profit is released
+         over time, depending on the release rate `lockedProfitDegradation`.
+         Profit is locked after `report` to protect against sandwich attack.
+    """
+    lockedFundsRatio: uint256 = (
+        block.timestamp - self.lastReport
+    ) * self.lockedProfitDegradation
 
-#     if lockedFundsRatio < MAX_DEGRADATION:
-#         lockedProfit: uint256 = self.lockedProfit
-#         return lockedProfit - lockedFundsRatio * lockedProfit / MAX_DEGRADATION
-#     else:
-#         return 0
-
-
-# @external
-# @view
-# def calcLockedProfit() -> uint256:
-#     return self._calcLockedProfit()
+    if lockedFundsRatio < MAX_DEGRADATION:
+        lockedProfit: uint256 = self.lockedProfit
+        return lockedProfit - lockedFundsRatio * lockedProfit / MAX_DEGRADATION
+    else:
+        return 0
 
 
-# @internal
-# @view
-# def _calcFreeFunds() -> uint256:
-#     """
-#     @notice Calculate free funds (total assets - locked profit)
-#     @dev Returns total amount of tokens that can be withdrawn
-#     """
-#     return self._totalAssets() - self._calcLockedProfit()
+@external
+@view
+def calcLockedProfit() -> uint256:
+    return self._calcLockedProfit()
 
 
-# @external
-# @view
-# def calcFreeFunds() -> uint256:
-#     return self._calcFreeFunds()
+@internal
+@view
+def _calcFreeFunds() -> uint256:
+    """
+    @notice Calculate free funds (total assets - locked profit)
+    @dev Returns total amount of tokens that can be withdrawn
+    """
+    return self._totalAssets() - self._calcLockedProfit()
 
 
-# @internal
-# @pure
-# def _calcSharesToMint(
-#     amount: uint256, totalSupply: uint256, freeFunds: uint256
-# ) -> uint256:
-#     """
-#     @notice Calculate uToken shares to mint
-#     @param amount Amount of token to deposit
-#     @param totalSupply Total amount of shares
-#     @param freeFunds Free funds before deposit
-#     @dev Returns amount of uToken to mint. Input must be numbers before deposit
-#     @dev Calculated with `freeFunds`, not `totalAssets`
-#     """
-#     # s = shares to mint
-#     # T = total shares before mint
-#     # a = deposit amount
-#     # P = total amount of token in vault + strategies before deposit
-#     # s / (T + s) = a / (P + a)
-#     # sP = aT
-#     # a = 0               | mint s = 0
-#     # a > 0, T = 0, P = 0 | mint s = a
-#     # a > 0, T = 0, P > 0 | mint s = a as if P = 0
-#     # a > 0, T > 0, P = 0 | invalid, equation cannot be true for any s
-#     # a > 0, T > 0, P > 0 | mint s = aT / P
-#     if amount == 0:
-#         return 0
-#     if totalSupply == 0:
-#         return amount
-#     # reverts if free funds = 0
-#     return amount * totalSupply / freeFunds
+@external
+@view
+def calcFreeFunds() -> uint256:
+    return self._calcFreeFunds()
 
 
-# @external
-# @view
-# def calcSharesToMint(amount: uint256) -> uint256:
-#     return self._calcSharesToMint(
-#         amount, self.uToken.totalSupply(), self._calcFreeFunds()
-#     )
+@internal
+@pure
+def _calcSharesToMint(
+    amount: uint256, totalSupply: uint256, freeFunds: uint256
+) -> uint256:
+    """
+    @notice Calculate uToken shares to mint
+    @param amount Amount of token to deposit
+    @param totalSupply Total amount of shares
+    @param freeFunds Free funds before deposit
+    @dev Returns amount of uToken to mint. Input must be numbers before deposit
+    @dev Calculated with `freeFunds`, not `totalAssets`
+    """
+    # s = shares to mint
+    # T = total shares before mint
+    # a = deposit amount
+    # P = total amount of token in vault + strategies before deposit
+    # s / (T + s) = a / (P + a)
+    # sP = aT
+    # a = 0               | mint s = 0
+    # a > 0, T = 0, P = 0 | mint s = a
+    # a > 0, T = 0, P > 0 | mint s = a as if P = 0
+    # a > 0, T > 0, P = 0 | invalid, equation cannot be true for any s
+    # a > 0, T > 0, P > 0 | mint s = aT / P
+    if totalSupply > 0:
+        # reverts if free funds = 0
+        return amount * totalSupply / freeFunds
+    return amount
+
+
+@external
+@view
+def calcSharesToMint(amount: uint256) -> uint256:
+    return self._calcSharesToMint(
+        amount, self.uToken.totalSupply(), self._calcFreeFunds()
+    )
 
 
 # @internal
@@ -621,44 +475,44 @@ def _safeTransferFrom(
 #     return self._calcWithdraw(shares, self.uToken.totalSupply(), self._calcFreeFunds())
 
 
-# # TODO: deposit(from, to, amount, min) ?
-# @external
-# @nonreentrant("lock")
-# def deposit(amount: uint256, _min: uint256) -> uint256:
-#     """
-#     @notice Deposit token into vault
-#     @param amount Amount of token to deposit
-#     @param _min Minimum amount of uToken to be minted
-#     @dev Returns actual amount of uToken minted
-#     """
-#     assert not self.paused, "paused"
-#     assert amount > 0, "deposit = 0"
+# TODO: deposit(from, to, amount, min) ?
+@external
+@nonreentrant("lock")
+def deposit(amount: uint256, _min: uint256) -> uint256:
+    """
+    @notice Deposit token into vault
+    @param amount Amount of token to deposit
+    @param _min Minimum amount of uToken to be minted
+    @dev Returns actual amount of uToken minted
+    """
+    assert not self.paused, "paused"
+    assert amount > 0, "deposit = 0"
 
-#     # check block delay or whitelisted
-#     assert (
-#         block.number >= self.uToken.lastBlock(msg.sender) + self.blockDelay
-#         or self.whitelist[msg.sender]
-#     ), "block < delay"
+    # check block delay or whitelisted
+    assert (
+        block.number >= self.uToken.lastBlock(msg.sender) + self.blockDelay
+        # or self.whitelist[msg.sender]
+    ), "block < delay"
 
-#     totalSupply: uint256 = self.uToken.totalSupply()
-#     freeFunds: uint256 = self._calcFreeFunds()
+    totalSupply: uint256 = self.uToken.totalSupply()
+    freeFunds: uint256 = self._calcFreeFunds()
 
-#     balBefore: uint256 = self.token.balanceOf(self)
-#     self._safeTransferFrom(self.token.address, msg.sender, self, amount)
-#     balAfter: uint256 = self.token.balanceOf(self)
-#     diff: uint256 = balAfter - balBefore
+    balBefore: uint256 = self.token.balanceOf(self)
+    self._safeTransferFrom(self.token.address, msg.sender, self, amount)
+    balAfter: uint256 = self.token.balanceOf(self)
+    diff: uint256 = balAfter - balBefore
 
-#     # calculate with free funds before deposit
-#     shares: uint256 = self._calcSharesToMint(diff, totalSupply, freeFunds)
-#     assert shares >= _min, "shares < min"
+    # calculate with free funds before deposit
+    shares: uint256 = self._calcSharesToMint(diff, totalSupply, freeFunds)
+    assert shares >= _min, "shares < min"
 
-#     # update balanceOfVault after amount of shares is computed
-#     self.balanceOfVault = balAfter
-#     self.uToken.mint(msg.sender, shares)
+    # update balanceOfVault after amount of shares is computed
+    self.balanceOfVault = balAfter
+    self.uToken.mint(msg.sender, shares)
 
-#     log Deposit(msg.sender, amount, diff, shares)
+    log Deposit(msg.sender, amount, diff, shares)
 
-#     return shares
+    return shares
 
 
 # @internal
