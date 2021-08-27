@@ -336,18 +336,18 @@ def setBlockDelay(delay: uint256):
     self.blockDelay = delay
 
 
-# @external
-# def setWhitelist(addr: address, approved: bool):
-#     """
-#     @notice Approve or disapprove address to skip check on block delay.
-#             Approved address can deposit, withdraw and transfer uToken in
-#             a single transaction
-#     @param approved Boolean True = approve
-#                              False = disapprove
-#     """
-#     assert msg.sender in [self.timeLock, self.admin], "!auth"
-#     self.whitelist[addr] = approved
-#     log SetWhitelist(addr, approved)
+@external
+def setWhitelist(addr: address, approved: bool):
+    """
+    @notice Approve or disapprove address to skip check on block delay.
+            Approved address can deposit, withdraw and transfer uToken in
+            a single transaction
+    @param approved Boolean True = approve
+                             False = disapprove
+    """
+    assert msg.sender in [self.timeLock, self.admin], "!auth"
+    self.whitelist[addr] = approved
+    log SetWhitelist(addr, approved)
 
 
 @internal
@@ -450,7 +450,6 @@ def calcSharesToMint(amount: uint256) -> uint256:
     )
 
 
-# TODO: deposit(from, to, amount, min) ?
 @external
 @nonreentrant("lock")
 def deposit(amount: uint256, _min: uint256) -> uint256:
@@ -468,7 +467,7 @@ def deposit(amount: uint256, _min: uint256) -> uint256:
     # check block delay or whitelisted
     assert (
         block.number >= self.uToken.lastBlock(msg.sender) + self.blockDelay
-        # or self.whitelist[msg.sender]
+        or self.whitelist[msg.sender]
     ), "block < delay"
 
     totalSupply: uint256 = self.uToken.totalSupply()
@@ -568,7 +567,6 @@ def _withdraw(amount: uint256) -> uint256:
     return loss
 
 
-# # TODO: withdraw(from, to, amount, min) ?
 @external
 @nonreentrant("lock")
 def withdraw(shares: uint256, _min: uint256) -> uint256:
@@ -583,7 +581,7 @@ def withdraw(shares: uint256, _min: uint256) -> uint256:
     # check block delay or whitelisted
     assert (
         block.number >= self.uToken.lastBlock(msg.sender) + self.blockDelay
-        # or self.whitelist[msg.sender]
+        or self.whitelist[msg.sender]
     ), "block < delay"
 
     # TODO: assert self.token.balanceOf(self) >= self.balanceOfVault
