@@ -1,12 +1,10 @@
 # @version 0.2.15
 
 """
-@title Unagii Vault V2 0.1.2
+@title Unagii Vault V2 1.0.0
 @author stakewith.us
 @license AGPL-3.0-or-later
 """
-
-# TODO: version 1.0.0
 
 from vyper.interfaces import ERC20
 
@@ -180,6 +178,8 @@ whitelist: public(HashMap[address, bool])
 totalDebtRatio: public(uint256)
 strategies: public(HashMap[address, Strategy])  # all strategies
 queue: public(address[MAX_QUEUE])  # list of active strategies
+
+# TODO: migrate
 
 @external
 def __init__(token: address, uToken: address):
