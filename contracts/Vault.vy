@@ -103,6 +103,16 @@ event Repay:
     amount: uint256
 
 
+event Sync:
+    strategy: indexed(address)
+    balanceOfVault: uint256
+    debt: uint256
+    totalInStrategy: uint256
+    gain: uint256
+    loss: uint256
+    lockedProfit: uint256
+
+
 event ApproveStrategy:
     strategy: indexed(address)
 
@@ -136,7 +146,6 @@ event ForceUpdateBalanceOfVault:
     balanceOfVault: uint256
 
 
-initialized: public(bool)
 paused: public(bool)
 
 token: public(ERC20)
@@ -710,16 +719,6 @@ def repay(amount: uint256) -> uint256:
     return diff
 
 
-event Sync:
-    strategy: indexed(address)
-    balanceOfVault: uint256
-    debt: uint256
-    totalInStrategy: uint256
-    gain: uint256
-    loss: uint256
-    lockedProfit: uint256
-
-
 @external
 def sync(strategy: address, minTotal: uint256, maxTotal: uint256):
     assert msg.sender in [self.worker, self.admin, self.timeLock], "!auth"
@@ -931,6 +930,38 @@ def setDebtRatios(debtRatios: uint256[MAX_QUEUE]):
     assert self.totalDebtRatio <= MAX_TOTAL_DEBT_RATIO, "total > max"
 
     log SetDebtRatios(debtRatios)
+
+
+@external
+def migrateStrategy(old: address, new: address):
+    """
+    @notice Migrate strategy
+    @param old Address of current strategy
+    @param new Address of new strategy
+    """
+    assert msg.sender in [self.timeLock, self.admin], "!auth"
+    assert self.strategies[old].active, "old !active"
+    assert self.strategies[new].approved, "new !approved"
+    assert not self.strategies[new].active, "new active"
+    assert self.strategies[new].debt == 0, "new debt != 0"
+
+    self.strategies[new] = Strategy(
+        {
+            approved: True,
+            active: True,
+            debtRatio: self.strategies[old].debtRatio,
+            debt: self.strategies[old].debt,
+        }
+    )
+
+    self.strategies[old].active = False
+    self.strategies[old].debtRatio = 0
+    self.strategies[old].debt = 0
+
+    self.queue[self._find(old)] = new
+
+    IStrategy(old).migrate(new)
+    log MigrateStrategy(old, new)
 
 
 @external
