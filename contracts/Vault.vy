@@ -29,6 +29,7 @@ struct Strategy:
 interface IStrategy:
     def vault() -> address: view
     def token() -> address: view
+    def totalAssets() -> uint256: view
     def withdraw(amount: uint256) -> uint256: nonpayable
     def migrate(newVersion: address): nonpayable
 
@@ -46,25 +47,6 @@ interface UnagiiToken:
     def mint(receiver: address, amount: uint256): nonpayable
     def burn(spender: address, amount: uint256): nonpayable
     def lastBlock(owner: address) -> uint256: view
-
-
-# used for migrating to new Vault contract
-interface Vault:
-    def oldVault() -> address: view
-    def token() -> address: view
-    def uToken() -> address: view
-    def initialize(): nonpayable
-    def balanceOfVault() -> uint256: view
-    def debt() -> uint256: view
-    def lockedProfit() -> uint256: view
-    def lastReport() -> uint256: view
-
-
-event Migrate:
-    vault: address
-    balanceOfVault: uint256
-    debt: uint256
-    lockedProfit: uint256
 
 
 event SetNextTimeLock:
@@ -119,20 +101,6 @@ event Repay:
     amount: uint256
 
 
-event Report:
-    strategy: indexed(address)
-    balanceOfVault: uint256
-    debt: uint256
-    gain: uint256
-    loss: uint256
-    diff: uint256
-    lockedProfit: uint256
-
-
-event ForceUpdateBalanceOfVault:
-    balanceOfVault: uint256
-
-
 event ApproveStrategy:
     strategy: indexed(address)
 
@@ -157,15 +125,13 @@ event SetDebtRatios:
     debtRatios: uint256[MAX_QUEUE]
 
 
-event SetMinMaxBorrow:
-    strategy: indexed(address)
-    minBorrow: uint256
-    maxBorrow: uint256
-
-
 event MigrateStrategy:
     oldStrategy: indexed(address)
     newStrategy: indexed(address)
+
+
+event ForceUpdateBalanceOfVault:
+    balanceOfVault: uint256
 
 
 initialized: public(bool)
@@ -186,8 +152,8 @@ balanceOfVault: public(uint256)
 debt: public(uint256)  # debt to users (amount borrowed by strategies)
 # minimum amount of token to be kept in this vault for cheap withdraw
 minReserve: public(uint256)
-# timestamp of last report
-lastReport: public(uint256)
+# timestamp of last sync
+lastSync: public(uint256)
 # profit locked from report, released over time at a rate set by lockedProfitDegradation
 lockedProfit: public(uint256)
 MAX_DEGRADATION: constant(uint256) = 10 ** 18
@@ -403,7 +369,7 @@ def _calcLockedProfit() -> uint256:
          Profit is locked after `report` to protect against sandwich attack.
     """
     lockedFundsRatio: uint256 = (
-        block.timestamp - self.lastReport
+        block.timestamp - self.lastSync
     ) * self.lockedProfitDegradation
 
     if lockedFundsRatio < MAX_DEGRADATION:
@@ -742,57 +708,11 @@ def repay(amount: uint256) -> uint256:
     return diff
 
 
-# @external
-# def report(gain: uint256, loss: uint256):
-#     """
-#     @notice Report profit or loss
-#     @param gain Profit since last report
-#     @param loss Loss since last report
-#     @dev Only active strategy can call
-#     @dev Locks profit to be release over time
-#     """
-#     assert self.initialized, "!initialized"
-#     assert self.strategies[msg.sender].active, "!active"
-#     # can't have both gain and loss > 0
-#     assert (gain >= 0 and loss == 0) or (gain == 0 and loss >= 0), "gain and loss > 0"
-
-#     # calculate current locked profit
-#     lockedProfit: uint256 = self._calcLockedProfit()
-#     diff: uint256 = 0  # actual amount transferred if gain > 0
-
-#     if gain > 0:
-#         diff = self.token.balanceOf(self)
-#         self._safeTransferFrom(self.token.address, msg.sender, self, gain)
-#         diff = self.token.balanceOf(self) - diff
-
-#         # free funds = bal + diff + debt - (locked profit + diff)
-#         self.balanceOfVault += diff
-#         self.lockedProfit = lockedProfit + diff
-#     elif loss > 0:
-#         # free funds = bal + debt - loss - (locked profit - loss)
-#         self.debt -= loss
-#         # deduct locked profit
-#         if lockedProfit > loss:
-#             self.lockedProfit -= loss
-#         else:
-#             # no locked profit to be released
-#             self.lockedProfit = 0
-
-#     self.lastReport = block.timestamp
-
-#     # check token balance >= balanceOfVault
-#     assert self.token.balanceOf(self) >= self.balanceOfVault, "bal < vault"
-
-#     # log updated debt and lockedProfit
-#     log Report(
-#         msg.sender, self.balanceOfVault, self.debt, gain, loss, diff, self.lockedProfit
-#     )
-
-
 event Sync:
     strategy: indexed(address)
     balanceOfVault: uint256
     debt: uint256
+    totalInStrategy: uint256
     gain: uint256
     loss: uint256
     lockedProfit: uint256
@@ -828,10 +748,10 @@ def sync(strategy: address, minTotal: uint256, maxTotal: uint256):
         self.strategies[strategy].debt -= loss
         self.debt -= loss
 
-    self.lastReport = block.timestamp
+    self.lastSync = block.timestamp
 
     log Sync(
-        strategy, self.balanceOfVault, self.debt, gain, loss, lockedProfit
+        strategy, self.balanceOfVault, self.debt, total, gain, loss, self.lockedProfit
     )
 
 
