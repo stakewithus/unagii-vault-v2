@@ -13,10 +13,10 @@ def test_set_locked_profit_degradation(vault, admin, user):
     with brownie.reverts("degradation > max"):
         vault.setLockedProfitDegradation(10 ** 18 + 1, {"from": admin})
 
-    # time lock
+    # time lock can call
     vault.setLockedProfitDegradation(123, {"from": timeLock})
     assert vault.lockedProfitDegradation() == 123
 
-    # admin
+    # admin can call
     vault.setLockedProfitDegradation(321, {"from": admin})
     assert vault.lockedProfitDegradation() == 321

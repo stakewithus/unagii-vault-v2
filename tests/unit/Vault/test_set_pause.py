@@ -1,5 +1,4 @@
 import brownie
-import pytest
 
 
 def test_set_pause(vault, admin, guardian, user):
