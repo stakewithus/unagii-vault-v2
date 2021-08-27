@@ -17,7 +17,7 @@ TRANSFER_FROM: constant(Bytes[4]) = method_id("transferFrom(address,address,uint
 MAX_QUEUE: constant(uint256) = 20
 MAX_TOTAL_DEBT_RATIO: constant(uint256) = 10000
 MAX_MIN_RESERVE: constant(uint256) = 10000
-
+MAX_DEGRADATION: constant(uint256) = 10 ** 18
 
 struct Strategy:
     approved: bool
@@ -165,7 +165,6 @@ minReserve: public(uint256)
 lastSync: public(uint256)
 # profit locked from report, released over time at a rate set by lockedProfitDegradation
 lockedProfit: public(uint256)
-MAX_DEGRADATION: constant(uint256) = 10 ** 18
 # rate at which locked profit is released
 # 0 = forever, MAX_DEGREDATION = 100% of profit is released 1 block after report
 lockedProfitDegradation: public(uint256)
