@@ -195,7 +195,7 @@ def __init__(token: address, uToken: address):
     self.paused = True
     self.blockDelay = 1
     # 6 hours
-    self.lockedProfitDegradation = convert(MAX_DEGRADATION / 21600, uint256)
+    self.lockedProfitDegradation = convert(MAX_DEGRADATION / (3600 * 6), uint256)
 
 
 @internal
