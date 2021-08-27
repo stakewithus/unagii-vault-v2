@@ -34,16 +34,9 @@ interface IStrategy:
     def migrate(newVersion: address): nonpayable
 
 
-interface DetailedERC20:
-    def decimals() -> uint256: view
-
-
 interface UnagiiToken:
-    def minter() -> address: view
     def token() -> address: view
-    def decimals() -> uint256: view
     def totalSupply() -> uint256: view
-    def balanceOf(owner: address) -> uint256: view
     def mint(receiver: address, amount: uint256): nonpayable
     def burn(spender: address, amount: uint256): nonpayable
     def lastBlock(owner: address) -> uint256: view
@@ -193,7 +186,7 @@ def __init__(token: address, uToken: address):
     assert self.uToken.token() == self.token.address, "uToken token != token"
 
     self.paused = True
-    self.blockDelay = 1
+    self.blockDelay = 10
     # 6 hours
     self.lockedProfitDegradation = convert(MAX_DEGRADATION / (3600 * 6), uint256)
 
