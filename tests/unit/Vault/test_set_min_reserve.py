@@ -13,10 +13,10 @@ def test_set_min_reserve(vault, admin, user):
     with brownie.reverts("min reserve > max"):
         vault.setMinReserve(10001, {"from": admin})
 
-    # time lock
+    # time lock can call
     vault.setMinReserve(123, {"from": timeLock})
     assert vault.minReserve() == 123
 
-    # admin
+    # admin can call
     vault.setMinReserve(321, {"from": admin})
     assert vault.minReserve() == 321
