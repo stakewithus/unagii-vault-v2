@@ -1,5 +1,4 @@
 import brownie
-import pytest
 
 
 def test_set_whitelist(vault, admin, user):
@@ -9,12 +8,18 @@ def test_set_whitelist(vault, admin, user):
     with brownie.reverts("!auth"):
         vault.setWhitelist(user, True, {"from": user})
 
-    # time lock
+    # time lock can call
     tx = vault.setWhitelist(user, True, {"from": timeLock})
     assert vault.whitelist(user)
     assert len(tx.events) == 1
     assert tx.events["SetWhitelist"].values() == [user, True]
 
-    # admin
+    vault.setWhitelist(user, False, {"from": timeLock})
+    assert not vault.whitelist(user)
+
+    # admin can call
+    vault.setWhitelist(user, True, {"from": admin})
+    assert vault.whitelist(user)
+
     vault.setWhitelist(user, False, {"from": admin})
     assert not vault.whitelist(user)

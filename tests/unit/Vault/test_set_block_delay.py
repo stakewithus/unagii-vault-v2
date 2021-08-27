@@ -1,5 +1,4 @@
 import brownie
-import pytest
 
 
 def test_set_block_delay(vault, admin, user):
