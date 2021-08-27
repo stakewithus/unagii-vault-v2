@@ -75,12 +75,16 @@ event AcceptTimeLock:
     timeLock: address
 
 
+event SetAdmin:
+    admin: address
+
+
 event SetGuardian:
     guardian: address
 
 
-event SetAdmin:
-    admin: address
+event SetWorker:
+    worker: address
 
 
 event SetPause:
@@ -169,11 +173,12 @@ paused: public(bool)
 
 token: public(ERC20)
 uToken: public(UnagiiToken)
-# privileges: time lock >= admin >= guardian
+# privileges: time lock >= admin >= guardian >= worker
 timeLock: public(address)
 nextTimeLock: public(address)
 admin: public(address)
 guardian: public(address)
+worker: public(address)
 
 # token balance of vault tracked internally to protect against share dilution
 # from sending tokens directly to this contract
@@ -204,6 +209,8 @@ def __init__(token: address, uToken: address):
     self.timeLock = msg.sender
     self.admin = msg.sender
     self.guardian = msg.sender
+    self.worker = msg.sender
+
     self.token = ERC20(token)
     self.uToken = UnagiiToken(uToken)
 
@@ -298,6 +305,13 @@ def setGuardian(guardian: address):
     assert msg.sender in [self.timeLock, self.admin], "!auth"
     self.guardian = guardian
     log SetGuardian(guardian)
+
+
+@external
+def setWorker(worker: address):
+    assert msg.sender in [self.timeLock, self.admin], "!auth"
+    self.worker = worker
+    log SetWorker(worker)
 
 
 @external
@@ -783,9 +797,10 @@ event Sync:
     loss: uint256
     lockedProfit: uint256
 
+
 @external
 def sync(strategy: address, minTotal: uint256, maxTotal: uint256):
-    # TODO: assert worker
+    assert msg.sender in [self.worker, self.admin, self.timeLock], "!auth"
     assert self.strategies[strategy].active, "!active"
 
     debt: uint256 = self.strategies[strategy].debt
@@ -800,12 +815,18 @@ def sync(strategy: address, minTotal: uint256, maxTotal: uint256):
     if total > debt:
         gain = total - debt
         self.lockedProfit = locked + gain
+
+        self.strategies[strategy].debt += gain
+        self.debt += gain
     elif total < debt:
         loss = debt - total
         if loss > locked:
             self.lockedProfit = 0
         else:
             self.lockedProfit -= loss
+
+        self.strategies[strategy].debt -= loss
+        self.debt -= loss
 
     self.lastReport = block.timestamp
 
