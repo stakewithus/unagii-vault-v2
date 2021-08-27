@@ -752,7 +752,7 @@ def sync(strategy: address, minTotal: uint256, maxTotal: uint256):
     )
 
 
-# array functions tested in test/Array.vy
+# array functions tested in test/ArrayTest.vy
 @internal
 def _pack():
     """
