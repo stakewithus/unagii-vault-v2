@@ -13,10 +13,10 @@ def test_set_block_delay(vault, admin, user):
     with brownie.reverts("delay = 0"):
         vault.setBlockDelay(0, {"from": admin})
 
-    # time lock
+    # time lock can call
     vault.setBlockDelay(123, {"from": timeLock})
     assert vault.blockDelay() == 123
 
-    # admin
+    # admin can call
     vault.setBlockDelay(321, {"from": admin})
     assert vault.blockDelay() == 321
