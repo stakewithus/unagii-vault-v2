@@ -111,11 +111,11 @@ event RevokeStrategy:
     strategy: indexed(address)
 
 
-event AddStrategyToQueue:
+event ActivateStrategy:
     strategy: indexed(address)
 
 
-event RemoveStrategyFromQueue:
+event DeactivateStrategy:
     strategy: indexed(address)
 
 
@@ -757,221 +757,180 @@ def sync(strategy: address, minTotal: uint256, maxTotal: uint256):
     )
 
 
-# # array functions tested in test/Array.vy
-# @internal
-# def _pack():
-#     arr: address[MAX_QUEUE] = empty(address[MAX_QUEUE])
-#     i: uint256 = 0
-#     for strat in self.queue:
-#         if strat != ZERO_ADDRESS:
-#             arr[i] = strat
-#             i += 1
-#     self.queue = arr
+# array functions tested in test/Array.vy
+@internal
+def _pack():
+    """
+    @dev Pack array elements to left
+         example
+         before [1, 2, 0, 0, 3]
+         after  [1, 2, 3, 0, 0]
+    """
+    arr: address[MAX_QUEUE] = empty(address[MAX_QUEUE])
+    i: uint256 = 0
+    for strat in self.queue:
+        if strat != ZERO_ADDRESS:
+            arr[i] = strat
+            i += 1
+    self.queue = arr
 
 
-# @internal
-# def _append(strategy: address):
-#     assert self.queue[MAX_QUEUE - 1] == ZERO_ADDRESS, "queue > max"
-#     self.queue[MAX_QUEUE - 1] = strategy
-#     self._pack()
+@internal
+def _append(strategy: address):
+    assert self.queue[MAX_QUEUE - 1] == ZERO_ADDRESS, "queue > max"
+    self.queue[MAX_QUEUE - 1] = strategy
+    self._pack()
 
 
-# @internal
-# def _remove(i: uint256):
-#     assert i < MAX_QUEUE, "i >= max"
-#     assert self.queue[i] != ZERO_ADDRESS, "!zero address"
-#     self.queue[i] = ZERO_ADDRESS
-#     self._pack()
+@internal
+def _remove(i: uint256):
+    assert i < MAX_QUEUE, "i >= max"
+    assert self.queue[i] != ZERO_ADDRESS, "zero address"
+    self.queue[i] = ZERO_ADDRESS
+    self._pack()
 
 
-# @internal
-# @view
-# def _find(strategy: address) -> uint256:
-#     for i in range(MAX_QUEUE):
-#         if self.queue[i] == strategy:
-#             return i
-#     raise "not found"
+@internal
+@view
+def _find(strategy: address) -> uint256:
+    for i in range(MAX_QUEUE):
+        if self.queue[i] == strategy:
+            return i
+    raise "not found"
 
 
-# @external
-# def approveStrategy(strategy: address):
-#     """
-#     @notice Approve strategy
-#     @param strategy Address of strategy
-#     """
-#     assert msg.sender == self.timeLock, "!time lock"
+@external
+def approveStrategy(strategy: address):
+    """
+    @notice Approve strategy
+    @param strategy Address of strategy
+    """
+    assert msg.sender == self.timeLock, "!time lock"
 
-#     assert not self.strategies[strategy].approved, "approved"
-#     assert IStrategy(strategy).vault() == self, "strategy vault != this"
-#     assert IStrategy(strategy).token() == self.token.address, "strategy token != token"
+    assert not self.strategies[strategy].approved, "approved"
+    assert IStrategy(strategy).vault() == self, "strategy vault != vault"
+    assert IStrategy(strategy).token() == self.token.address, "strategy token != token"
 
-#     self.strategies[strategy] = Strategy(
-#         {
-#             approved: True,
-#             active: False,
-#             activated: False,
-#             debtRatio: 0,
-#             debt: 0,
-#             minBorrow: 0,
-#             maxBorrow: 0,
-#         }
-#     )
+    self.strategies[strategy] = Strategy(
+        {
+            approved: True,
+            active: False,
+            debtRatio: 0,
+            debt: 0,
+        }
+    )
 
-#     log ApproveStrategy(strategy)
+    log ApproveStrategy(strategy)
 
 
-# @external
-# def revokeStrategy(strategy: address):
-#     """
-#     @notice Disapprove strategy
-#     @param strategy Address of strategy
-#     """
-#     assert msg.sender in [self.timeLock, self.admin], "!auth"
-#     assert self.strategies[strategy].approved, "!approved"
-#     assert not self.strategies[strategy].active, "active"
+@external
+def revokeStrategy(strategy: address):
+    """
+    @notice Disapprove strategy
+    @param strategy Address of strategy
+    """
+    assert msg.sender in [self.timeLock, self.admin], "!auth"
+    assert self.strategies[strategy].approved, "!approved"
+    assert not self.strategies[strategy].active, "active"
 
-#     self.strategies[strategy].approved = False
-#     log RevokeStrategy(strategy)
-
-
-# @external
-# def addStrategyToQueue(
-#     strategy: address, debtRatio: uint256, minBorrow: uint256, maxBorrow: uint256
-# ):
-#     """
-#     @notice Activate strategy
-#     @param strategy Address of strategy
-#     @param debtRatio Ratio of total assets this strategy can borrow
-#     @param minBorrow Minimum amount to borrow per call to borrow()
-#     @param maxBorrow Maximum amount to borrow per call to borrow()
-#     """
-#     assert msg.sender in [self.timeLock, self.admin], "!auth"
-#     assert self.strategies[strategy].approved, "!approved"
-#     assert not self.strategies[strategy].active, "active"
-#     assert self.totalDebtRatio + debtRatio <= MAX_TOTAL_DEBT_RATIO, "ratio > max"
-#     assert minBorrow <= maxBorrow, "min borrow > max borrow"
-
-#     self._append(strategy)
-#     self.strategies[strategy].active = True
-#     self.strategies[strategy].activated = True
-#     self.strategies[strategy].debtRatio = debtRatio
-#     self.strategies[strategy].minBorrow = minBorrow
-#     self.strategies[strategy].maxBorrow = maxBorrow
-#     self.totalDebtRatio += debtRatio
-
-#     log AddStrategyToQueue(strategy)
+    self.strategies[strategy].approved = False
+    log RevokeStrategy(strategy)
 
 
-# @external
-# def removeStrategyFromQueue(strategy: address):
-#     """
-#     @notice Deactivate strategy
-#     @param strategy Addres of strategy
-#     """
-#     assert msg.sender in [self.timeLock, self.admin, self.guardian], "!auth"
-#     assert self.strategies[strategy].active, "!active"
+@external
+def activateStrategy(strategy: address, debtRatio: uint256):
+    """
+    @notice Activate strategy
+    @param strategy Address of strategy
+    @param debtRatio Ratio of total assets this strategy can borrow
+    """
+    assert msg.sender in [self.timeLock, self.admin], "!auth"
+    assert self.strategies[strategy].approved, "!approved"
+    assert not self.strategies[strategy].active, "active"
 
-#     self._remove(self._find(strategy))
-#     self.strategies[strategy].active = False
-#     self.totalDebtRatio -= self.strategies[strategy].debtRatio
-#     self.strategies[strategy].debtRatio = 0
+    self._append(strategy)
+    self.strategies[strategy].active = True
+    self.strategies[strategy].debtRatio = debtRatio
 
-#     log RemoveStrategyFromQueue(strategy)
+    self.totalDebtRatio += debtRatio
+    assert self.totalDebtRatio <= MAX_TOTAL_DEBT_RATIO, "debt ratio > max"
 
-
-# @external
-# def setQueue(queue: address[MAX_QUEUE]):
-#     """
-#     @notice Reorder queue
-#     @param queue Array of active strategies
-#     """
-#     assert msg.sender in [self.timeLock, self.admin], "!auth"
-
-#     # check no gaps in new queue
-#     zero: bool = False
-#     for i in range(MAX_QUEUE):
-#         strat: address = queue[i]
-#         if strat == ZERO_ADDRESS:
-#             if not zero:
-#                 zero = True
-#         else:
-#             assert not zero, "gap"
-
-#     # Check old and new queue counts of non zero strategies are equal
-#     for i in range(MAX_QUEUE):
-#         oldStrat: address = self.queue[i]
-#         newStrat: address = queue[i]
-#         if oldStrat == ZERO_ADDRESS:
-#             assert newStrat == ZERO_ADDRESS, "new != 0"
-#         else:
-#             assert newStrat != ZERO_ADDRESS, "new = 0"
-
-#     # Check new strategy is active and no duplicate
-#     for i in range(MAX_QUEUE):
-#         strat: address = queue[i]
-#         if strat == ZERO_ADDRESS:
-#             break
-#         # code below will fail if duplicate strategy in new queue
-#         assert self.strategies[strat].active, "!active"
-#         self.strategies[strat].active = False
-
-#     # update queue
-#     for i in range(MAX_QUEUE):
-#         strat: address = queue[i]
-#         if strat == ZERO_ADDRESS:
-#             break
-#         self.strategies[strat].active = True
-#         self.queue[i] = strat
-
-#     log SetQueue(queue)
+    log ActivateStrategy(strategy)
 
 
-# @external
-# def setDebtRatios(debtRatios: uint256[MAX_QUEUE]):
-#     """
-#     @notice Update debt ratios of active strategies
-#     @param debtRatios Array of debt ratios
-#     """
-#     assert msg.sender in [self.timeLock, self.admin], "!auth"
+@external
+def deactivateStrategy(strategy: address):
+    """
+    @notice Deactivate strategy
+    @param strategy Addres of strategy
+    """
+    assert msg.sender in [self.timeLock, self.admin, self.guardian], "!auth"
+    assert self.strategies[strategy].active, "!active"
 
-#     # check that we're only setting debt ratio on active strategy
-#     for i in range(MAX_QUEUE):
-#         if self.queue[i] == ZERO_ADDRESS:
-#             assert debtRatios[i] == 0, "debt ratio != 0"
+    self._remove(self._find(strategy))
+    self.strategies[strategy].active = False
+    self.totalDebtRatio -= self.strategies[strategy].debtRatio
+    self.strategies[strategy].debtRatio = 0
 
-#     # use memory to save gas
-#     totalDebtRatio: uint256 = 0
-#     for i in range(MAX_QUEUE):
-#         addr: address = self.queue[i]
-#         if addr == ZERO_ADDRESS:
-#             break
-
-#         debtRatio: uint256 = debtRatios[i]
-#         self.strategies[addr].debtRatio = debtRatio
-#         totalDebtRatio += debtRatio
-
-#     self.totalDebtRatio = totalDebtRatio
-
-#     assert self.totalDebtRatio <= MAX_TOTAL_DEBT_RATIO, "total > max"
-
-#     log SetDebtRatios(debtRatios)
+    log DeactivateStrategy(strategy)
 
 
-# @external
-# def setMinMaxBorrow(strategy: address, minBorrow: uint256, maxBorrow: uint256):
-#     """
-#     @notice Update `minBorrow` and `maxBorrow` of approved strategy
-#     @param minBorrow Minimum amount to borrow per call to borrow()
-#     @param maxBorrow Maximum amount to borrow per call to borrow()
-#     """
-#     assert msg.sender in [self.timeLock, self.admin], "!auth"
-#     assert self.strategies[strategy].approved, "!approved"
-#     assert minBorrow <= maxBorrow, "min borrow > max borrow"
+@external
+def setQueue(queue: address[MAX_QUEUE]):
+    """
+    @notice Reorder queue
+    @param queue Array of active strategies
+    """
+    assert msg.sender in [self.timeLock, self.admin], "!auth"
 
-#     self.strategies[strategy].minBorrow = minBorrow
-#     self.strategies[strategy].maxBorrow = maxBorrow
+    for i in range(MAX_QUEUE):
+        old: address = self.queue[i]
+        new: address = queue[i]
 
-#     log SetMinMaxBorrow(strategy, minBorrow, maxBorrow)
+        # check old and new queue have the same number of strategies
+        if old == ZERO_ADDRESS:
+            assert new == ZERO_ADDRESS, "new != zero address"
+        else:
+            assert new != ZERO_ADDRESS, "new = zero address"
+        
+            # Check new strategy is active and no duplicate
+            # assert will fail if duplicate strategy in new queue
+            assert self.strategies[new].active, "!active"
+            self.strategies[new].active = False
+
+    # update queue
+    for i in range(MAX_QUEUE):
+        new: address = queue[i]
+        if new == ZERO_ADDRESS:
+            break
+        self.strategies[new].active = True
+        self.queue[i] = new
+
+    log SetQueue(queue)
+
+
+@external
+def setDebtRatios(debtRatios: uint256[MAX_QUEUE]):
+    """
+    @notice Update debt ratios of active strategies
+    @param debtRatios Array of debt ratios
+    """
+    assert msg.sender in [self.timeLock, self.admin], "!auth"
+
+    # use memory to save gas
+    totalDebtRatio: uint256 = 0
+    for i in range(MAX_QUEUE):
+        strat: address = self.queue[i]
+        if strat == ZERO_ADDRESS:
+            break
+
+        self.strategies[strat].debtRatio = debtRatios[i]
+        totalDebtRatio += debtRatios[i]
+
+    self.totalDebtRatio = totalDebtRatio
+    assert self.totalDebtRatio <= MAX_TOTAL_DEBT_RATIO, "total > max"
+
+    log SetDebtRatios(debtRatios)
 
 
 @external
