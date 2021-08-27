@@ -9,15 +9,24 @@ def test_set_pause(vault, admin, guardian, user):
     with brownie.reverts("!auth"):
         vault.setPause(True, {"from": user})
 
-    # time lock can pause
+    # time lock can call
     tx = vault.setPause(True, {"from": timeLock})
     assert vault.paused()
     assert tx.events["SetPause"].values() == [True]
 
-    # admin can pause
-    tx = vault.setPause(False, {"from": admin})
+    vault.setPause(False, {"from": timeLock})
     assert not vault.paused()
 
-    # guardian can pause
+    # admin can call
+    vault.setPause(True, {"from": admin})
+    assert vault.paused()
+
+    vault.setPause(False, {"from": admin})
+    assert not vault.paused()
+
+    # guardian can call
     vault.setPause(True, {"from": guardian})
     assert vault.paused()
+
+    vault.setPause(False, {"from": guardian})
+    assert not vault.paused()
