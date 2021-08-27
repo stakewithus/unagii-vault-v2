@@ -1,11 +1,12 @@
 # @version 0.2.15
 
 """
-# TODO: version 1.0.0
 @title Unagii Vault V2 0.1.2
 @author stakewith.us
 @license AGPL-3.0-or-later
 """
+
+# TODO: version 1.0.0
 
 from vyper.interfaces import ERC20
 
