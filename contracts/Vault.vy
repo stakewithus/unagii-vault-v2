@@ -675,7 +675,6 @@ def borrow(amount: uint256) -> uint256:
     @dev Only active strategy can borrow
     @dev Returns amount that was sent
     """
-    assert not self.paused, "paused"
     assert self.strategies[msg.sender].active, "!active"
 
     available: uint256 = self._calcMaxBorrow(msg.sender)
