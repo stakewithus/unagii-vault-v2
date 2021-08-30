@@ -1,64 +1,99 @@
 import brownie
-from brownie import ZERO_ADDRESS
-from brownie.test import given, strategy
-import pytest
+
+# max queue
+N = 20
 
 
-@pytest.fixture(scope="function", autouse=True)
-def setup(fn_isolation, vault, token, admin, testFundManager, user):
-    if vault.fundManager() != testFundManager.address:
-        timeLock = vault.timeLock()
-        vault.setFundManager(testFundManager, {"from": timeLock})
+def test_borrow(vault, token, admin, guardian, testStrategy, user):
+    strategy = testStrategy
+    timeLock = vault.timeLock()
 
-
-@given(
-    user=strategy("address", exclude=ZERO_ADDRESS),
-    deposit_amount=strategy("uint256", min_value=1, max_value=2 ** 128 - 1),
-    borrow_amount=strategy("uint256", min_value=1, max_value=2 ** 128 - 1),
-)
-def test_borrow(vault, token, testFundManager, user, deposit_amount, borrow_amount):
-    fundManager = testFundManager
+    deposit_amount = 100
 
     # deposit into vault
     token.mint(user, deposit_amount)
     token.approve(vault, deposit_amount, {"from": user})
     vault.deposit(deposit_amount, 1, {"from": user})
 
+    # revert if not active strategy
+    with brownie.reverts("!active"):
+        vault.borrow(0, {"from": strategy})
+
+    vault.approveStrategy(strategy, {"from": timeLock})
+    vault.activateStrategy(strategy, 1, {"from": admin})
+
+    # borrow = 0
+    with brownie.reverts("borrow = 0"):
+        vault.borrow(0, {"from": strategy})
+
+    # borrow = 0 if paused
+    vault.setPause(True, {"from": guardian})
+    calc = vault.calcMaxBorrow(strategy)
+    assert calc == 0
+
+    with brownie.reverts("borrow = 0"):
+        vault.borrow(1, {"from": strategy})
+
+    vault.setPause(False, {"from": guardian})
+
+    # borrow = 0 if total debt ratio = 0
+    vault.setDebtRatios([0 for i in range(N)], {"from": admin})
+    calc = vault.calcMaxBorrow(strategy)
+    assert calc == 0
+
+    with brownie.reverts("borrow = 0"):
+        vault.borrow(1, {"from": strategy})
+
+    vault.setDebtRatios([1 for i in range(N)], {"from": admin})
+
+    # borrow = 0 if balance of vault <= min reserve
+    vault.setMinReserve(10000, {"from": admin})
+    calc = vault.calcMaxBorrow(strategy)
+    assert calc == 0
+
+    with brownie.reverts("borrow = 0"):
+        vault.borrow(1, {"from": strategy})
+
+    vault.setMinReserve(500, {"from": admin})
+
+    # test borrow > 0
+    calc = vault.calcMaxBorrow(strategy)
+    assert calc > 0
+
     def snapshot():
+        strat = vault.strategies(strategy)
+
         return {
             "token": {
                 "vault": token.balanceOf(vault),
-                "fundManager": token.balanceOf(fundManager),
+                "strategy": token.balanceOf(strategy),
             },
             "vault": {
                 "balanceOfVault": vault.balanceOfVault(),
-                "debt": vault.debt(),
+                "debt": vault.strategies(strategy)["debt"],
+                "strategy": {"debt": strat["debt"]},
             },
         }
 
     before = snapshot()
-    tx = vault.borrow(borrow_amount, {"from": fundManager})
+    tx = vault.borrow(2 ** 256 - 1, {"from": strategy})
     after = snapshot()
 
     diff = before["token"]["vault"] - after["token"]["vault"]
-    assert tx.events["Borrow"].values() == [fundManager, borrow_amount, diff]
-    assert diff > 0
-    assert after["token"]["fundManager"] == before["token"]["fundManager"] + diff
+    assert diff == calc
+    assert after["token"]["vault"] == before["token"]["vault"] - diff
+    assert after["token"]["strategy"] == before["token"]["strategy"] + diff
     assert after["vault"]["balanceOfVault"] == before["vault"]["balanceOfVault"] - diff
     assert after["vault"]["debt"] == before["vault"]["debt"] + diff
+    assert (
+        after["vault"]["strategy"]["debt"] == before["vault"]["strategy"]["debt"] + diff
+    )
 
+    assert tx.events["Borrow"].values() == [strategy, diff]
 
-def test_borrow_paused(vault, admin, testFundManager):
-    vault.setPause(True, {"from": admin})
-    with brownie.reverts("paused"):
-        vault.borrow(1, {"from": testFundManager})
+    # borrow = 0 if debt >= limit
+    calc = vault.calcMaxBorrow(strategy)
+    assert calc == 0
 
-
-def test_borrow_not_fund_manager(vault, user):
-    with brownie.reverts("!fund manager"):
-        vault.borrow(1, {"from": user})
-
-
-def test_borrow_zero(vault, testFundManager):
     with brownie.reverts("borrow = 0"):
-        vault.borrow(0, {"from": testFundManager})
+        vault.borrow(2 ** 256 - 1, {"from": strategy})

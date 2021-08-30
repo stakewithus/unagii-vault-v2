@@ -846,10 +846,10 @@ def borrow(amount: uint256) -> uint256:
 
     self._safeTransfer(self.token.address, msg.sender, _amount)
 
-    self.balanceOfVault -= amount
+    self.balanceOfVault -= _amount
     # include fee on trasfer to debt
-    self.debt += amount
-    self.strategies[msg.sender].debt += amount
+    self.debt += _amount
+    self.strategies[msg.sender].debt += _amount
 
     log Borrow(msg.sender, _amount)
 
