@@ -37,16 +37,16 @@ def __init__(vault: address, token: address):
 #     self.timeLock = msg.sender
 
 
-# @internal
-# @view
-# def _totalAssets() -> uint256:
-#     return self.token.balanceOf(self) + self.gain
+@internal
+@view
+def _totalAssets() -> uint256:
+    return self.token.balanceOf(self) + self.gain
 
 
-# @external
-# @view
-# def totalAssets() -> uint256:
-#     return self._totalAssets()
+@external
+@view
+def totalAssets() -> uint256:
+    return self._totalAssets()
 
 
 @external
@@ -144,11 +144,11 @@ def setToken(token: address):
     self.token = ERC20(token)
 
 
-# @external
-# def setLoss(loss: uint256):
-#     self.loss = loss
+@external
+def setLoss(loss: uint256):
+    self.loss = loss
 
 
-# @external
-# def setGain(gain: uint256):
-#     self.gain = gain
+@external
+def setGain(gain: uint256):
+    self.gain = gain

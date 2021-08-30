@@ -884,8 +884,9 @@ def repay(amount: uint256) -> uint256:
 
 @external
 def sync(strategy: address, minTotal: uint256, maxTotal: uint256):
+    # TODO: comment
     assert msg.sender in [self.worker, self.admin, self.timeLock], "!auth"
-    assert self.strategies[strategy].active, "!active"
+    assert self.strategies[strategy].active, "!active strategy"
 
     debt: uint256 = self.strategies[strategy].debt
     total: uint256 = IStrategy(strategy).totalAssets()
