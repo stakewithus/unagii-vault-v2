@@ -189,6 +189,8 @@ def __init__(token: address, uToken: address):
     self.blockDelay = 10
     # 6 hours
     self.lockedProfitDegradation = convert(MAX_DEGRADATION / (3600 * 6), uint256)
+    # 5% of free funds
+    self.minReserve = 500 
 
 
 @internal
@@ -828,6 +830,7 @@ def calcMaxBorrow(strategy: address) -> uint256:
     return self._calcMaxBorrow(strategy)
 
 
+# TODO: integration test (borrow, repay, sync)
 @external
 def borrow(amount: uint256) -> uint256:
     """
