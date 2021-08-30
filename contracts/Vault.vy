@@ -599,7 +599,7 @@ def withdraw(shares: uint256, _min: uint256) -> uint256:
     return amount
 
 
-# array functions tested in test/ArrayTest.vy
+# array functions see test/ArrayTest.vy for tests
 @internal
 def _pack():
     """
@@ -678,7 +678,7 @@ def revokeStrategy(strategy: address):
     self.strategies[strategy].approved = False
     log RevokeStrategy(strategy)
 
-
+# TODO: integration test (approve, activate, deactivate, revoke)
 @external
 def activateStrategy(strategy: address, debtRatio: uint256):
     """

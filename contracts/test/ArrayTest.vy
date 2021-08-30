@@ -1,4 +1,4 @@
-# @version 0.2.12
+# @version 0.2.15
 
 N: constant(uint256) = 5
 arr: public(address[N])
