@@ -454,8 +454,6 @@ def deposit(amount: uint256, _min: uint256) -> uint256:
     assert not self.paused, "paused"
     assert amount > 0, "deposit = 0"
 
-    # TODO: assert self.token.balanceOf(self) >= self.balanceOfVault
-
     # check block delay or whitelisted
     assert (
         block.number >= self.uToken.lastBlock(msg.sender) + self.blockDelay

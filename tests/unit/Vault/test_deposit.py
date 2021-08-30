@@ -16,43 +16,9 @@ def test_deposit_paused(vault, admin, user):
         vault.deposit(1, 0, {"from": user})
 
 
-def test_deposit_max_uint(vault, token, uToken, user):
-    token.approve(vault, 2 ** 256 - 1, {"from": user})
-    uBal = uToken.balanceOf(user)
-    vault.deposit(2 ** 256 - 1, 1, {"from": user})
-    assert uToken.balanceOf(user) > uBal
-
-
 def test_deposit_zero(vault, user):
     with brownie.reverts("deposit = 0"):
         vault.deposit(0, 0, {"from": user})
-
-
-def test_deposit_limit(vault, admin, user):
-    vault.setDepositLimit(0, {"from": admin})
-    with brownie.reverts("deposit limit"):
-        vault.deposit(1, 0, {"from": user})
-
-
-def test_deposit_fee_on_transfer(vault, admin, token, uToken, user):
-    # test diff = 0
-    amount = 123
-    fee = amount
-    token.setFeeOnTransfer(fee)
-    vault.setFeeOnTransfer(True, {"from": admin})
-
-    token.approve(vault, amount, {"from": user})
-
-    with brownie.reverts("diff = 0"):
-        vault.deposit(amount, 0, {"from": user})
-
-    fee = 1
-    token.setFeeOnTransfer(fee)
-
-    uBal = uToken.balanceOf(user)
-    vault.deposit(amount, 1, {"from": user})
-
-    assert uToken.balanceOf(user) > uBal
 
 
 def test_deposit_min_shares(vault, user):
@@ -90,7 +56,7 @@ def test_deposit(vault, token, uToken, user, amount):
     calc = vault.calcSharesToMint(amount)
 
     before = snapshot()
-    tx = vault.deposit(amount, 1, {"from": user})
+    tx = vault.deposit(amount, calc, {"from": user})
     after = snapshot()
 
     assert tx.events["Deposit"].values() == [user, amount, amount, calc]
