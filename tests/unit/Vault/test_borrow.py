@@ -16,7 +16,7 @@ def test_borrow(vault, token, admin, guardian, testStrategy, user):
     vault.deposit(deposit_amount, 1, {"from": user})
 
     # revert if not active strategy
-    with brownie.reverts("!active"):
+    with brownie.reverts("!active strategy"):
         vault.borrow(0, {"from": strategy})
 
     vault.approveStrategy(strategy, {"from": timeLock})

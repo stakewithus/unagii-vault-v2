@@ -1,67 +1,65 @@
 import brownie
 from brownie import ZERO_ADDRESS
-from brownie.test import given, strategy
-import pytest
 
 
-@pytest.fixture(scope="function", autouse=True)
-def setup(fn_isolation, vault, token, admin, testFundManager, user):
-    if vault.fundManager() != testFundManager.address:
-        timeLock = vault.timeLock()
-        vault.setFundManager(testFundManager, {"from": timeLock})
+def test_repay(vault, token, admin, testStrategy, user):
+    strategy = testStrategy
+    timeLock = vault.timeLock()
 
-
-@given(
-    user=strategy("address", exclude=ZERO_ADDRESS),
-    deposit_amount=strategy("uint256", min_value=1, max_value=2 ** 128 - 1),
-    borrow_amount=strategy("uint256", min_value=1, max_value=2 ** 128 - 1),
-    repay_amount=strategy("uint256", min_value=1, max_value=2 ** 128 - 1),
-)
-def test_repay(
-    vault, token, testFundManager, user, deposit_amount, borrow_amount, repay_amount
-):
-    fundManager = testFundManager
+    deposit_amount = 100
 
     # deposit into vault
     token.mint(user, deposit_amount)
     token.approve(vault, deposit_amount, {"from": user})
     vault.deposit(deposit_amount, 1, {"from": user})
 
-    # borrow
-    vault.borrow(borrow_amount, {"from": testFundManager})
+    # revert if not approved strategy
+    with brownie.reverts("!approved strategy"):
+        vault.repay(0, {"from": strategy})
 
-    # approve vault
-    token.approve(vault, 2 ** 256 - 1, {"from": fundManager})
+    vault.approveStrategy(strategy, {"from": timeLock})
+    vault.activateStrategy(strategy, 1, {"from": admin})
 
+    # revert if repay = 0
+    with brownie.reverts("repay = 0"):
+        vault.repay(0, {"from": strategy})
+
+    # test borrow
     def snapshot():
         return {
             "token": {
                 "vault": token.balanceOf(vault),
-                "fundManager": token.balanceOf(fundManager),
+                "strategy": token.balanceOf(strategy),
             },
             "vault": {
                 "balanceOfVault": vault.balanceOfVault(),
                 "debt": vault.debt(),
+                "strategy": {
+                    "debt": vault.strategies(strategy)["debt"],
+                },
             },
         }
 
+    borrow_amount = vault.calcMaxBorrow(strategy)
+    vault.borrow(borrow_amount, {"from": strategy})
+
+    repay_amount = borrow_amount / 2
+    token.approve(vault, repay_amount, {"from": strategy})
+
     before = snapshot()
-    tx = vault.repay(repay_amount, {"from": fundManager})
+    tx = vault.repay(repay_amount, {"from": strategy})
     after = snapshot()
 
-    diff = after["token"]["vault"] - before["token"]["vault"]
-    assert tx.events["Repay"].values() == [fundManager, repay_amount, diff]
-    assert diff > 0
-    assert after["token"]["fundManager"] == before["token"]["fundManager"] - diff
-    assert after["vault"]["balanceOfVault"] == before["vault"]["balanceOfVault"] + diff
-    assert after["vault"]["debt"] == before["vault"]["debt"] - diff
+    assert after["token"]["vault"] == before["token"]["vault"] + repay_amount
+    assert after["token"]["strategy"] == before["token"]["strategy"] - repay_amount
+    assert (
+        after["vault"]["balanceOfVault"]
+        == before["vault"]["balanceOfVault"] + repay_amount
+    )
+    assert after["vault"]["debt"] == before["vault"]["debt"] - repay_amount
+    assert (
+        after["vault"]["strategy"]["debt"]
+        == before["vault"]["strategy"]["debt"] - repay_amount
+    )
 
-
-def test_repay_not_fund_manager(vault, user):
-    with brownie.reverts("!fund manager"):
-        vault.repay(1, {"from": user})
-
-
-def test_repay_zero(vault, testFundManager):
-    with brownie.reverts("repay = 0"):
-        vault.repay(0, {"from": testFundManager})
+    assert tx.events["Repay"].values() == [strategy, repay_amount]

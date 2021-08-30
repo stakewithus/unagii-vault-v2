@@ -838,7 +838,7 @@ def borrow(amount: uint256) -> uint256:
     @dev Only active strategy can borrow
     @dev Returns amount that was sent
     """
-    assert self.strategies[msg.sender].active, "!active"
+    assert self.strategies[msg.sender].active, "!active strategy"
 
     available: uint256 = self._calcMaxBorrow(msg.sender)
     _amount: uint256 = min(amount, available)
@@ -846,6 +846,7 @@ def borrow(amount: uint256) -> uint256:
 
     self._safeTransfer(self.token.address, msg.sender, _amount)
 
+    # TODO: assert balanceOfVault <= token.balanceOf(self)
     self.balanceOfVault -= _amount
     # include fee on trasfer to debt
     self.debt += _amount
@@ -863,7 +864,7 @@ def repay(amount: uint256) -> uint256:
     @dev Only approved and active strategy can repay
     @dev Returns actual amount that was repaid
     """
-    assert self.strategies[msg.sender].approved, "!strategy"
+    assert self.strategies[msg.sender].approved, "!approved strategy"
 
     assert amount > 0, "repay = 0"
 
@@ -871,8 +872,8 @@ def repay(amount: uint256) -> uint256:
     self._safeTransferFrom(self.token.address, msg.sender, self, amount)
     diff: uint256 = self.token.balanceOf(self) - bal
 
+    # TODO: assert balanceOfVault <= token.balanceOf(self)
     self.balanceOfVault = bal + diff
-    # exclude fee on transfer from debt payment
     self.debt -= diff
     self.strategies[msg.sender].debt -= diff
 
