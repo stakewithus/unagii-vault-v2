@@ -451,6 +451,7 @@ def deposit(amount: uint256, _min: uint256) -> uint256:
     @param _min Minimum amount of uToken to be minted
     @dev Returns actual amount of uToken minted
     """
+    # TODO: assert balanceOfVault == token.balanceOf(self)
     assert not self.paused, "paused"
     assert amount > 0, "deposit = 0"
 
@@ -522,7 +523,6 @@ def _withdraw(amount: uint256) -> uint256:
     """
     _amount: uint256 = amount
     loss: uint256 = 0
-    # TODO: assert self.token.balanceOf(self) >= self.balanceOfVault
     bal: uint256 = self.token.balanceOf(self)
 
     for strat in self.queue:
@@ -574,19 +574,15 @@ def withdraw(shares: uint256, _min: uint256) -> uint256:
         or self.whitelist[msg.sender]
     ), "block < delay"
 
-    # TODO: assert self.token.balanceOf(self) >= self.balanceOfVault
-
     amount: uint256 = self._calcWithdraw(
         shares, self.uToken.totalSupply(), self._calcFreeFunds()
     )
 
+    # TODO: assert balanceOfVault == token.balanceOf(self)
     # withdraw from strategies if amount to withdraw > balance of vault
     if amount > self.balanceOfVault:
-        loss: uint256 = self._withdraw(amount - self.balanceOfVault)
-
-        if loss > 0:
-            # msg.sender must cover all of loss
-            amount -= loss
+        # msg.sender must cover all of loss
+        amount -= self._withdraw(amount - self.balanceOfVault)
 
         if amount > self.balanceOfVault:
             amount = self.balanceOfVault

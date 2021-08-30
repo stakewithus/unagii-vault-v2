@@ -6,10 +6,11 @@ import pytest
 
 
 @pytest.fixture(scope="function", autouse=True)
-def setup(fn_isolation, vault, token, admin, user):
+def setup(fn_isolation, chain, vault, token, admin, user):
     token.mint(user, 1000)
     token.approve(vault, 1000, {"from": user})
     vault.deposit(1000, 1, {"from": user})
+    chain.mine(vault.blockDelay())
 
 
 def test_withdraw_zero_shares(vault, user):
@@ -22,37 +23,17 @@ def test_withdraw_min(vault, user):
         vault.withdraw(1, 1000, {"from": user})
 
 
-def test_withdraw_fee_on_transfer(vault, token, uToken, user):
-    shares = 123
-    fee = 1
-    token.setFeeOnTransfer(fee)
-
-    def snapshot():
-        return {
-            "token": {"vault": token.balanceOf(vault)},
-            "uToken": {"user": uToken.balanceOf(user)},
-            "vault": {"balanceOfVault": vault.balanceOfVault()},
-        }
-
-    before = snapshot()
-    vault.withdraw(shares, 1, {"from": user})
-    after = snapshot()
-
-    assert after["uToken"]["user"] < before["uToken"]["user"]
-    assert (before["vault"]["balanceOfVault"] - after["vault"]["balanceOfVault"]) == (
-        before["token"]["vault"] - after["token"]["vault"]
-    )
-
-
 @given(
     deposit_amount=strategy("uint256", min_value=1, max_value=2 ** 128),
     shares=strategy("uint256", min_value=1),
     user=strategy("address", exclude=ZERO_ADDRESS),
 )
-def test_withdraw_no_loss(vault, token, uToken, user, deposit_amount, shares):
+def test_withdraw_no_loss(chain, vault, token, uToken, user, deposit_amount, shares):
     token.mint(user, deposit_amount)
     token.approve(vault, deposit_amount, {"from": user})
     vault.deposit(deposit_amount, 1, {"from": user})
+
+    chain.mine(vault.blockDelay())
 
     def snapshot():
         return {
@@ -75,7 +56,7 @@ def test_withdraw_no_loss(vault, token, uToken, user, deposit_amount, shares):
     calc = vault.calcWithdraw(_shares)
 
     before = snapshot()
-    tx = vault.withdraw(shares, 1, {"from": user})
+    tx = vault.withdraw(_shares, calc, {"from": user})
     after = snapshot()
 
     assert tx.events["Withdraw"].values() == [user, _shares, calc]
@@ -87,91 +68,104 @@ def test_withdraw_no_loss(vault, token, uToken, user, deposit_amount, shares):
 
     assert after["vault"]["totalAssets"] == before["vault"]["totalAssets"] - diff
     assert after["vault"]["balanceOfVault"] == before["vault"]["balanceOfVault"] - diff
-    assert after["vault"]["debt"] == before["vault"]["debt"]
     assert after["vault"]["balanceOfVault"] == after["token"]["vault"]
+    assert after["vault"]["debt"] == before["vault"]["debt"]
 
     assert after["uToken"]["user"] == before["uToken"]["user"] - _shares
     assert after["uToken"]["totalSupply"] == before["uToken"]["totalSupply"] - _shares
 
 
-@given(
-    deposit_amount=strategy("uint256", min_value=1, max_value=2 ** 128),
-    loss=strategy("uint256"),
-    shares=strategy("uint256", min_value=1),
-    user=strategy("address", exclude=ZERO_ADDRESS),
-)
-def test_withdraw_maybe_loss(
-    vault, testFundManager, token, uToken, user, admin, deposit_amount, loss, shares
-):
-    fundManager = testFundManager
-    timeLock = vault.timeLock()
+# TODO: integration test
+# @given(
+#     deposit_amount=strategy("uint256", min_value=1, max_value=2 ** 128),
+#     loss=strategy("uint256"),
+#     shares=strategy("uint256", min_value=1),
+#     user=strategy("address", exclude=ZERO_ADDRESS),
+# )
+# def test_withdraw(
+#     chain,
+#     vault,
+#     testFundManager,
+#     token,
+#     uToken,
+#     user,
+#     admin,
+#     deposit_amount,
+#     loss,
+#     shares,
+# ):
+#     fundManager = testFundManager
+#     timeLock = vault.timeLock()
 
-    vault.setFundManager(fundManager, {"from": timeLock})
+#     vault.setFundManager(fundManager, {"from": timeLock})
 
-    token.mint(user, deposit_amount)
-    token.approve(vault, deposit_amount, {"from": user})
-    vault.deposit(deposit_amount, 1, {"from": user})
+#     token.mint(user, deposit_amount)
+#     token.approve(vault, deposit_amount, {"from": user})
+#     vault.deposit(deposit_amount, 1, {"from": user})
 
-    vault.borrow(2 ** 256 - 1, {"from": fundManager})
+#     # wait
+#     chain.mine(vault.blockDelay())
 
-    _shares = min(shares, uToken.balanceOf(user))
-    calc = vault.calcWithdraw(_shares)
-    bal = token.balanceOf(vault)
-    debt = vault.debt()
-    fund_manager_bal = token.balanceOf(fundManager)
+#     vault.borrow(2 ** 256 - 1, {"from": fundManager})
 
-    _loss = min(calc, debt, loss, fund_manager_bal)
-    fundManager.setLoss(_loss)
+#     _shares = min(shares, uToken.balanceOf(user))
+#     calc = vault.calcWithdraw(_shares)
+#     bal = token.balanceOf(vault)
+#     debt = vault.debt()
+#     fund_manager_bal = token.balanceOf(fundManager)
 
-    def snapshot():
-        return {
-            "token": {
-                "vault": token.balanceOf(vault),
-                "user": token.balanceOf(user),
-            },
-            "vault": {
-                "totalAssets": vault.totalAssets(),
-                "balanceOfVault": vault.balanceOfVault(),
-                "debt": vault.debt(),
-            },
-        }
+#     _loss = min(calc, debt, loss, fund_manager_bal)
+#     fundManager.setLoss(_loss)
 
-    before = snapshot()
-    vault.withdraw(_shares, 0, {"from": user})
-    after = snapshot()
+#     def snapshot():
+#         return {
+#             "token": {
+#                 "vault": token.balanceOf(vault),
+#                 "user": token.balanceOf(user),
+#             },
+#             "vault": {
+#                 "totalAssets": vault.totalAssets(),
+#                 "balanceOfVault": vault.balanceOfVault(),
+#                 "debt": vault.debt(),
+#             },
+#         }
 
-    diff = after["token"]["user"] - before["token"]["user"]
+#     before = snapshot()
+#     vault.withdraw(_shares, 0, {"from": user})
+#     after = snapshot()
 
-    # withdrew from fund manager
-    if calc > bal:
-        assert after["vault"]["totalAssets"] == before["vault"]["totalAssets"] - calc
+#     diff = after["token"]["user"] - before["token"]["user"]
 
-        # loss equal to fund manager bal
-        if _loss >= fund_manager_bal:
-            # some transferred from vault
-            assert after["vault"]["balanceOfVault"] == before["vault"][
-                "balanceOfVault"
-            ] - (calc - _loss)
-            # 0 transferred from fund manager
-            assert after["vault"]["debt"] == before["vault"]["debt"] - _loss
-        else:
-            # all losses are paid from fund manager
-            fund_manager_diff = min(calc - bal, fund_manager_bal - _loss)
+#     # withdrew from fund manager
+#     if calc > bal:
+#         assert after["vault"]["totalAssets"] == before["vault"]["totalAssets"] - calc
 
-            assert after["vault"]["balanceOfVault"] == before["vault"][
-                "balanceOfVault"
-            ] + fund_manager_diff - min(calc - _loss, bal + fund_manager_diff)
+#         # loss equal to fund manager bal
+#         if _loss >= fund_manager_bal:
+#             # some transferred from vault
+#             assert after["vault"]["balanceOfVault"] == before["vault"][
+#                 "balanceOfVault"
+#             ] - (calc - _loss)
+#             # 0 transferred from fund manager
+#             assert after["vault"]["debt"] == before["vault"]["debt"] - _loss
+#         else:
+#             # all losses are paid from fund manager
+#             fund_manager_diff = min(calc - bal, fund_manager_bal - _loss)
 
-            assert (
-                after["vault"]["debt"]
-                == before["vault"]["debt"] - _loss - fund_manager_diff
-            )
-    else:
-        assert diff == calc
-        assert after["vault"]["totalAssets"] == before["vault"]["totalAssets"] - diff
-        assert (
-            after["vault"]["balanceOfVault"] == before["vault"]["balanceOfVault"] - diff
-        )
-        assert after["vault"]["debt"] == before["vault"]["debt"]
+#             assert after["vault"]["balanceOfVault"] == before["vault"][
+#                 "balanceOfVault"
+#             ] + fund_manager_diff - min(calc - _loss, bal + fund_manager_diff)
 
-    assert after["token"]["vault"] == after["vault"]["balanceOfVault"]
+#             assert (
+#                 after["vault"]["debt"]
+#                 == before["vault"]["debt"] - _loss - fund_manager_diff
+#             )
+#     else:
+#         assert diff == calc
+#         assert after["vault"]["totalAssets"] == before["vault"]["totalAssets"] - diff
+#         assert (
+#             after["vault"]["balanceOfVault"] == before["vault"]["balanceOfVault"] - diff
+#         )
+#         assert after["vault"]["debt"] == before["vault"]["debt"]
+
+#     assert after["token"]["vault"] == after["vault"]["balanceOfVault"]
