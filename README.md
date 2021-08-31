@@ -11,7 +11,7 @@ virtualenv -p python3 venv
 source venv/bin/activate
 
 # install vyper
-pip install vyper==0.2.12
+pip install vyper==0.2.15
 pip install eth-brownie
 pip install eth_account
 pip install black
