@@ -152,114 +152,94 @@ abstract contract StrategyV2 {
         perfFee = _fee;
     }
 
-    function setVault(address _vault) external onlyTimeLock {
-        if (address(vault) != address(0)) {
-            token.safeApprove(address(vault), 0);
-        }
+    // function setVault(address _vault) external onlyTimeLock {
+    //     if (address(vault) != address(0)) {
+    //         token.safeApprove(address(vault), 0);
+    //     }
 
-        require(IVault(_vault).token() == address(token), "new vault token != token");
+    //     require(IVault(_vault).token() == address(token), "new vault token != token");
 
-        vault = IVault(_vault);
-        token.safeApprove(_vault, type(uint).max);
+    //     vault = IVault(_vault);
+    //     token.safeApprove(_vault, type(uint).max);
 
-        emit SetVault(_vault);
-    }
+    //     emit SetVault(_vault);
+    // }
 
-    /*
-    @notice Set `claimRewardsOnMigrate`. If `false` skip call to `claimRewards`
-            when `migrate` is called.
-    @param _claimRewards Boolean to call or skip call to `claimRewards`
-    */
-    function setClaimRewardsOnMigrate(bool _claimRewards) external onlyTimeLockOrAdmin {
-        claimRewardsOnMigrate = _claimRewards;
-    }
+    // /*
+    // @notice Set `claimRewardsOnMigrate`. If `false` skip call to `claimRewards`
+    //         when `migrate` is called.
+    // @param _claimRewards Boolean to call or skip call to `claimRewards`
+    // */
+    // function setClaimRewardsOnMigrate(bool _claimRewards) external onlyTimeLockOrAdmin {
+    //     claimRewardsOnMigrate = _claimRewards;
+    // }
 
-    /*
-    @notice Transfer any token from `_from` address. Used for migration.
-    @param _token Address of token
-    @param _from Address to transfer token from
-    @param _amount Amount of token to transfer
-    */
-    function pull(
-        address _token,
-        address _from,
-        uint _amount
-    ) external onlyAuthorized {
-        IERC20(_token).safeTransferFrom(_from, address(this), _amount);
-    }
+    // /*
+    // @notice Transfer any token from `_from` address. Used for migration.
+    // @param _token Address of token
+    // @param _from Address to transfer token from
+    // @param _amount Amount of token to transfer
+    // */
+    // function pull(
+    //     address _token,
+    //     address _from,
+    //     uint _amount
+    // ) external onlyAuthorized {
+    //     IERC20(_token).safeTransferFrom(_from, address(this), _amount);
+    // }
 
-    /*
-    @notice Returns approximate amount of token locked in this contract
-    @dev Output may vary depending on price pulled from external DeFi contracts
-    */
-    function totalAssets() external view virtual returns (uint);
+    // /*
+    // @notice Returns approximate amount of token locked in this contract
+    // @dev Output may vary depending on price pulled from external DeFi contracts
+    // */
+    // function totalAssets() external view virtual returns (uint);
 
-    /*
-    @notice Deposit into strategy
-    @param _amount Amount of token to deposit from vault
-    @param _min Minimum amount borrowed
-    */
-    function deposit(uint _amount, uint _min) external virtual;
+    // /*
+    // @notice Deposit into strategy
+    // @param _amount Amount of token to deposit from vault
+    // @param _min Minimum amount borrowed
+    // */
+    // function deposit(uint _amount, uint _min) external virtual;
 
-    /*
-    @notice Withdraw token from this contract
-    @dev Only callable by vault
-    @dev Returns current loss = debt to vault - total assets
-    */
-    function withdraw(uint _amount) external virtual returns (uint);
+    // /*
+    // @notice Withdraw token from this contract
+    // @dev Only callable by vault
+    // @dev Returns current loss = debt to vault - total assets
+    // */
+    // function withdraw(uint _amount) external virtual returns (uint);
 
-    /*
-    @notice Repay vault
-    @param _amount Amount of token to repay to vault
-    @param _min Minimum amount repaid
-    @dev Call report after this to report any loss
-    */
-    function repay(uint _amount, uint _min) external virtual;
+    // /*
+    // @notice Repay vault
+    // @param _amount Amount of token to repay to vault
+    // @param _min Minimum amount repaid
+    // @dev Call report after this to report any loss
+    // */
+    // function repay(uint _amount, uint _min) external virtual;
 
-    /*
-    @notice Claim any reward tokens, sell for token
-    @param _minProfit Minumum amount of token to gain from selling rewards
-    */
-    function claimRewards(uint _minProfit) external virtual;
+    // /*
+    // @notice Claim rewards, skim and report
+    // @param _minProfit Minumum amount of token to gain from selling rewards
+    // @param _minTotal Minimum value of total assets.
+    //            Used to protect against price manipulation.
+    // @param _maxTotal Maximum value of total assets Used
+    //            Used to protect against price manipulation.
+    // */
+    // function harvest(
+    //     uint _minProfit,
+    //     uint _minTotal,
+    //     uint _maxTotal
+    // ) external virtual;
 
-    /*
-    @notice Free up any profit over debt
-    */
-    function skim() external virtual;
+    // /*
+    // @notice Migrate to new version of this strategy
+    // @param _strategy Address of new strategy
+    // @dev Only callable by vault
+    // */
+    // function migrate(address _strategy) external virtual;
 
-    /*
-    @notice Report gain or loss back to vault
-    @param _minTotal Minimum value of total assets.
-               Used to protect against price manipulation.
-    @param _maxTotal Maximum value of total assets Used
-               Used to protect against price manipulation.  
-    */
-    function report(uint _minTotal, uint _maxTotal) external virtual;
-
-    /*
-    @notice Claim rewards, skim and report
-    @param _minProfit Minumum amount of token to gain from selling rewards
-    @param _minTotal Minimum value of total assets.
-               Used to protect against price manipulation.
-    @param _maxTotal Maximum value of total assets Used
-               Used to protect against price manipulation.  
-    */
-    function harvest(
-        uint _minProfit,
-        uint _minTotal,
-        uint _maxTotal
-    ) external virtual;
-
-    /*
-    @notice Migrate to new version of this strategy
-    @param _strategy Address of new strategy
-    @dev Only callable by vault
-    */
-    function migrate(address _strategy) external virtual;
-
-    /*
-    @notice Transfer token accidentally sent here back to admin
-    @param _token Address of token to transfer
-    */
-    function sweep(address _token) external virtual;
+    // /*
+    // @notice Transfer token accidentally sent here back to admin
+    // @param _token Address of token to transfer
+    // */
+    // function sweep(address _token) external virtual;
 }
