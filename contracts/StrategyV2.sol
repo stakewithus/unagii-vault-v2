@@ -175,12 +175,17 @@ abstract contract StrategyV2 {
     }
 
     /*
-    @notice Transfer funds from `_from` address. Used for migration.
+    @notice Transfer any token from `_from` address. Used for migration.
+    @param _token Address of token
     @param _from Address to transfer token from
     @param _amount Amount of token to transfer
     */
-    function transferTokenFrom(address _from, uint _amount) external onlyAuthorized {
-        token.safeTransferFrom(_from, address(this), _amount);
+    function pull(
+        address _token,
+        address _from,
+        uint _amount
+    ) external onlyAuthorized {
+        IERC20(_token).safeTransferFrom(_from, address(this), _amount);
     }
 
     /*
