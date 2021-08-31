@@ -127,15 +127,10 @@ def setVault(vault: address):
 #         self.fundManager.report(gain, loss)
 
 
-# @external
-# def migrate(newStrategy: address):
-#     assert msg.sender == self.fundManager.address, "!fund manager"
-#     assert (
-#         Strategy(newStrategy).fundManager() == self.fundManager.address
-#     ), "new strategy fund manager != fund manager"
-
-#     # should be approve / transfer for real strategies
-#     self.token.transfer(newStrategy, self.token.balanceOf(self))
+@external
+def migrate(newStrategy: address):
+    assert msg.sender == self.vault, "!vault"
+    self.token.transfer(newStrategy, self.token.balanceOf(self))
 
 
 ### test helpers ###
