@@ -41,15 +41,25 @@ abstract contract StrategyV2 {
 
     // Performance fee sent to treasury
     uint public perfFee = 1000;
-    uint private constant PERF_FEE_CAP = 2000; // Upper limit to performance fee
-    uint internal constant PERF_FEE_MAX = 10000;
+    uint private constant MAX_PERF_FEE = 2000;
+    uint private constant MIN_PERF_FEE = 100;
+    uint internal constant PERF_FEE_DENOMINATOR = 10000;
+
+    /*
+    tvl = total value locked in this contract
+    min and max tvl are used to calculate performance fee
+    */
+    uint public minTvl;
+    uint public maxTvl;
 
     bool public claimRewardsOnMigrate = true;
 
     constructor(
         address _token,
         address _vault,
-        address _treasury
+        address _treasury,
+        uint _minTvl,
+        uint _maxTvl
     ) {
         // Don't allow accidentally sending perf fee to 0 address
         require(_treasury != address(0), "treasury = 0 address");
@@ -57,6 +67,8 @@ abstract contract StrategyV2 {
         timeLock = msg.sender;
         admin = msg.sender;
         treasury = _treasury;
+
+        _setMinMaxTvl(_minTvl, _maxTvl);
 
         require(IVault(_vault).token() == _token, "vault token != token");
 
@@ -144,12 +156,56 @@ abstract contract StrategyV2 {
     }
 
     /*
-    @notice Set performance fee
-    @param _fee Performance fee
+    @notice Set minTvl and maxTvl
+    @param _minTvl Minimum TVL
+    @param _maxTvl Maximum TVL
     */
-    function setPerfFee(uint _fee) external onlyTimeLockOrAdmin {
-        require(_fee <= PERF_FEE_CAP, "fee > cap");
-        perfFee = _fee;
+    function _setMinMaxTvl(uint _minTvl, uint _maxTvl) private {
+        require(_minTvl < _maxTvl, "min tvl >= max tvl");
+        minTvl = _minTvl;
+        maxTvl = _maxTvl;
+    }
+
+    function setMinMaxTvl(uint _minTvl, uint _maxTvl) external onlyTimeLockOrAdmin {
+        _setMinMaxTvl(_minTvl, _maxTvl);
+    }
+
+    /*
+    @notice Calculate performance fee based on total locked value
+    @param _tvl Current total locked value in this contract
+    @dev Returns current perf fee 
+    @dev when tvl <= minTvl, perf fee is MAX_PERF_FEE
+         when tvl >= maxTvl, perf fee is MIN_PERF_FEE
+    */
+    function _calcPerfFee(uint _tvl) internal view returns (uint) {
+        /*
+        y0 = max perf fee
+        y1 = min perf fee
+        x0 = min tvl
+        x1 = max tvl
+
+        x = current tvl
+        y = perf fee
+          = (y1 - y0) / (x1 - x0) * (x - x0) + y0
+        
+        when x = x0, y = y0
+             x = x1, y = y1
+        */
+
+        if (_tvl <= minTvl) {
+            return MAX_PERF_FEE;
+        }
+        if (_tvl < maxTvl) {
+            return
+                MAX_PERF_FEE -
+                ((MAX_PERF_FEE - MIN_PERF_FEE) / (maxTvl - minTvl)) *
+                (_tvl - minTvl);
+        }
+        return MIN_PERF_FEE;
+    }
+
+    function calcPerfFee(uint _tvl) external view returns (uint) {
+        return _calcPerfFee(_tvl);
     }
 
     // function setVault(address _vault) external onlyTimeLock {
