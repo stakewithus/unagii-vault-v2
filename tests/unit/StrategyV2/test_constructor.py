@@ -1,7 +1,3 @@
-import brownie
-import pytest
-
-
 def test_constructor(strategyV2Test, testVault, token, admin, treasury):
     vault = testVault
     strategy = strategyV2Test

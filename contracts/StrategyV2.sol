@@ -37,6 +37,7 @@ abstract contract StrategyV2 {
     uint public perfFee = 1000;
     uint private constant MAX_PERF_FEE = 2000;
     uint private constant MIN_PERF_FEE = 100;
+    uint private constant PERF_FEE_DIFF = MAX_PERF_FEE - MIN_PERF_FEE;
     uint internal constant PERF_FEE_DENOMINATOR = 10000;
 
     /*
@@ -129,17 +130,6 @@ abstract contract StrategyV2 {
     }
 
     /*
-    @notice Set authorization
-    @param _addr Address to authorize
-    @param _authorized Boolean
-    */
-    function authorize(address _addr, bool _authorized) external onlyTimeLockOrAdmin {
-        require(_addr != address(0), "addr = 0 address");
-        authorized[_addr] = _authorized;
-        emit Authorize(_addr, _authorized);
-    }
-
-    /*
     @notice Set treasury
     @param _treasury Address of treasury
     */
@@ -148,6 +138,17 @@ abstract contract StrategyV2 {
         require(_treasury != address(0), "treasury = 0 address");
         treasury = _treasury;
         emit SetTreasury(_treasury);
+    }
+
+    /*
+    @notice Set authorization
+    @param _addr Address to authorize
+    @param _authorized Boolean
+    */
+    function authorize(address _addr, bool _authorized) external onlyTimeLockOrAdmin {
+        require(_addr != address(0), "addr = 0 address");
+        authorized[_addr] = _authorized;
+        emit Authorize(_addr, _authorized);
     }
 
     /*
@@ -187,15 +188,12 @@ abstract contract StrategyV2 {
         when x = x0, y = y0
              x = x1, y = y1
         */
-
         if (_tvl <= minTvl) {
             return MAX_PERF_FEE;
         }
         if (_tvl < maxTvl) {
             return
-                MAX_PERF_FEE -
-                ((MAX_PERF_FEE - MIN_PERF_FEE) / (maxTvl - minTvl)) *
-                (_tvl - minTvl);
+                MAX_PERF_FEE - ((PERF_FEE_DIFF.mul(_tvl - minTvl)) / (maxTvl - minTvl));
         }
         return MIN_PERF_FEE;
     }
