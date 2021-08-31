@@ -457,10 +457,10 @@ def deposit(amount: uint256, _min: uint256) -> uint256:
     assert not self.paused, "paused"
     assert amount > 0, "deposit = 0"
 
-    # check block delay or whitelisted
+    # check whitelisted or block delay
     assert (
+        self.whitelist[msg.sender] or
         block.number >= self.uToken.lastBlock(msg.sender) + self.blockDelay
-        or self.whitelist[msg.sender]
     ), "block < delay"
 
     totalSupply: uint256 = self.uToken.totalSupply()
@@ -575,10 +575,10 @@ def withdraw(shares: uint256, _min: uint256) -> uint256:
     """
     assert shares > 0, "shares = 0"
 
-    # check block delay or whitelisted
+    # check whitelisted or block delay
     assert (
+        self.whitelist[msg.sender] or
         block.number >= self.uToken.lastBlock(msg.sender) + self.blockDelay
-        or self.whitelist[msg.sender]
     ), "block < delay"
 
     amount: uint256 = self._calcWithdraw(
