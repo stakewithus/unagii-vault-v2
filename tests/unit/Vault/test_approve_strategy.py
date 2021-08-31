@@ -11,18 +11,18 @@ def test_approve_strategy(vault, token, testStrategy, user):
         vault.approveStrategy(strategy, {"from": user})
 
     # revert if strategy.vault != vault
-    strategy.setVault(ZERO_ADDRESS)
+    strategy._setVault_(ZERO_ADDRESS)
     with brownie.reverts("strategy vault != vault"):
         vault.approveStrategy(strategy, {"from": timeLock})
 
-    strategy.setVault(vault)
+    strategy._setVault_(vault)
 
     # revert if strategy.token != token
-    strategy.setToken(ZERO_ADDRESS)
+    strategy._setToken_(ZERO_ADDRESS)
     with brownie.reverts("strategy token != token"):
         vault.approveStrategy(strategy, {"from": timeLock})
 
-    strategy.setToken(token)
+    strategy._setToken_(token)
 
     tx = vault.approveStrategy(strategy, {"from": timeLock})
     strat = vault.strategies(strategy)

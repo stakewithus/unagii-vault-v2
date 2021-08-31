@@ -1,14 +1,5 @@
-import brownie
 from brownie import ZERO_ADDRESS
 from brownie.test import given, strategy
-import pytest
-
-
-@pytest.fixture(scope="function", autouse=True)
-def setup(fn_isolation, vault, testFundManager):
-    if vault.fundManager() != testFundManager.address:
-        timeLock = vault.timeLock()
-        vault.setFundManager(testFundManager, {"from": timeLock})
 
 
 @given(
@@ -16,14 +7,16 @@ def setup(fn_isolation, vault, testFundManager):
     # delta time to wait
     dt=strategy("uint256", min_value=0, max_value=24 * 3600),
 )
-def test_calc_locked_profit(chain, vault, token, testFundManager, gain, dt):
-    fundManager = testFundManager
+def test_calc_locked_profit(chain, vault, token, admin, testStrategy, gain, dt):
+    strategy = testStrategy
+    timeLock = vault.timeLock()
 
-    # report
-    token.mint(fundManager, gain)
-    token.approve(vault, gain, {"from": fundManager})
+    vault.approveStrategy(strategy, {"from": timeLock})
+    vault.activateStrategy(strategy, 1, {"from": admin})
 
-    vault.report(gain, 0, {"from": fundManager})
+    # sync
+    token.mint(strategy, gain)
+    vault.sync(strategy, 0, 2 ** 256 - 1, {"from": admin})
 
     chain.mine(timestamp=chain.time() + dt)
 
