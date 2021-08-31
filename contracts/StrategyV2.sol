@@ -19,13 +19,7 @@ abstract contract StrategyV2 {
     event Authorize(address addr, bool authorized);
     event SetTreasury(address treasury);
     event SetVault(address vault);
-
-    event Deposit(uint amount, uint borrowed);
-    event Repay(uint amount, uint repaid);
-    event Withdraw(uint amount, uint withdrawn, uint loss);
-    event ClaimRewards(uint profit);
-    event Skim(uint total, uint debt, uint profit);
-    event Report(uint gain, uint loss, uint free, uint total, uint debt);
+    event SetMinMaxTvl(uint _minTvl, uint _maxTvl);
 
     // Privilege - time lock >= admin >= authorized addresses
     address public timeLock;
@@ -54,6 +48,7 @@ abstract contract StrategyV2 {
 
     bool public claimRewardsOnMigrate = true;
 
+    // TODO: worker, guardian?
     constructor(
         address _token,
         address _vault,
@@ -164,6 +159,7 @@ abstract contract StrategyV2 {
         require(_minTvl < _maxTvl, "min tvl >= max tvl");
         minTvl = _minTvl;
         maxTvl = _maxTvl;
+        emit SetMinMaxTvl(_minTvl, _maxTvl);
     }
 
     function setMinMaxTvl(uint _minTvl, uint _maxTvl) external onlyTimeLockOrAdmin {
@@ -249,10 +245,9 @@ abstract contract StrategyV2 {
 
     /*
     @notice Withdraw token from this contract
-    @dev Only callable by vault
-    @dev Returns current loss = debt to vault - total assets
+    @dev Only vault can call
     */
-    function withdraw(uint _amount) external virtual returns (uint);
+    function withdraw(uint _amount) external virtual;
 
     /*
     @notice Repay vault
@@ -263,18 +258,10 @@ abstract contract StrategyV2 {
     function repay(uint _amount, uint _min) external virtual;
 
     /*
-    @notice Claim rewards, skim and report
+    @notice Claim rewards
     @param _minProfit Minumum amount of token to gain from selling rewards
-    @param _minTotal Minimum value of total assets.
-               Used to protect against price manipulation.
-    @param _maxTotal Maximum value of total assets Used
-               Used to protect against price manipulation.
     */
-    function harvest(
-        uint _minProfit,
-        uint _minTotal,
-        uint _maxTotal
-    ) external virtual;
+    function harvest(uint _minProfit) external virtual;
 
     /*
     @notice Migrate to new version of this strategy
