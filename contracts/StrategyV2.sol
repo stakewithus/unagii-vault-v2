@@ -34,12 +34,10 @@ abstract contract StrategyV2 {
     IVault public vault;
 
     // Performance fee sent to treasury
-    uint public perfFee = 1000;
     uint private constant MAX_PERF_FEE = 2000;
     uint private constant MIN_PERF_FEE = 100;
     uint private constant PERF_FEE_DIFF = MAX_PERF_FEE - MIN_PERF_FEE;
     uint internal constant PERF_FEE_DENOMINATOR = 10000;
-
     /*
     tvl = total value locked in this contract
     min and max tvl are used to calculate performance fee
@@ -152,7 +150,7 @@ abstract contract StrategyV2 {
     }
 
     /*
-    @notice Set minTvl and maxTvl
+    @notice Set min and max TVL
     @param _minTvl Minimum TVL
     @param _maxTvl Maximum TVL
     */
@@ -184,7 +182,7 @@ abstract contract StrategyV2 {
         x = current tvl
         y = perf fee
           = (y1 - y0) / (x1 - x0) * (x - x0) + y0
-        
+
         when x = x0, y = y0
              x = x1, y = y1
         */
@@ -251,7 +249,6 @@ abstract contract StrategyV2 {
     @notice Repay vault
     @param _amount Amount of token to repay to vault
     @param _min Minimum amount repaid
-    @dev Call report after this to report any loss
     */
     function repay(uint _amount, uint _min) external virtual;
 
