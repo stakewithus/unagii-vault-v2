@@ -30,7 +30,7 @@ interface IStrategy:
     def vault() -> address: view
     def token() -> address: view
     def totalAssets() -> uint256: view
-    def withdraw(amount: uint256) -> uint256: nonpayable
+    def withdraw(amount: uint256): nonpayable
     def migrate(newVersion: address): nonpayable
 
 
@@ -540,10 +540,15 @@ def _withdraw(amount: uint256) -> uint256:
         if need == 0:
             continue
 
-        _loss: uint256 = IStrategy(strat).withdraw(need)
+        IStrategy(strat).withdraw(need)
         diff: uint256 = self.token.balanceOf(self) - bal
 
-        if _loss > 0:
+        # calculate loss
+        debt: uint256 = self.strategies[strat].debt
+        total: uint256 = IStrategy(strat).totalAssets() + diff
+        if total < debt:
+            _loss: uint256 = debt - total
+
             self.strategies[strat].debt -= _loss
             loss += _loss
             _amount -= _loss
