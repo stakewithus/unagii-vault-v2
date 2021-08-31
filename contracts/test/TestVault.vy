@@ -3,7 +3,6 @@
 from vyper.interfaces import ERC20
 
 token: public(ERC20)
-debt: public(uint256)
 
 ## test helpers ##
 maxBorrow: public(uint256)
@@ -33,21 +32,10 @@ def repay(_amount: uint256) -> uint256:
     return amount
 
 
-@external
-def report(gain: uint256, loss: uint256):
-    self.gain = gain
-    self.loss = loss
-
-
 ## test helpers ##
 @external
 def setToken(token: address):
     self.token = ERC20(token)
-
-
-@external
-def setDebt(debt: uint256):
-    self.debt = debt
 
 
 @external
