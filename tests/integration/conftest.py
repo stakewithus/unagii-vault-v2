@@ -37,6 +37,11 @@ def worker(accounts):
 
 
 @pytest.fixture(scope="session")
+def treasury(accounts):
+    yield accounts[3]
+
+
+@pytest.fixture(scope="session")
 def attacker(accounts):
     yield accounts[-2]
 
@@ -144,6 +149,7 @@ def setup(chain, uToken, vault, timeLock, admin):
     timeLock.execute(uToken, 0, data, eta, 0, {"from": admin})
 
     # vault - setup
+    vault.setBlockDelay(1, {"from": admin})
     vault.setPause(False, {"from": admin})
 
     # vault - set admin to time lock

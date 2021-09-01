@@ -543,7 +543,10 @@ def _withdraw(amount: uint256) -> uint256:
         if need > 0:
             IStrategy(strat).withdraw(need)
             diff: uint256 = self.token.balanceOf(self) - bal
+
             withdrawn += diff
+            self.strategies[strat].debt -= diff
+            bal += diff # = self.token.balanceOf(self)
 
             # calculate loss
             total: uint256 = IStrategy(strat).totalAssets() + diff
@@ -552,9 +555,6 @@ def _withdraw(amount: uint256) -> uint256:
                 self.strategies[strat].debt -= _loss
                 loss += _loss
                 _amount -= _loss
-            
-            self.strategies[strat].debt -= diff
-            bal += diff # = self.token.balanceOf(self)
 
     if loss > 0:
         self.debt -= loss
