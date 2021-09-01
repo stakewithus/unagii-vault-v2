@@ -445,6 +445,7 @@ def calcSharesToMint(amount: uint256) -> uint256:
     )
 
 
+# TODO: assert balanceOfVault == token.balanceOf(self)
 @external
 @nonreentrant("lock")
 def deposit(amount: uint256, _min: uint256) -> uint256:
@@ -454,7 +455,6 @@ def deposit(amount: uint256, _min: uint256) -> uint256:
     @param _min Minimum amount of uToken to be minted
     @dev Returns actual amount of uToken minted
     """
-    # TODO: assert balanceOfVault == token.balanceOf(self)
     assert not self.paused, "paused"
     assert amount > 0, "deposit = 0"
 
@@ -516,16 +516,17 @@ def _calcWithdraw(shares: uint256, totalSupply: uint256, freeFunds: uint256) -> 
 def calcWithdraw(shares: uint256) -> uint256:
     return self._calcWithdraw(shares, self.uToken.totalSupply(), self._calcFreeFunds())
 
-
+ 
 @internal
 def _withdraw(amount: uint256) -> uint256:
     """
-    @notice Withdraw `token` from active strategies
-    @param amount Amount of `token` to withdraw
+    @notice Withdraw from active strategies until balance of vault >= `amount`
+    @param amount Target balance of vault
     @dev Returns sum of losses from active strategies
     """
     _amount: uint256 = amount
-    loss: uint256 = 0
+    loss: uint256 = 0 # total loss
+    withdrawn: uint256 = 0 # total withdrawn
     bal: uint256 = self.token.balanceOf(self)
 
     for strat in self.queue:
@@ -536,32 +537,31 @@ def _withdraw(amount: uint256) -> uint256:
         # done withdrawing
         if bal >= _amount:
             break
-        
-        need: uint256 = min(_amount - bal, self.strategies[strat].debt)
-        if need == 0:
-            continue
-
-        IStrategy(strat).withdraw(need)
-        diff: uint256 = self.token.balanceOf(self) - bal
-
-        # calculate loss
+ 
         debt: uint256 = self.strategies[strat].debt
-        total: uint256 = IStrategy(strat).totalAssets() + diff
-        if total < debt:
-            _loss: uint256 = debt - total
+        need: uint256 = min(_amount - bal, debt)
+        if need > 0:
+            IStrategy(strat).withdraw(need)
+            diff: uint256 = self.token.balanceOf(self) - bal
+            withdrawn += diff
 
-            self.strategies[strat].debt -= _loss
-            loss += _loss
-            _amount -= _loss
-        
-        self.strategies[strat].debt -= diff
-        bal += diff # = self.token.balanceOf(self)
-    
+            # calculate loss
+            total: uint256 = IStrategy(strat).totalAssets() + diff
+            if total < debt:
+                _loss: uint256 = debt - total
+                self.strategies[strat].debt -= _loss
+                loss += _loss
+                _amount -= _loss
+            
+            self.strategies[strat].debt -= diff
+            bal += diff # = self.token.balanceOf(self)
+
     if loss > 0:
         self.debt -= loss
-    
-    self.balanceOfVault = bal # = self.token.balanceOf(self)
-    
+
+    self.debt -= withdrawn
+    self.balanceOfVault = bal
+
     return loss
 
 
@@ -590,7 +590,7 @@ def withdraw(shares: uint256, _min: uint256) -> uint256:
     # withdraw from strategies if amount to withdraw > balance of vault
     if amount > self.balanceOfVault:
         # msg.sender must cover all of loss
-        amount -= self._withdraw(amount - self.balanceOfVault)
+        amount -= self._withdraw(amount)
 
         if amount > self.balanceOfVault:
             amount = self.balanceOfVault
