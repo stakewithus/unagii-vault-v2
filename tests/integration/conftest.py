@@ -74,8 +74,8 @@ def uEth(UnagiiToken, admin):
 
 
 @pytest.fixture(scope="module")
-def vault(Vault, token, uToken, admin, guardian):
-    vault = Vault.deploy(token, uToken, guardian, ZERO_ADDRESS, {"from": admin})
+def vault(Vault, token, uToken, admin, guardian, worker):
+    vault = Vault.deploy(token, uToken, guardian, worker, {"from": admin})
     yield vault
 
 
@@ -130,7 +130,7 @@ DELAY = 24 * 3600
 
 
 @pytest.fixture(scope="module")
-def setup(chain, uToken, vault, timeLock, fundManager, admin):
+def setup(chain, uToken, vault, timeLock, admin):
     # uToken - set minter to vault
     uToken.setMinter(vault, {"from": admin})
 
@@ -143,26 +143,8 @@ def setup(chain, uToken, vault, timeLock, fundManager, admin):
     chain.sleep(DELAY)
     timeLock.execute(uToken, 0, data, eta, 0, {"from": admin})
 
-    # fund manager - set vault
-    fundManager.setVault(vault, {"from": admin})
-    fundManager.initialize({"from": admin})
-
-    # fund manager - set time lock
-    fundManager.setNextTimeLock(timeLock, {"from": admin})
-
-    data = fundManager.acceptTimeLock.encode_input()
-    tx = timeLock.queue(fundManager, 0, data, DELAY, 0, {"from": admin})
-    eta = tx.timestamp + DELAY
-    chain.sleep(DELAY)
-    timeLock.execute(fundManager, 0, data, eta, 0, {"from": admin})
-
-    # vault - set fund manager
-    vault.setFundManager(fundManager, {"from": admin})
-
     # vault - setup
     vault.setPause(False, {"from": admin})
-    vault.setDepositLimit(2 ** 256 - 1, {"from": admin})
-    vault.initialize({"from": admin})
 
     # vault - set admin to time lock
     vault.setNextTimeLock(timeLock, {"from": admin})
