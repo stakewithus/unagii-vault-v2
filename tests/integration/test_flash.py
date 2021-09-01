@@ -1,5 +1,4 @@
 import brownie
-import pytest
 
 
 def test_flash(chain, setup, vault, token, flash):
