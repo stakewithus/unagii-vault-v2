@@ -18,6 +18,7 @@ MAX_QUEUE: constant(uint256) = 20
 MAX_TOTAL_DEBT_RATIO: constant(uint256) = 10000
 MAX_MIN_RESERVE: constant(uint256) = 10000
 MAX_DEGRADATION: constant(uint256) = 10 ** 18
+MAX_BLOCK_DELAY: constant(uint256) = 1000
 
 struct Strategy:
     approved: bool
@@ -326,7 +327,7 @@ def setBlockDelay(delay: uint256):
     @param delay Number of blocks to delay before user can deposit / withdraw
     """
     assert msg.sender in [self.timeLock, self.admin], "!auth"
-    assert delay >= 1, "delay = 0"
+    assert delay >= 1 and delay <= MAX_BLOCK_DELAY, "delay out of range"
     self.blockDelay = delay
 
 
@@ -685,7 +686,6 @@ def revokeStrategy(strategy: address):
     self.strategies[strategy].approved = False
     log RevokeStrategy(strategy)
 
-# TODO: integration test (approve, activate, deactivate, revoke)
 @external
 def activateStrategy(strategy: address, debtRatio: uint256):
     """
@@ -867,7 +867,6 @@ def calcMaxBorrow(strategy: address) -> uint256:
     return self._calcMaxBorrow(strategy)
 
 
-# TODO: integration test (borrow, repay, sync)
 @external
 def borrow(amount: uint256) -> uint256:
     """

@@ -9,8 +9,12 @@ def test_set_block_delay(vault, admin, user):
         vault.setBlockDelay(123, {"from": user})
 
     # delay = 0
-    with brownie.reverts("delay = 0"):
+    with brownie.reverts("delay out of range"):
         vault.setBlockDelay(0, {"from": admin})
+
+    # delay > max
+    with brownie.reverts("delay out of range"):
+        vault.setBlockDelay(1001, {"from": admin})
 
     # time lock can call
     vault.setBlockDelay(123, {"from": timeLock})
