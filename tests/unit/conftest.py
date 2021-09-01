@@ -81,12 +81,10 @@ def uEth(UnagiiToken, admin, minter):
 
 @pytest.fixture(scope="module")
 def vault(Vault, token, uToken, admin, guardian, worker):
-    vault = Vault.deploy(token, uToken, {"from": admin})
+    vault = Vault.deploy(token, uToken, guardian, worker, {"from": admin})
 
     uToken.setMinter(vault, {"from": admin})
     vault.setPause(False, {"from": admin})
-    vault.setGuardian(guardian, {"from": admin})
-    vault.setWorker(worker, {"from": admin})
 
     yield vault
 

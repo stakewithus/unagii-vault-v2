@@ -174,11 +174,11 @@ queue: public(address[MAX_QUEUE])  # list of active strategies
 # TODO: migrate
 
 @external
-def __init__(token: address, uToken: address):
+def __init__(token: address, uToken: address, guardian: address, worker: address):
     self.timeLock = msg.sender
     self.admin = msg.sender
-    self.guardian = msg.sender
-    self.worker = msg.sender
+    self.guardian = guardian
+    self.worker = worker
 
     self.token = ERC20(token)
     self.uToken = UnagiiToken(uToken)
