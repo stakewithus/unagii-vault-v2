@@ -65,69 +65,81 @@ class StateMachine:
 
             self.balanceOfVault += deposit_amount
 
-    def rule_withdraw_no_loss(self, user, shares_to_withdraw):
+    def rule_withdraw(self, user, shares_to_withdraw, loss):
         shares = min(shares_to_withdraw, self.uToken.balanceOf(user))
 
         if shares > 0:
             bal = self.token.balanceOf(self.vault)
+            debt = self.vault.debt()
             calc = self.vault.calcWithdraw(shares)
 
-            print("withdraw", user, "shares", shares, "calc", calc, "bal", bal)
-
-            self.vault.withdraw(shares, 0, {"from": user})
-
-            if bal >= calc:
-                self.balanceOfVault -= calc
-            else:
-                self.balanceOfVault = 0
-                self.debt -= calc - bal
-
-    def rule_withdraw_loss(self, user, shares_to_withdraw, loss):
-        shares = min(shares_to_withdraw, self.uToken.balanceOf(user))
-
-        if shares > 0:
-            bal = self.token.balanceOf(self.vault)
-            calc = self.vault.calcWithdraw(shares)
-
-            _loss = min(loss, self.vault.debt())
-            if calc > bal:
+            _loss = min(loss, debt)
+            if calc >= bal:
                 _loss = min(_loss, calc - bal)
 
-                if _loss > 0:
-                    # burn from strategies
-                    l = _loss
-                    for i in range(N):
-                        strat = self.strategies[i]
-                        if l == 0:
-                            break
-                        burn_amount = min(l, self.token.balanceOf(strat))
-                        self.token.burn(strat, burn_amount)
-                        l -= burn_amount
-
             print(
-                "withdraw loss",
+                "withdraw",
                 user,
                 "shares",
                 shares,
-                "loss",
-                _loss,
                 "calc",
                 calc,
                 "bal",
                 bal,
+                "debt",
+                debt,
+                "loss",
+                _loss,
             )
 
-            self.vault.withdraw(shares, 0, {"from": user})
-
             if bal >= calc:
+                # no loss
                 self.balanceOfVault -= calc
             else:
-                need = calc - bal
-                # withdraw from strategies
-                # self.balanceOfVault += calc - bal
-                self.debt -= need
-                # withdraw from vault
-                self.balanceOfVault -= calc - _loss
+                if _loss > 0:
+                    ## simulate withdraw ##
+                    # amount to withdraw
+                    c = calc
+                    # balance of vault
+                    b = bal
+                    # burn from strategies
+                    l = _loss
+                    for i in range(N):
+                        if b >= c:
+                            break
+
+                        strat = self.strategies[i]
+                        total = self.token.balanceOf(strat)
+                        debt = self.vault.strategies(strat)["debt"]
+
+                        w = min(c - b, total, debt)
+                        if w == 0:
+                            continue
+
+                        # simulate loss
+                        if l > 0:
+                            burn = min(l, total)
+                            self.token.burn(strat, burn)
+                            l -= burn
+                            c -= burn
+                            # strategy cannot return w
+                            if w > total - burn:
+                                w -= burn
+
+                        b += w
+                        print(i, "b", b, "w", w, "debt", debt, "total", total, "l", l)
+
+                    diff = b - bal
+                    # withdraw from strategies
+                    self.balanceOfVault += diff
+                    self.debt -= diff + _loss
+                    # withdraw from vault, transfer to user
+                    self.balanceOfVault -= calc - _loss
+                else:
+                    self.balanceOfVault = 0
+                    self.debt -= calc - bal
+
+            self.vault.withdraw(shares, 0, {"from": user})
 
     def rule_borrow(self, borrow_amount, i):
         strat = self.strategies[i]
