@@ -253,6 +253,8 @@ abstract contract StrategyV2 {
     */
     function repay(uint _amount, uint _min) external virtual;
 
+    // TODO: claim rewards?
+
     /*
     @notice Claim rewards
     @param _minProfit Minumum amount of token to gain from selling rewards

@@ -7,9 +7,9 @@ import "../interfaces/convex/BaseRewardPool.sol";
 import "../interfaces/convex/Booster.sol";
 import "../interfaces/curve/DepositZapUsdp3Crv.sol";
 import "../interfaces/curve/StableSwapUsdp3Crv.sol";
-import "../Strategy.sol";
+import "../StrategyV2.sol";
 
-contract StrategyConvexUsdp is Strategy {
+contract StrategyConvexUsdp is StrategyV2 {
     using SafeERC20 for IERC20;
     using SafeMath for uint;
 
@@ -69,10 +69,12 @@ contract StrategyConvexUsdp is Strategy {
 
     constructor(
         address _token,
-        address _fundManager,
+        address _vault,
         address _treasury,
+        uint _minTvl,
+        uint _maxTvl,
         uint _index
-    ) Strategy(_token, _fundManager, _treasury) {
+    ) StrategyV2(_token, _vault, _treasury, _minTvl, _maxTvl) {
         // disable USDP
         require(_index > 0, "index = 0");
         INDEX = _index;
@@ -174,13 +176,13 @@ contract StrategyConvexUsdp is Strategy {
     }
 
     function deposit(uint _amount, uint _min) external override onlyAuthorized {
+        // TODO: deposit with borrow = 0
         require(_amount > 0, "deposit = 0");
 
-        uint borrowed = fundManager.borrow(_amount);
+        uint borrowed = vault.borrow(_amount);
         require(borrowed >= _min, "borrowed < min");
 
         _deposit();
-        emit Deposit(_amount, borrowed);
     }
 
     function _calcSharesToWithdraw(
@@ -256,38 +258,23 @@ contract StrategyConvexUsdp is Strategy {
         return _amount;
     }
 
-    function withdraw(uint _amount)
-        external
-        override
-        onlyFundManager
-        returns (uint loss)
-    {
+    function withdraw(uint _amount) external override onlyVault {
         require(_amount > 0, "withdraw = 0");
 
         // availabe <= _amount
         uint available = _withdraw(_amount);
 
-        uint debt = fundManager.getDebt(address(this));
-        uint total = _totalAssets();
-        if (debt > total) {
-            loss = debt - total;
-        }
-
         if (available > 0) {
             token.safeTransfer(msg.sender, available);
         }
-
-        emit Withdraw(_amount, available, loss);
     }
 
     function repay(uint _amount, uint _min) external override onlyAuthorized {
         require(_amount > 0, "repay = 0");
         // availabe <= _amount
         uint available = _withdraw(_amount);
-        uint repaid = fundManager.repay(available);
+        uint repaid = vault.repay(available);
         require(repaid >= _min, "repaid < min");
-
-        emit Repay(_amount, repaid);
     }
 
     /*
@@ -335,84 +322,23 @@ contract StrategyConvexUsdp is Strategy {
 
         // transfer performance fee to treasury
         if (diff > 0) {
-            uint fee = diff.mul(perfFee) / PERF_FEE_MAX;
+            uint total = _totalAssets();
+            uint fee = _calcPerfFee(total) / PERF_FEE_DENOMINATOR;
             if (fee > 0) {
                 token.safeTransfer(treasury, fee);
-                diff = diff.sub(fee);
             }
         }
-
-        emit ClaimRewards(diff);
     }
 
-    function claimRewards(uint _minProfit) external override onlyAuthorized {
+    function harvest(uint _minProfit) external override onlyAuthorized {
         _claimRewards(_minProfit);
+        // TODO: transfer profit to vault?
     }
 
-    function _skim() private {
-        uint total = _totalAssets();
-        uint debt = fundManager.getDebt(address(this));
-        require(total > debt, "total <= debt");
-
-        uint profit = total - debt;
-        // reassign to actual amount withdrawn
-        profit = _withdraw(profit);
-
-        emit Skim(total, debt, profit);
-    }
-
-    function skim() external override onlyAuthorized {
-        _skim();
-    }
-
-    function _report(uint _minTotal, uint _maxTotal) private {
-        uint total = _totalAssets();
-        require(total >= _minTotal, "total < min");
-        require(total <= _maxTotal, "total > max");
-
-        uint gain = 0;
-        uint loss = 0;
-        uint free = 0; // balance of token
-        uint debt = fundManager.getDebt(address(this));
-        if (total > debt) {
-            gain = total - debt;
-
-            free = token.balanceOf(address(this));
-            if (gain > free) {
-                gain = free;
-            }
-        } else {
-            loss = debt - total;
-        }
-
-        if (gain > 0 || loss > 0) {
-            fundManager.report(gain, loss);
-        }
-
-        emit Report(gain, loss, free, total, debt);
-    }
-
-    function report(uint _minTotal, uint _maxTotal) external override onlyAuthorized {
-        _report(_minTotal, _maxTotal);
-    }
-
-    function harvest(
-        uint _minProfit,
-        uint _minTotal,
-        uint _maxTotal
-    ) external override onlyAuthorized {
-        _claimRewards(_minProfit);
-        _skim();
-        _report(_minTotal, _maxTotal);
-    }
-
-    function migrate(address _strategy) external override onlyFundManager {
-        Strategy strat = Strategy(_strategy);
+    function migrate(address _strategy) external override onlyVault {
+        StrategyV2 strat = StrategyV2(_strategy);
         require(address(strat.token()) == address(token), "strategy token != token");
-        require(
-            address(strat.fundManager()) == address(fundManager),
-            "strategy fund manager != fund manager"
-        );
+        require(address(strat.vault()) == address(vault), "strategy vault != vault");
 
         if (claimRewardsOnMigrate) {
             _claimRewards(1);
@@ -420,7 +346,7 @@ contract StrategyConvexUsdp is Strategy {
 
         uint bal = _withdraw(type(uint).max);
         token.safeApprove(_strategy, bal);
-        strat.transferTokenFrom(address(this), bal);
+        strat.pull(address(this), bal);
     }
 
     /*

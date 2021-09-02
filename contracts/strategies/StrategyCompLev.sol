@@ -350,7 +350,7 @@ contract StrategyCompLev is StrategyV2 {
     /*
     @notice Deposit token into this strategy
     @param _amount Amount of token to deposit
-    @param _min Minimum amount to borrow from fund manager
+    @param _min Minimum amount to borrow from vault
     */
     function deposit(uint _amount, uint _min) external override onlyAuthorized {
         // TODO: deposit with borrowed = 0
@@ -507,7 +507,6 @@ contract StrategyCompLev is StrategyV2 {
     */
     function withdraw(uint _amount) external override onlyVault {
         require(_amount > 0, "withdraw = 0");
-
         // available <= _amount
         uint available = _withdraw(_amount);
         if (available > 0) {
@@ -569,7 +568,6 @@ contract StrategyCompLev is StrategyV2 {
             uint fee = _calcPerfFee(total) / PERF_FEE_DENOMINATOR;
             if (fee > 0) {
                 token.safeTransfer(treasury, fee);
-                diff = diff.sub(fee);
             }
         }
     }
@@ -587,10 +585,7 @@ contract StrategyCompLev is StrategyV2 {
     function migrate(address _strategy) external override onlyVault {
         StrategyV2 strat = StrategyV2(_strategy);
         require(address(strat.token()) == address(token), "strategy token != token");
-        require(
-            address(strat.vault()) == address(vault),
-            "strategy fund manager != fund manager"
-        );
+        require(address(strat.vault()) == address(vault), "strategy vault != vault");
 
         if (claimRewardsOnMigrate) {
             _claimRewards(1);

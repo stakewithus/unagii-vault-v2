@@ -4,11 +4,18 @@ pragma solidity 0.7.6;
 import "./StrategyConvexBbtc.sol";
 
 contract StrategyConvexBbtcWbtc is StrategyConvexBbtc {
-    constructor(address _fundManager, address _treasury)
+    constructor(
+        address _vault,
+        address _treasury,
+        uint _minTvl,
+        uint _maxTvl
+    )
         StrategyConvexBbtc(
             0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599,
-            _fundManager,
+            _vault,
             _treasury,
+            _minTvl,
+            _maxTvl,
             2
         )
     {}
