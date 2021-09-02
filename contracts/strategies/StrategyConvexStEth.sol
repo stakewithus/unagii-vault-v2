@@ -5,11 +5,10 @@ pragma solidity 0.7.6;
 import "../interfaces/uniswap/UniswapV2Router.sol";
 import "../interfaces/convex/BaseRewardPool.sol";
 import "../interfaces/convex/Booster.sol";
-import "../interfaces/curve/DepositBbtc.sol";
-import "../interfaces/curve/StableSwapBbtc.sol";
-import "../Strategy.sol";
+import "../interfaces/curve/StableSwapStEth.sol";
+import "../StrategyEth.sol";
 
-contract StrategyConvexBbtc is Strategy {
+contract StrategyConvexStEth is StrategyEth {
     using SafeERC20 for IERC20;
     using SafeMath for uint;
 
@@ -17,79 +16,61 @@ contract StrategyConvexBbtc is Strategy {
     // UNISWAP = 0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D;
     // SUSHISWAP = 0xd9e1cE17f2641f24aE83637ab66a2cca9C378B9F;
     address private constant WETH = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
-    uint private constant NUM_REWARDS = 2;
+    uint private constant NUM_REWARDS = 3;
     // address of DEX (uniswap or sushiswap) to use for selling reward tokens
-    // CRV, CVX
+    // CRV, CVX, LDO
     address[NUM_REWARDS] public dex;
 
     address private constant CRV = 0xD533a949740bb3306d119CC777fa900bA034cd52;
     address private constant CVX = 0x4e3FBD56CD56c3e72c1403e103b45Db9da5B9D2B;
+    address private constant LDO = 0x5A98FcBEA516Cf06857215779Fd812CA3beF1B32;
 
     // Solc 0.7 cannot create constant arrays
-    address[NUM_REWARDS] private REWARDS = [CRV, CVX];
+    address[NUM_REWARDS] private REWARDS = [CRV, CVX, LDO];
 
     // Convex //
     Booster private constant BOOSTER =
         Booster(0xF403C135812408BFbE8713b5A23a04b3D48AAE31);
     // pool id
-    uint private constant PID = 19;
+    uint private constant PID = 25;
     BaseRewardPool private constant REWARD =
-        BaseRewardPool(0x61D741045cCAA5a215cF4E5e55f20E1199B4B843);
+        BaseRewardPool(0x0A760466E1B4621579a82a39CB56Dda2F4E70f03);
     bool public shouldClaimExtras = true;
 
     // Curve //
-    // Deposit
-    DepositBbtc private constant ZAP =
-        DepositBbtc(0xC45b2EEe6e09cA176Ca3bB5f7eEe7C47bF93c756);
-    // StableSwap
-    StableSwapBbtc private constant CURVE_POOL =
-        StableSwapBbtc(0x42d7025938bEc20B69cBae5A77421082407f053A);
-    // LP token for curve pool bBTC/sbtcCRV
+    // StableSwap StETH
+    StableSwapStEth private constant CURVE_POOL =
+        StableSwapStEth(0xDC24316b9AE028F1497c275EB9192a3Ea0f67022);
+    // LP token for curve pool (ETH / stETH)
     IERC20 private constant CURVE_LP =
-        IERC20(0x410e3E86ef427e30B9235497143881f717d93c2A);
+        IERC20(0x06325440D014e39736583c165C2963BA99fAf14E);
 
     // prevent slippage from deposit / withdraw
     uint public slip = 100;
     uint private constant SLIP_MAX = 10000;
 
     /*
-    0 - BBTC
-    1 - renBTC
-    2 - WBTC
-    3 - SBTC
+    0 - ETH
+    1 - stETH
     */
-    // multipliers to normalize token decimals to 10 ** 18
-    uint[4] private MULS = [1e10, 1e10, 1e10, 1];
-    uint private immutable MUL; // multiplier of token
-    uint private immutable INDEX; // index of token
-
-    // WBTC = 0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599
+    uint private constant INDEX = 0; // index of token
 
     constructor(
-        address _token,
         address _vault,
         address _treasury,
         uint _minTvl,
-        uint _maxTvl,
-        uint _index
-    ) Strategy(_token, _vault, _treasury, _minTvl, _maxTvl) {
-        // only WBTC
-        require(_index == 2, "index != 2");
-        INDEX = _index;
-        MUL = MULS[_index];
-
+        uint _maxTvl
+    ) StrategyEth(_vault, _treasury, _minTvl, _maxTvl) {
         (address lptoken, , , address crvRewards, , ) = BOOSTER.poolInfo(PID);
         require(address(CURVE_LP) == lptoken, "curve pool lp != pool info lp");
         require(address(REWARD) == crvRewards, "reward != pool info reward");
 
-        IERC20(_token).safeApprove(address(ZAP), type(uint).max);
         // deposit into BOOSTER
         CURVE_LP.safeApprove(address(BOOSTER), type(uint).max);
-        // withdraw from ZAP
-        CURVE_LP.safeApprove(address(ZAP), type(uint).max);
 
         _setDex(0, 0xd9e1cE17f2641f24aE83637ab66a2cca9C378B9F); // CRV - sushiswap
         _setDex(1, 0xd9e1cE17f2641f24aE83637ab66a2cca9C378B9F); // CVX - sushiswap
+        _setDex(2, 0xd9e1cE17f2641f24aE83637ab66a2cca9C378B9F); // LDO - sushiswap
     }
 
     function _setDex(uint _i, address _dex) private {
@@ -129,14 +110,16 @@ contract StrategyConvexBbtc is Strategy {
         /*
         s0 = shares in curve pool
         p0 = price per share of curve pool
-        a = amount of tokens
+        a = amount of ETH
 
         a = s0 * p0
         */
         // amount of Curve LP tokens in Convex
         uint lpBal = REWARD.balanceOf(address(this));
-        total = lpBal.mul(CURVE_POOL.get_virtual_price()) / (MUL * 1e18);
-        total = total.add(token.balanceOf(address(this)));
+        // amount of ETH converted from Curve LP
+        total = lpBal.mul(CURVE_POOL.get_virtual_price()) / 1e18;
+
+        total = total.add(address(this).balance);
     }
 
     function totalAssets() external view override returns (uint) {
@@ -144,18 +127,18 @@ contract StrategyConvexBbtc is Strategy {
     }
 
     function _deposit() private {
-        uint bal = token.balanceOf(address(this));
+        uint bal = address(this).balance;
         if (bal > 0) {
-            uint[4] memory amounts;
+            uint[2] memory amounts;
             amounts[INDEX] = bal;
             /*
-            shares = token amount * multiplier * 1e18 / price per share
+            shares = ETH amount * 1e18 / price per share
             */
             uint pricePerShare = CURVE_POOL.get_virtual_price();
-            uint shares = bal.mul(MUL).mul(1e18).div(pricePerShare);
+            uint shares = bal.mul(1e18).div(pricePerShare);
             uint min = shares.mul(SLIP_MAX - slip) / SLIP_MAX;
 
-            ZAP.add_liquidity(amounts, min);
+            CURVE_POOL.add_liquidity{value: bal}(amounts, min);
         }
 
         uint lpBal = CURVE_LP.balanceOf(address(this));
@@ -182,8 +165,8 @@ contract StrategyConvexBbtc is Strategy {
         /*
         calculate shares to withdraw
 
-        a = amount of token to withdraw
-        T = total amount of token locked in external liquidity pool
+        a = amount of ETH to withdraw
+        T = total amount of ETH locked in external liquidity pool
         s = shares to withdraw
         P = total shares deposited into external liquidity pool
 
@@ -201,7 +184,7 @@ contract StrategyConvexBbtc is Strategy {
     }
 
     function _withdraw(uint _amount) private returns (uint) {
-        uint bal = token.balanceOf(address(this));
+        uint bal = address(this).balance;
         if (_amount <= bal) {
             return _amount;
         }
@@ -231,10 +214,10 @@ contract StrategyConvexBbtc is Strategy {
 
         if (shares > 0) {
             uint min = need.mul(SLIP_MAX - slip) / SLIP_MAX;
-            ZAP.remove_liquidity_one_coin(shares, int128(INDEX), min);
+            CURVE_POOL.remove_liquidity_one_coin(shares, int128(INDEX), min);
         }
 
-        uint balAfter = token.balanceOf(address(this));
+        uint balAfter = address(this).balance;
         if (balAfter < _amount) {
             return balAfter;
         }
@@ -254,7 +237,7 @@ contract StrategyConvexBbtc is Strategy {
         uint available = _withdraw(_amount);
 
         if (available > 0) {
-            token.safeTransfer(msg.sender, available);
+            _sendEth(msg.sender, available);
         }
     }
 
@@ -262,7 +245,7 @@ contract StrategyConvexBbtc is Strategy {
         require(_amount > 0, "repay = 0");
         // availabe <= _amount
         uint available = _withdraw(_amount);
-        uint repaid = vault.repay(available);
+        uint repaid = vault.repay{value: available}();
         require(repaid >= _min, "repaid < min");
     }
 
@@ -272,16 +255,14 @@ contract StrategyConvexBbtc is Strategy {
     function _swap(
         address _dex,
         address _tokenIn,
-        address _tokenOut,
         uint _amount
     ) private {
-        // create dynamic array with 3 elements
-        address[] memory path = new address[](3);
+        // create dynamic array with 2 elements
+        address[] memory path = new address[](2);
         path[0] = _tokenIn;
         path[1] = WETH;
-        path[2] = _tokenOut;
 
-        UniswapV2Router(_dex).swapExactTokensForTokens(
+        UniswapV2Router(_dex).swapExactTokensForETH(
             _amount,
             1,
             path,
@@ -291,8 +272,8 @@ contract StrategyConvexBbtc is Strategy {
     }
 
     function _claimRewards(uint _minProfit) private {
-        // calculate profit = balance of token after - balance of token before
-        uint diff = token.balanceOf(address(this));
+        // calculate profit = balance of ETH after - balance of ETH before
+        uint diff = address(this).balance;
 
         require(
             REWARD.getReward(address(this), shouldClaimExtras),
@@ -302,20 +283,21 @@ contract StrategyConvexBbtc is Strategy {
         for (uint i = 0; i < NUM_REWARDS; i++) {
             uint rewardBal = IERC20(REWARDS[i]).balanceOf(address(this));
             if (rewardBal > 0) {
-                // swap may fail if rewards are too small
-                _swap(dex[i], REWARDS[i], address(token), rewardBal);
+                _swap(dex[i], REWARDS[i], rewardBal);
             }
         }
 
-        diff = token.balanceOf(address(this)) - diff;
+        diff = address(this).balance - diff;
         require(diff >= _minProfit, "profit < min");
 
         // transfer performance fee to treasury
         if (diff > 0) {
             uint total = _totalAssets();
             uint fee = diff.mul(_calcPerfFee(total)) / PERF_FEE_DENOMINATOR;
+            // Performance fee sent to treasury
+
             if (fee > 0) {
-                token.safeTransfer(treasury, fee);
+                _sendEth(treasury, fee);
             }
         }
     }
@@ -325,9 +307,9 @@ contract StrategyConvexBbtc is Strategy {
         // TODO: transfer profit to vault?
     }
 
-    function migrate(address _strategy) external override onlyVault {
-        Strategy strat = Strategy(_strategy);
-        require(address(strat.token()) == address(token), "strategy token != token");
+    function migrate(address payable _strategy) external override onlyVault {
+        StrategyEth strat = StrategyEth(_strategy);
+        require(address(strat.token()) == ETH, "strategy token != ETH");
         require(address(strat.vault()) == address(vault), "strategy vault != vault");
 
         if (claimRewardsOnMigrate) {
@@ -335,8 +317,8 @@ contract StrategyConvexBbtc is Strategy {
         }
 
         uint bal = _withdraw(type(uint).max);
-        token.safeApprove(_strategy, bal);
-        strat.pull(address(this), bal);
+        // WARNING: may lose all ETH if sent to wrong address
+        _sendEth(address(strat), bal);
     }
 
     /*
@@ -344,7 +326,6 @@ contract StrategyConvexBbtc is Strategy {
     @param _token Address of token to transfer
     */
     function sweep(address _token) external override onlyAuthorized {
-        require(_token != address(token), "protected token");
         for (uint i = 0; i < NUM_REWARDS; i++) {
             require(_token != REWARDS[i], "protected token");
         }

@@ -9,6 +9,7 @@ import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
 import "./interfaces/IVault.sol";
 
+// TODO: DIY safe transfer / approve to save gas?
 abstract contract Strategy {
     using SafeERC20 for IERC20;
     using SafeMath for uint;
