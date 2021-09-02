@@ -9,6 +9,7 @@ import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
 import "./interfaces/IVault.sol";
 
+// TODO: rename to Strategy
 abstract contract StrategyV2 {
     using SafeERC20 for IERC20;
     using SafeMath for uint;

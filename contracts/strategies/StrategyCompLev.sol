@@ -5,7 +5,7 @@ pragma solidity 0.7.6;
 import "../interfaces/uniswap/UniswapV2Router.sol";
 import "../interfaces/compound/CErc20.sol";
 import "../interfaces/compound/Comptroller.sol";
-import "../Strategy.sol";
+import "../StrategyV2.sol";
 
 /*
 APY estimate
@@ -42,7 +42,7 @@ s(x) = set butter to x
                              s(min)
 */
 
-contract StrategyCompLev is Strategy {
+contract StrategyCompLev is StrategyV2 {
     using SafeERC20 for IERC20;
     using SafeMath for uint;
 
@@ -61,14 +61,16 @@ contract StrategyCompLev is Strategy {
 
     constructor(
         address _token,
-        address _fundManager,
+        address _vault,
         address _treasury,
+        uint _minTvl,
+        uint _maxTvl,
         address _cToken
-    ) Strategy(_token, _fundManager, _treasury) {
+    ) StrategyV2(_token, _vault, _treasury, _minTvl, _maxTvl) {
         require(_cToken != address(0), "cToken = zero address");
         cToken = CErc20(_cToken);
         IERC20(_token).safeApprove(_cToken, type(uint).max);
-
+        // TODO: use uniswap 3?
         _setDex(0xd9e1cE17f2641f24aE83637ab66a2cca9C378B9F); // Sushiswap
     }
 
@@ -351,13 +353,13 @@ contract StrategyCompLev is Strategy {
     @param _min Minimum amount to borrow from fund manager
     */
     function deposit(uint _amount, uint _min) external override onlyAuthorized {
+        // TODO: deposit with borrowed = 0
         require(_amount > 0, "deposit = 0");
 
-        uint borrowed = fundManager.borrow(_amount);
+        uint borrowed = vault.borrow(_amount);
         require(borrowed >= _min, "borrowed < min");
 
         _deposit();
-        emit Deposit(_amount, borrowed);
     }
 
     function _getRedeemAmount(
@@ -500,43 +502,25 @@ contract StrategyCompLev is Strategy {
     }
 
     /*
-    @notice Withdraw undelying token to erc20Vault
+    @notice Withdraw undelying token to vault
     @param _amount Amount of token to withdraw
-    @dev Returns current loss = debt to fund manager - total assets
-    @dev Caller should implement guard against slippage
     */
-    function withdraw(uint _amount)
-        external
-        override
-        onlyFundManager
-        returns (uint loss)
-    {
+    function withdraw(uint _amount) external override onlyVault {
         require(_amount > 0, "withdraw = 0");
 
-        // availabe <= _amount
+        // available <= _amount
         uint available = _withdraw(_amount);
-
-        uint debt = fundManager.getDebt(address(this));
-        uint total = _totalAssets();
-        if (debt > total) {
-            loss = debt - total;
-        }
-
         if (available > 0) {
             token.safeTransfer(msg.sender, available);
         }
-
-        emit Withdraw(_amount, available, loss);
     }
 
     function repay(uint _amount, uint _min) external override onlyAuthorized {
         require(_amount > 0, "repay = 0");
         // availabe <= _amount
         uint available = _withdraw(_amount);
-        uint repaid = fundManager.repay(available);
+        uint repaid = vault.repay(available);
         require(repaid >= _min, "repaid < min");
-
-        emit Repay(_amount, repaid);
     }
 
     /*
@@ -581,83 +565,30 @@ contract StrategyCompLev is Strategy {
 
         // transfer performance fee to treasury
         if (diff > 0) {
-            uint fee = diff.mul(perfFee) / PERF_FEE_MAX;
+            uint total = _totalAssets();
+            uint fee = _calcPerfFee(total) / PERF_FEE_DENOMINATOR;
             if (fee > 0) {
                 token.safeTransfer(treasury, fee);
                 diff = diff.sub(fee);
             }
         }
-
-        emit ClaimRewards(diff);
     }
 
-    function claimRewards(uint _minProfit) external override onlyAuthorized {
+    function harvest(uint _minProfit) external override onlyAuthorized {
         _claimRewards(_minProfit);
-    }
-
-    function _skim() private {
-        uint total = _totalAssets();
-        uint debt = fundManager.getDebt(address(this));
-        require(total > debt, "total <= debt");
-
-        uint profit = total - debt;
-        // reassign to actual amount withdrawn
-        profit = _withdraw(profit);
-
-        emit Skim(total, debt, profit);
-    }
-
-    function skim() external override onlyAuthorized {
-        _skim();
-    }
-
-    function _report(uint _minTotal, uint _maxTotal) private {
-        uint total = _totalAssets();
-        require(total >= _minTotal, "total < min");
-        require(total <= _maxTotal, "total > max");
-
-        uint gain = 0;
-        uint loss = 0;
-        uint free = 0;
-        uint debt = fundManager.getDebt(address(this));
-
-        if (total > debt) {
-            gain = total - debt;
-
-            free = token.balanceOf(address(this));
-            if (gain > free) {
-                gain = free;
-            }
-        } else {
-            loss = debt - total;
+        // _supply() to decrease collateral ratio and earn interest
+        // use _supply() instead of _deposit() to save gas
+        uint bal = token.balanceOf(address(this));
+        if (bal > 0) {
+            _supply(bal);
         }
-
-        if (gain > 0 || loss > 0) {
-            fundManager.report(gain, loss);
-        }
-
-        emit Report(gain, loss, free, total, debt);
     }
 
-    function report(uint _minTotal, uint _maxTotal) external override onlyAuthorized {
-        _report(_minTotal, _maxTotal);
-    }
-
-    function harvest(
-        uint _minProfit,
-        uint _minTotal,
-        uint _maxTotal
-    ) external override onlyAuthorized {
-        _claimRewards(_minProfit);
-        _skim();
-        _report(_minTotal, _maxTotal);
-    }
-
-    function migrate(address _strategy) external override onlyFundManager {
-        Strategy strat = Strategy(_strategy);
+    function migrate(address _strategy) external override onlyVault {
+        StrategyV2 strat = StrategyV2(_strategy);
         require(address(strat.token()) == address(token), "strategy token != token");
         require(
-            address(strat.fundManager()) == address(fundManager),
+            address(strat.vault()) == address(vault),
             "strategy fund manager != fund manager"
         );
 
@@ -667,7 +598,7 @@ contract StrategyCompLev is Strategy {
 
         uint bal = _withdraw(type(uint).max);
         token.safeApprove(_strategy, bal);
-        strat.transferTokenFrom(address(this), bal);
+        strat.pull(address(this), bal);
     }
 
     /*
