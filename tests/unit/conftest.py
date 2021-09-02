@@ -2,21 +2,12 @@ import pytest
 from brownie import (
     accounts,
     Vault,
-    EthVault,
     UnagiiToken,
     TimeLock,
-    FundManager,
-    EthFundManager,
-    StrategyTest,
     StrategyV2Test,
-    StrategyEthTest,
     TestToken,
     TestVault,
-    TestEthVault,
-    TestFundManager,
-    TestEthFundManager,
     TestStrategy,
-    TestStrategyEth,
     TxTest,
     ZERO_ADDRESS,
 )
@@ -85,55 +76,15 @@ def vault(Vault, token, uToken, admin, guardian, worker):
 
     uToken.setMinter(vault, {"from": admin})
     vault.setPause(False, {"from": admin})
+    vault.setBlockDelay(1, {"from": admin})
 
     yield vault
-
-
-@pytest.fixture(scope="module")
-def ethVault(EthVault, uEth, admin, guardian):
-    ethVault = EthVault.deploy(uEth, guardian, ZERO_ADDRESS, {"from": admin})
-
-    uEth.setMinter(ethVault, {"from": admin})
-
-    ethVault.setPause(False, {"from": admin})
-    ethVault.setDepositLimit(2 ** 256 - 1, {"from": admin})
-
-    ethVault.initialize({"from": admin})
-    yield ethVault
-
-
-@pytest.fixture(scope="module")
-def fundManager(FundManager, testVault, token, admin, guardian, worker):
-    fundManager = FundManager.deploy(
-        token, guardian, worker, ZERO_ADDRESS, {"from": admin}
-    )
-    fundManager.setVault(testVault, {"from": admin})
-    fundManager.initialize({"from": admin})
-    yield fundManager
-
-
-@pytest.fixture(scope="module")
-def ethFundManager(EthFundManager, testEthVault, admin, guardian, worker):
-    ethFundManager = EthFundManager.deploy(
-        guardian, worker, ZERO_ADDRESS, {"from": admin}
-    )
-    ethFundManager.setVault(testEthVault, {"from": admin})
-    ethFundManager.initialize({"from": admin})
-    yield ethFundManager
 
 
 # test contracts
 @pytest.fixture(scope="module")
 def token(TestToken, admin):
     yield TestToken.deploy("test", "TEST", 18, {"from": admin})
-
-
-@pytest.fixture(scope="module")
-def strategyTest(StrategyTest, token, testFundManager, admin, treasury):
-    strategyTest = StrategyTest.deploy(
-        token, testFundManager, treasury, {"from": admin}
-    )
-    yield strategyTest
 
 
 @pytest.fixture(scope="module")
@@ -144,14 +95,6 @@ def strategyV2Test(StrategyV2Test, token, testVault, admin, treasury):
         token, testVault, treasury, minTvl, maxTvl, {"from": admin}
     )
     yield strategyV2Test
-
-
-@pytest.fixture(scope="module")
-def strategyEthTest(StrategyEthTest, testEthFundManager, admin, treasury):
-    strategyEthTest = StrategyEthTest.deploy(
-        testEthFundManager, treasury, {"from": admin}
-    )
-    yield strategyEthTest
 
 
 @pytest.fixture(scope="module")
@@ -170,20 +113,5 @@ def testEthVault(TestEthVault, admin):
 
 
 @pytest.fixture(scope="module")
-def testFundManager(TestFundManager, vault, token, admin):
-    yield TestFundManager.deploy(vault, token, {"from": admin})
-
-
-@pytest.fixture(scope="module")
-def testEthFundManager(TestEthFundManager, ethVault, admin):
-    yield TestEthFundManager.deploy(ethVault, ETH, {"from": admin})
-
-
-@pytest.fixture(scope="module")
 def testStrategy(TestStrategy, vault, token, admin):
     yield TestStrategy.deploy(vault, token, {"from": admin})
-
-
-@pytest.fixture(scope="module")
-def testStrategyEth(TestStrategyEth, ethFundManager, admin):
-    yield TestStrategyEth.deploy(ethFundManager, ETH, {"from": admin})
