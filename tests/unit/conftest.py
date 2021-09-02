@@ -4,7 +4,7 @@ from brownie import (
     Vault,
     UnagiiToken,
     TimeLock,
-    StrategyV2Test,
+    StrategyTest,
     TestToken,
     TestVault,
     TestStrategy,
@@ -88,13 +88,13 @@ def token(TestToken, admin):
 
 
 @pytest.fixture(scope="module")
-def strategyV2Test(StrategyV2Test, token, testVault, admin, treasury):
+def strategyTest(StrategyTest, token, testVault, admin, treasury):
     minTvl = 10 ** token.decimals()
     maxTvl = 1000 * 10 ** token.decimals()
-    strategyV2Test = StrategyV2Test.deploy(
+    strategyTest = StrategyTest.deploy(
         token, testVault, treasury, minTvl, maxTvl, {"from": admin}
     )
-    yield strategyV2Test
+    yield strategyTest
 
 
 @pytest.fixture(scope="module")

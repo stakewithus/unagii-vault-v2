@@ -1,8 +1,8 @@
 import brownie
 
 
-def test_set_min_max_tvl(strategyV2Test, admin, user):
-    strategy = strategyV2Test
+def test_set_min_max_tvl(strategyTest, admin, user):
+    strategy = strategyTest
 
     # not auth
     with brownie.reverts("!auth"):

@@ -1,6 +1,6 @@
-def test_constructor(strategyV2Test, testVault, token, admin, treasury):
+def test_constructor(strategyTest, testVault, token, admin, treasury):
     vault = testVault
-    strategy = strategyV2Test
+    strategy = strategyTest
 
     assert strategy.timeLock() == admin
     assert strategy.admin() == admin

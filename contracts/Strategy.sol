@@ -1,12 +1,13 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 pragma solidity 0.7.6;
+// TODO: solidity version
 
-// version 0.1.1
+// version 1.0.0
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
-import "./interfaces/IFundManager.sol";
+import "./interfaces/IVault.sol";
 
 abstract contract Strategy {
     using SafeERC20 for IERC20;
@@ -17,14 +18,8 @@ abstract contract Strategy {
     event SetAdmin(address admin);
     event Authorize(address addr, bool authorized);
     event SetTreasury(address treasury);
-    event SetFundManager(address fundManager);
-
-    event Deposit(uint amount, uint borrowed);
-    event Repay(uint amount, uint repaid);
-    event Withdraw(uint amount, uint withdrawn, uint loss);
-    event ClaimRewards(uint profit);
-    event Skim(uint total, uint debt, uint profit);
-    event Report(uint gain, uint loss, uint free, uint total, uint debt);
+    event SetVault(address vault);
+    event SetMinMaxTvl(uint _minTvl, uint _maxTvl);
 
     // Privilege - time lock >= admin >= authorized addresses
     address public timeLock;
@@ -36,19 +31,29 @@ abstract contract Strategy {
     mapping(address => bool) public authorized;
 
     IERC20 public immutable token;
-    IFundManager public fundManager;
+    IVault public vault;
 
     // Performance fee sent to treasury
-    uint public perfFee = 1000;
-    uint private constant PERF_FEE_CAP = 2000; // Upper limit to performance fee
-    uint internal constant PERF_FEE_MAX = 10000;
+    uint private constant MAX_PERF_FEE = 2000;
+    uint private constant MIN_PERF_FEE = 100;
+    uint private constant PERF_FEE_DIFF = MAX_PERF_FEE - MIN_PERF_FEE;
+    uint internal constant PERF_FEE_DENOMINATOR = 10000;
+    /*
+    tvl = total value locked in this contract
+    min and max tvl are used to calculate performance fee
+    */
+    uint public minTvl;
+    uint public maxTvl;
 
     bool public claimRewardsOnMigrate = true;
 
+    // TODO: worker, guardian?
     constructor(
         address _token,
-        address _fundManager,
-        address _treasury
+        address _vault,
+        address _treasury,
+        uint _minTvl,
+        uint _maxTvl
     ) {
         // Don't allow accidentally sending perf fee to 0 address
         require(_treasury != address(0), "treasury = 0 address");
@@ -57,15 +62,14 @@ abstract contract Strategy {
         admin = msg.sender;
         treasury = _treasury;
 
-        require(
-            IFundManager(_fundManager).token() == _token,
-            "fund manager token != token"
-        );
+        _setMinMaxTvl(_minTvl, _maxTvl);
 
-        fundManager = IFundManager(_fundManager);
+        require(IVault(_vault).token() == _token, "vault token != token");
+
+        vault = IVault(_vault);
         token = IERC20(_token);
 
-        IERC20(_token).safeApprove(_fundManager, type(uint).max);
+        IERC20(_token).safeApprove(_vault, type(uint).max);
     }
 
     modifier onlyTimeLock() {
@@ -86,8 +90,8 @@ abstract contract Strategy {
         _;
     }
 
-    modifier onlyFundManager() {
-        require(msg.sender == address(fundManager), "!fund manager");
+    modifier onlyVault() {
+        require(msg.sender == address(vault), "!vault");
         _;
     }
 
@@ -124,17 +128,6 @@ abstract contract Strategy {
     }
 
     /*
-    @notice Set authorization
-    @param _addr Address to authorize
-    @param _authorized Boolean
-    */
-    function authorize(address _addr, bool _authorized) external onlyTimeLockOrAdmin {
-        require(_addr != address(0), "addr = 0 address");
-        authorized[_addr] = _authorized;
-        emit Authorize(_addr, _authorized);
-    }
-
-    /*
     @notice Set treasury
     @param _treasury Address of treasury
     */
@@ -146,28 +139,82 @@ abstract contract Strategy {
     }
 
     /*
-    @notice Set performance fee
-    @param _fee Performance fee
+    @notice Set authorization
+    @param _addr Address to authorize
+    @param _authorized Boolean
     */
-    function setPerfFee(uint _fee) external onlyTimeLockOrAdmin {
-        require(_fee <= PERF_FEE_CAP, "fee > cap");
-        perfFee = _fee;
+    function authorize(address _addr, bool _authorized) external onlyTimeLockOrAdmin {
+        require(_addr != address(0), "addr = 0 address");
+        authorized[_addr] = _authorized;
+        emit Authorize(_addr, _authorized);
     }
 
-    function setFundManager(address _fundManager) external onlyTimeLock {
-        if (address(fundManager) != address(0)) {
-            token.safeApprove(address(fundManager), 0);
+    /*
+    @notice Set min and max TVL
+    @param _minTvl Minimum TVL
+    @param _maxTvl Maximum TVL
+    */
+    function _setMinMaxTvl(uint _minTvl, uint _maxTvl) private {
+        require(_minTvl < _maxTvl, "min tvl >= max tvl");
+        minTvl = _minTvl;
+        maxTvl = _maxTvl;
+        emit SetMinMaxTvl(_minTvl, _maxTvl);
+    }
+
+    function setMinMaxTvl(uint _minTvl, uint _maxTvl) external onlyTimeLockOrAdmin {
+        _setMinMaxTvl(_minTvl, _maxTvl);
+    }
+
+    /*
+    @notice Calculate performance fee based on total locked value
+    @param _tvl Current total locked value in this contract
+    @dev Returns current perf fee 
+    @dev when tvl <= minTvl, perf fee is MAX_PERF_FEE
+         when tvl >= maxTvl, perf fee is MIN_PERF_FEE
+    */
+    function _calcPerfFee(uint _tvl) internal view returns (uint) {
+        /*
+        y0 = max perf fee
+        y1 = min perf fee
+        x0 = min tvl
+        x1 = max tvl
+
+        x = current tvl
+        y = perf fee
+          = (y1 - y0) / (x1 - x0) * (x - x0) + y0
+
+        when x = x0, y = y0
+             x = x1, y = y1
+        */
+        if (_tvl <= minTvl) {
+            return MAX_PERF_FEE;
+        }
+        if (_tvl < maxTvl) {
+            return
+                MAX_PERF_FEE - ((PERF_FEE_DIFF.mul(_tvl - minTvl)) / (maxTvl - minTvl));
+        }
+        return MIN_PERF_FEE;
+    }
+
+    function calcPerfFee(uint _tvl) external view returns (uint) {
+        return _calcPerfFee(_tvl);
+    }
+
+    /*
+    @notice Set vault
+    @param _vault Address of vault
+    */
+    function setVault(address _vault) external onlyTimeLock {
+        if (address(vault) != address(0)) {
+            token.safeApprove(address(vault), 0);
         }
 
-        require(
-            IFundManager(_fundManager).token() == address(token),
-            "new fund manager token != token"
-        );
+        require(IVault(_vault).token() == address(token), "new vault token != token");
 
-        fundManager = IFundManager(_fundManager);
-        token.safeApprove(_fundManager, type(uint).max);
+        vault = IVault(_vault);
+        token.safeApprove(_vault, type(uint).max);
 
-        emit SetFundManager(_fundManager);
+        emit SetVault(_vault);
     }
 
     /*
@@ -180,15 +227,6 @@ abstract contract Strategy {
     }
 
     /*
-    @notice Transfer funds from `_from` address. Used for migration.
-    @param _from Address to transfer token from
-    @param _amount Amount of token to transfer
-    */
-    function transferTokenFrom(address _from, uint _amount) external onlyAuthorized {
-        token.safeTransferFrom(_from, address(this), _amount);
-    }
-
-    /*
     @notice Returns approximate amount of token locked in this contract
     @dev Output may vary depending on price pulled from external DeFi contracts
     */
@@ -196,66 +234,47 @@ abstract contract Strategy {
 
     /*
     @notice Deposit into strategy
-    @param _amount Amount of token to deposit from fund manager
+    @param _amount Amount of token to deposit from vault
     @param _min Minimum amount borrowed
     */
     function deposit(uint _amount, uint _min) external virtual;
 
     /*
     @notice Withdraw token from this contract
-    @dev Only callable by fund manager
-    @dev Returns current loss = debt to fund manager - total assets
+    @dev Only vault can call
     */
-    function withdraw(uint _amount) external virtual returns (uint);
+    function withdraw(uint _amount) external virtual;
 
     /*
-    @notice Repay fund manager
-    @param _amount Amount of token to repay to fund manager
+    @notice Repay vault
+    @param _amount Amount of token to repay to vault
     @param _min Minimum amount repaid
-    @dev Call report after this to report any loss
     */
     function repay(uint _amount, uint _min) external virtual;
 
+    // TODO: claim rewards?
+
     /*
-    @notice Claim any reward tokens, sell for token
+    @notice Claim rewards
     @param _minProfit Minumum amount of token to gain from selling rewards
     */
-    function claimRewards(uint _minProfit) external virtual;
-
-    /*
-    @notice Free up any profit over debt
-    */
-    function skim() external virtual;
-
-    /*
-    @notice Report gain or loss back to fund manager
-    @param _minTotal Minimum value of total assets.
-               Used to protect against price manipulation.
-    @param _maxTotal Maximum value of total assets Used
-               Used to protect against price manipulation.  
-    */
-    function report(uint _minTotal, uint _maxTotal) external virtual;
-
-    /*
-    @notice Claim rewards, skim and report
-    @param _minProfit Minumum amount of token to gain from selling rewards
-    @param _minTotal Minimum value of total assets.
-               Used to protect against price manipulation.
-    @param _maxTotal Maximum value of total assets Used
-               Used to protect against price manipulation.  
-    */
-    function harvest(
-        uint _minProfit,
-        uint _minTotal,
-        uint _maxTotal
-    ) external virtual;
+    function harvest(uint _minProfit) external virtual;
 
     /*
     @notice Migrate to new version of this strategy
     @param _strategy Address of new strategy
-    @dev Only callable by fund manager
+    @dev Only callable by vault
     */
     function migrate(address _strategy) external virtual;
+
+    /*
+    @notice Transfer token from `_from` address. Used for migration.
+    @param _from Address to transfer token from
+    @param _amount Amount of token to transfer
+    */
+    function pull(address _from, uint _amount) external onlyAuthorized {
+        token.safeTransferFrom(_from, address(this), _amount);
+    }
 
     /*
     @notice Transfer token accidentally sent here back to admin

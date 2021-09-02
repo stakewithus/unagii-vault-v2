@@ -2,8 +2,8 @@ import brownie
 from brownie import ZERO_ADDRESS
 
 
-def test_set_vault(strategyV2Test, TestVault, token, admin, user):
-    strategy = strategyV2Test
+def test_set_vault(strategyTest, TestVault, token, admin, user):
+    strategy = strategyTest
     timeLock = strategy.timeLock()
     vault = strategy.vault()
     newVault = TestVault.deploy(token, {"from": admin})

@@ -7,9 +7,9 @@ import "../interfaces/convex/BaseRewardPool.sol";
 import "../interfaces/convex/Booster.sol";
 import "../interfaces/curve/DepositZapAlUsd3Crv.sol";
 import "../interfaces/curve/StableSwapAlUsd3Crv.sol";
-import "../StrategyV2.sol";
+import "../Strategy.sol";
 
-contract StrategyConvexAlUsd is StrategyV2 {
+contract StrategyConvexAlUsd is Strategy {
     using SafeERC20 for IERC20;
     using SafeMath for uint;
 
@@ -75,7 +75,7 @@ contract StrategyConvexAlUsd is StrategyV2 {
         uint _minTvl,
         uint _maxTvl,
         uint _index
-    ) StrategyV2(_token, _vault, _treasury, _minTvl, _maxTvl) {
+    ) Strategy(_token, _vault, _treasury, _minTvl, _maxTvl) {
         // disable alUSD
         require(_index > 0, "index = 0");
         INDEX = _index;
@@ -340,7 +340,7 @@ contract StrategyConvexAlUsd is StrategyV2 {
     }
 
     function migrate(address _strategy) external override onlyVault {
-        StrategyV2 strat = StrategyV2(_strategy);
+        Strategy strat = Strategy(_strategy);
         require(address(strat.token()) == address(token), "strategy token != token");
         require(address(strat.vault()) == address(vault), "strategy vault != vault");
 

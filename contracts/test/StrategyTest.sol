@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 pragma solidity 0.7.6;
 
-import "../StrategyV2.sol";
+import "../Strategy.sol";
 
-contract StrategyV2Test is StrategyV2 {
+contract StrategyTest is Strategy {
     using SafeERC20 for IERC20;
 
     constructor(
@@ -12,7 +12,7 @@ contract StrategyV2Test is StrategyV2 {
         address _treasury,
         uint _minTvl,
         uint _maxTvl
-    ) StrategyV2(_token, _vault, _treasury, _minTvl, _maxTvl) {}
+    ) Strategy(_token, _vault, _treasury, _minTvl, _maxTvl) {}
 
     function _totalAssets() internal view returns (uint) {
         return token.balanceOf(address(this));

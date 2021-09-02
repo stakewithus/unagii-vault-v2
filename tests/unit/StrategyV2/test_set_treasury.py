@@ -2,8 +2,8 @@ import brownie
 from brownie import ZERO_ADDRESS
 
 
-def test_set_treasury(strategyV2Test, admin, user):
-    strategy = strategyV2Test
+def test_set_treasury(strategyTest, admin, user):
+    strategy = strategyTest
 
     # not auth
     with brownie.reverts("!auth"):

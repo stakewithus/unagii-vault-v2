@@ -1,7 +1,7 @@
 import brownie
 from brownie import ZERO_ADDRESS
 from brownie.test import strategy
-from brownie import StrategyV2Test
+from brownie import StrategyTest
 
 # number of active strategies
 N = 5
@@ -34,7 +34,7 @@ class StateMachine:
         for i in range(N):
             min_tvl = 100
             max_tvl = 10000
-            strat = StrategyV2Test.deploy(
+            strat = StrategyTest.deploy(
                 token, vault, treasury, min_tvl, max_tvl, {"from": admin}
             )
 

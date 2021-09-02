@@ -1,8 +1,8 @@
 import brownie
 
 
-def test_pull(strategyV2Test, token, admin, user):
-    strategy = strategyV2Test
+def test_pull(strategyTest, token, admin, user):
+    strategy = strategyTest
 
     token.mint(admin, 1000)
     token.approve(strategy, 1000, {"from": admin})

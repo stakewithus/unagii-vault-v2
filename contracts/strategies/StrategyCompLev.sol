@@ -5,7 +5,7 @@ pragma solidity 0.7.6;
 import "../interfaces/uniswap/UniswapV2Router.sol";
 import "../interfaces/compound/CErc20.sol";
 import "../interfaces/compound/Comptroller.sol";
-import "../StrategyV2.sol";
+import "../Strategy.sol";
 
 /*
 APY estimate
@@ -42,7 +42,7 @@ s(x) = set butter to x
                              s(min)
 */
 
-contract StrategyCompLev is StrategyV2 {
+contract StrategyCompLev is Strategy {
     using SafeERC20 for IERC20;
     using SafeMath for uint;
 
@@ -66,7 +66,7 @@ contract StrategyCompLev is StrategyV2 {
         uint _minTvl,
         uint _maxTvl,
         address _cToken
-    ) StrategyV2(_token, _vault, _treasury, _minTvl, _maxTvl) {
+    ) Strategy(_token, _vault, _treasury, _minTvl, _maxTvl) {
         require(_cToken != address(0), "cToken = zero address");
         cToken = CErc20(_cToken);
         IERC20(_token).safeApprove(_cToken, type(uint).max);
@@ -583,7 +583,7 @@ contract StrategyCompLev is StrategyV2 {
     }
 
     function migrate(address _strategy) external override onlyVault {
-        StrategyV2 strat = StrategyV2(_strategy);
+        Strategy strat = Strategy(_strategy);
         require(address(strat.token()) == address(token), "strategy token != token");
         require(address(strat.vault()) == address(vault), "strategy vault != vault");
 

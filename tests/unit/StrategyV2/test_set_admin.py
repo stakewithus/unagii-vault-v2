@@ -1,8 +1,8 @@
 import brownie
 
 
-def test_set_admin(strategyV2Test, admin, user):
-    strategy = strategyV2Test
+def test_set_admin(strategyTest, admin, user):
+    strategy = strategyTest
 
     # not auth
     with brownie.reverts("!auth"):

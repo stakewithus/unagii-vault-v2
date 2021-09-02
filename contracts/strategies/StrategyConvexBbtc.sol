@@ -7,9 +7,9 @@ import "../interfaces/convex/BaseRewardPool.sol";
 import "../interfaces/convex/Booster.sol";
 import "../interfaces/curve/DepositBbtc.sol";
 import "../interfaces/curve/StableSwapBbtc.sol";
-import "../StrategyV2.sol";
+import "../Strategy.sol";
 
-contract StrategyConvexBbtc is StrategyV2 {
+contract StrategyConvexBbtc is Strategy {
     using SafeERC20 for IERC20;
     using SafeMath for uint;
 
@@ -72,7 +72,7 @@ contract StrategyConvexBbtc is StrategyV2 {
         uint _minTvl,
         uint _maxTvl,
         uint _index
-    ) StrategyV2(_token, _vault, _treasury, _minTvl, _maxTvl) {
+    ) Strategy(_token, _vault, _treasury, _minTvl, _maxTvl) {
         // only WBTC
         require(_index == 2, "index != 2");
         INDEX = _index;
@@ -326,7 +326,7 @@ contract StrategyConvexBbtc is StrategyV2 {
     }
 
     function migrate(address _strategy) external override onlyVault {
-        StrategyV2 strat = StrategyV2(_strategy);
+        Strategy strat = Strategy(_strategy);
         require(address(strat.token()) == address(token), "strategy token != token");
         require(address(strat.vault()) == address(vault), "strategy vault != vault");
 

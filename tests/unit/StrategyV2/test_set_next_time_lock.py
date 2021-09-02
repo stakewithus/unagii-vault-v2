@@ -1,8 +1,8 @@
 import brownie
 
 
-def test_set_next_time_lock(strategyV2Test, user):
-    strategy = strategyV2Test
+def test_set_next_time_lock(strategyTest, user):
+    strategy = strategyTest
     timeLock = strategy.timeLock()
 
     # not time lock

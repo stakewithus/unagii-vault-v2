@@ -8,12 +8,12 @@ MAX_PERF_FEE = 2000
 
 
 @pytest.fixture(scope="function", autouse=True)
-def setup(fn_isolation, strategyV2Test):
+def setup(fn_isolation, strategyTest):
     pass
 
 
-def test_calc_perf_fee_min_max(strategyV2Test):
-    strategy = strategyV2Test
+def test_calc_perf_fee_min_max(strategyTest):
+    strategy = strategyTest
 
     # min tvl, max perf fee
     tvl = strategy.minTvl()
@@ -31,8 +31,8 @@ def test_calc_perf_fee_min_max(strategyV2Test):
     minTvl=strategy("uint256", min_value=0, max_value=2 ** 128 - 1),
     maxTvl=strategy("uint256", min_value=0, max_value=2 ** 128 - 1),
 )
-def test_calc_perf_fee(strategyV2Test, admin, tvl, minTvl, maxTvl):
-    strategy = strategyV2Test
+def test_calc_perf_fee(strategyTest, admin, tvl, minTvl, maxTvl):
+    strategy = strategyTest
 
     _minTvl = min(minTvl, maxTvl)
     _maxTvl = max(minTvl, maxTvl) + 1

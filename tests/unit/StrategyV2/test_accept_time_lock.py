@@ -2,8 +2,8 @@ import brownie
 from brownie import ZERO_ADDRESS
 
 
-def test_accept_time_lock(strategyV2Test, user):
-    strategy = strategyV2Test
+def test_accept_time_lock(strategyTest, user):
+    strategy = strategyTest
     timeLock = strategy.timeLock()
 
     # not next time lock
