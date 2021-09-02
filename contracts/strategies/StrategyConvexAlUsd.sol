@@ -327,7 +327,7 @@ contract StrategyConvexAlUsd is Strategy {
         // transfer performance fee to treasury
         if (diff > 0) {
             uint total = _totalAssets();
-            uint fee = _calcPerfFee(total) / PERF_FEE_DENOMINATOR;
+            uint fee = _calcFee(total, diff);
             if (fee > 0) {
                 token.safeTransfer(treasury, fee);
             }

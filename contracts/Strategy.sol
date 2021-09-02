@@ -7,10 +7,11 @@ pragma solidity 0.7.6;
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
+import "./base/PerfFee.sol";
 import "./interfaces/IVault.sol";
 
 // TODO: DIY safe transfer / approve to save gas?
-abstract contract Strategy {
+abstract contract Strategy is PerfFee {
     using SafeERC20 for IERC20;
     using SafeMath for uint;
 
@@ -20,7 +21,6 @@ abstract contract Strategy {
     event Authorize(address addr, bool authorized);
     event SetTreasury(address treasury);
     event SetVault(address vault);
-    event SetMinMaxTvl(uint _minTvl, uint _maxTvl);
 
     // Privilege - time lock >= admin >= authorized addresses
     address public timeLock;
@@ -33,18 +33,6 @@ abstract contract Strategy {
 
     IERC20 public immutable token;
     IVault public vault;
-
-    // Performance fee sent to treasury
-    uint private constant MAX_PERF_FEE = 2000;
-    uint private constant MIN_PERF_FEE = 100;
-    uint private constant PERF_FEE_DIFF = MAX_PERF_FEE - MIN_PERF_FEE;
-    uint internal constant PERF_FEE_DENOMINATOR = 10000;
-    /*
-    tvl = total value locked in this contract
-    min and max tvl are used to calculate performance fee
-    */
-    uint public minTvl;
-    uint public maxTvl;
 
     bool public claimRewardsOnMigrate = true;
 
@@ -150,55 +138,8 @@ abstract contract Strategy {
         emit Authorize(_addr, _authorized);
     }
 
-    /*
-    @notice Set min and max TVL
-    @param _minTvl Minimum TVL
-    @param _maxTvl Maximum TVL
-    */
-    function _setMinMaxTvl(uint _minTvl, uint _maxTvl) private {
-        require(_minTvl < _maxTvl, "min tvl >= max tvl");
-        minTvl = _minTvl;
-        maxTvl = _maxTvl;
-        emit SetMinMaxTvl(_minTvl, _maxTvl);
-    }
-
     function setMinMaxTvl(uint _minTvl, uint _maxTvl) external onlyTimeLockOrAdmin {
         _setMinMaxTvl(_minTvl, _maxTvl);
-    }
-
-    /*
-    @notice Calculate performance fee based on total locked value
-    @param _tvl Current total locked value in this contract
-    @dev Returns current perf fee 
-    @dev when tvl <= minTvl, perf fee is MAX_PERF_FEE
-         when tvl >= maxTvl, perf fee is MIN_PERF_FEE
-    */
-    function _calcPerfFee(uint _tvl) internal view returns (uint) {
-        /*
-        y0 = max perf fee
-        y1 = min perf fee
-        x0 = min tvl
-        x1 = max tvl
-
-        x = current tvl
-        y = perf fee
-          = (y1 - y0) / (x1 - x0) * (x - x0) + y0
-
-        when x = x0, y = y0
-             x = x1, y = y1
-        */
-        if (_tvl <= minTvl) {
-            return MAX_PERF_FEE;
-        }
-        if (_tvl < maxTvl) {
-            return
-                MAX_PERF_FEE - ((PERF_FEE_DIFF.mul(_tvl - minTvl)) / (maxTvl - minTvl));
-        }
-        return MIN_PERF_FEE;
-    }
-
-    function calcPerfFee(uint _tvl) external view returns (uint) {
-        return _calcPerfFee(_tvl);
     }
 
     /*
