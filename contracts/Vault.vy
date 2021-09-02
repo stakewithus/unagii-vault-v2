@@ -871,6 +871,7 @@ def calcMaxBorrow(strategy: address) -> uint256:
 def borrow(amount: uint256) -> uint256:
     """
     @notice Borrow token from vault
+    @param amount Amount of token to borrow
     @dev Only active strategy can borrow
     @dev Returns amount that was sent
     """
@@ -897,6 +898,7 @@ def borrow(amount: uint256) -> uint256:
 def repay(amount: uint256) -> uint256:
     """
     @notice Repay token to vault
+    @param amount Amount of token to repay
     @dev Only approved and active strategy can repay
     @dev Returns actual amount that was repaid
     """
@@ -920,7 +922,17 @@ def repay(amount: uint256) -> uint256:
 
 @external
 def sync(strategy: address, minTotal: uint256, maxTotal: uint256):
-    # TODO: comment
+    """
+    @notice Increase or decrease debt from strategy based on total
+            asset of strategy
+    @param strategy Address of active strategy
+    @param minTotal Minimum of total asset of strategy
+    @param maxTotal Maximum of total asset of strategy
+    @dev `minTotal` and `maxTotal` are used to make sure total asset is within
+          a reasonable range
+    @dev Only approved and active strategy can repay
+    @dev Returns actual amount that was repaid
+    """
     assert msg.sender in [self.worker, self.admin, self.timeLock], "!auth"
     assert self.strategies[strategy].active, "!active strategy"
 
