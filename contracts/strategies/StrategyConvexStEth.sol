@@ -303,20 +303,6 @@ contract StrategyConvexStEth is StrategyEth {
         _harvest(_minProfit);
     }
 
-    function migrate(address payable _strategy) external override onlyVault {
-        StrategyEth strat = StrategyEth(_strategy);
-        require(address(strat.token()) == ETH, "strategy token != ETH");
-        require(address(strat.vault()) == address(vault), "strategy vault != vault");
-
-        if (!skipHarvest) {
-            _harvest(1);
-        }
-
-        uint bal = _withdraw(type(uint).max);
-        // WARNING: may lose all ETH if sent to wrong address
-        _sendEth(address(strat), bal);
-    }
-
     /*
     @notice Transfer token accidentally sent here to admin
     @param _token Address of token to transfer

@@ -199,20 +199,11 @@ abstract contract StrategyEth is PerfFee {
     */
     function repay(uint _amount, uint _min) external virtual;
 
-    // TODO: claim rewards?
-
     /*
     @notice Claim rewards
     @param _minProfit Minumum amount of ETH to gain from selling rewards
     */
     function harvest(uint _minProfit) external virtual;
-
-    /*
-    @notice Migrate to new version of this strategy
-    @param _strategy Address of new strategy
-    @dev Only callable by vault
-    */
-    function migrate(address payable _strategy) external virtual;
 
     /*
     @notice Transfer token accidentally sent here back to admin

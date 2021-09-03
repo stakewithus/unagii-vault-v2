@@ -43,9 +43,5 @@ contract StrategyTest is Strategy {
 
     function harvest(uint) external override onlyAuthorized {}
 
-    function migrate(address _strategy) external override onlyVault {
-        token.transfer(_strategy, token.balanceOf(address(this)));
-    }
-
     function sweep(address) external override {}
 }

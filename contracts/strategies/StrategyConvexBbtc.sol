@@ -323,20 +323,6 @@ contract StrategyConvexBbtc is Strategy {
         _harvest(_minProfit);
     }
 
-    function migrate(address _strategy) external override onlyVault {
-        Strategy strat = Strategy(_strategy);
-        require(address(strat.token()) == address(token), "strategy token != token");
-        require(address(strat.vault()) == address(vault), "strategy vault != vault");
-
-        if (!skipHarvest) {
-            _harvest(1);
-        }
-
-        uint bal = _withdraw(type(uint).max);
-        token.safeApprove(_strategy, bal);
-        strat.pull(address(this), bal);
-    }
-
     /*
     @notice Transfer token accidentally sent here to admin
     @param _token Address of token to transfer

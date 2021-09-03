@@ -196,29 +196,11 @@ abstract contract Strategy is PerfFee {
     */
     function repay(uint _amount, uint _min) external virtual;
 
-    // TODO: claim rewards?
-
     /*
     @notice Claim rewards
     @param _minProfit Minumum amount of token to gain from selling rewards
     */
     function harvest(uint _minProfit) external virtual;
-
-    /*
-    @notice Migrate to new version of this strategy
-    @param _strategy Address of new strategy
-    @dev Only callable by vault
-    */
-    function migrate(address _strategy) external virtual;
-
-    /*
-    @notice Transfer token from `_from` address. Used for migration.
-    @param _from Address to transfer token from
-    @param _amount Amount of token to transfer
-    */
-    function pull(address _from, uint _amount) external onlyAuthorized {
-        token.safeTransferFrom(_from, address(this), _amount);
-    }
 
     /*
     @notice Transfer token accidentally sent here back to admin

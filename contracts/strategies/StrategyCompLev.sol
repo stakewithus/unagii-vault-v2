@@ -571,26 +571,13 @@ contract StrategyCompLev is Strategy {
 
     function harvest(uint _minProfit) external override onlyAuthorized {
         _harvest(_minProfit);
+        // TODO: remove?
         // _supply() to decrease collateral ratio and earn interest
         // use _supply() instead of _deposit() to save gas
         uint bal = token.balanceOf(address(this));
         if (bal > 0) {
             _supply(bal);
         }
-    }
-
-    function migrate(address _strategy) external override onlyVault {
-        Strategy strat = Strategy(_strategy);
-        require(address(strat.token()) == address(token), "strategy token != token");
-        require(address(strat.vault()) == address(vault), "strategy vault != vault");
-
-        if (!skipHarvest) {
-            _harvest(1);
-        }
-
-        uint bal = _withdraw(type(uint).max);
-        token.safeApprove(_strategy, bal);
-        strat.pull(address(this), bal);
     }
 
     /*
