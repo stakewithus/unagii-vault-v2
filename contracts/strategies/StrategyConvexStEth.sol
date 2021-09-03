@@ -58,9 +58,9 @@ contract StrategyConvexStEth is StrategyEth {
     constructor(
         address _vault,
         address _treasury,
-        uint _minTvl,
-        uint _maxTvl
-    ) StrategyEth(_vault, _treasury, _minTvl, _maxTvl) {
+        uint _minProfit,
+        uint _maxProfit
+    ) StrategyEth(_vault, _treasury, _minProfit, _maxProfit) {
         (address lptoken, , , address crvRewards, , ) = BOOSTER.poolInfo(PID);
         require(address(CURVE_LP) == lptoken, "curve pool lp != pool info lp");
         require(address(REWARD) == crvRewards, "reward != pool info reward");
@@ -293,7 +293,7 @@ contract StrategyConvexStEth is StrategyEth {
         // transfer performance fee to treasury
         if (diff > 0) {
             uint total = _totalAssets();
-            uint fee = _calcFee(total, diff);
+            uint fee = _calcFee(diff);
             // Performance fee sent to treasury
 
             if (fee > 0) {

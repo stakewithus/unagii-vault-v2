@@ -10,9 +10,9 @@ contract StrategyTest is Strategy {
         address _token,
         address _vault,
         address _treasury,
-        uint _minTvl,
-        uint _maxTvl
-    ) Strategy(_token, _vault, _treasury, _minTvl, _maxTvl) {}
+        uint _minProfit,
+        uint _maxProfit
+    ) Strategy(_token, _vault, _treasury, _minProfit, _maxProfit) {}
 
     function _totalAssets() internal view returns (uint) {
         return token.balanceOf(address(this));

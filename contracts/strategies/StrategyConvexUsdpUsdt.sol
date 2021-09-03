@@ -7,15 +7,15 @@ contract StrategyConvexUsdpUsdt is StrategyConvexUsdp {
     constructor(
         address _vault,
         address _treasury,
-        uint _minTvl,
-        uint _maxTvl
+        uint _minProfit,
+        uint _maxProfit
     )
         StrategyConvexUsdp(
             0xdAC17F958D2ee523a2206206994597C13D831ec7,
             _vault,
             _treasury,
-            _minTvl,
-            _maxTvl,
+            _minProfit,
+            _maxProfit,
             3
         )
     {}

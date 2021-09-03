@@ -63,10 +63,10 @@ contract StrategyCompLev is Strategy {
         address _token,
         address _vault,
         address _treasury,
-        uint _minTvl,
-        uint _maxTvl,
+        uint _minProfit,
+        uint _maxProfit,
         address _cToken
-    ) Strategy(_token, _vault, _treasury, _minTvl, _maxTvl) {
+    ) Strategy(_token, _vault, _treasury, _minProfit, _maxProfit) {
         require(_cToken != address(0), "cToken = zero address");
         cToken = CErc20(_cToken);
         IERC20(_token).safeApprove(_cToken, type(uint).max);
@@ -565,7 +565,7 @@ contract StrategyCompLev is Strategy {
         // transfer performance fee to treasury
         if (diff > 0) {
             uint total = _totalAssets();
-            uint fee = _calcFee(total, diff);
+            uint fee = _calcFee(diff);
             if (fee > 0) {
                 token.safeTransfer(treasury, fee);
             }

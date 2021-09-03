@@ -7,15 +7,15 @@ contract StrategyConvexSbtcWbtc is StrategyConvexSbtc {
     constructor(
         address _vault,
         address _treasury,
-        uint _minTvl,
-        uint _maxTvl
+        uint _minProfit,
+        uint _maxProfit
     )
         StrategyConvexSbtc(
             0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599,
             _vault,
             _treasury,
-            _minTvl,
-            _maxTvl,
+            _minProfit,
+            _maxProfit,
             1
         )
     {}
