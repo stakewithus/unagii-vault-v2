@@ -173,19 +173,21 @@ abstract contract StrategyEth is PerfFee, Dex {
         return _totalAssets();
     }
 
+    /*
+    @dev Deposit all ETH into strategy
+    */
     function _deposit() internal virtual;
 
     /*
-    @notice Deposit into strategy
-    @param _amount Amount of ETH to deposit from vault
+    @notice Borrow from vault and deposit into strategy
+    @param _amount Amount of ETH to borrow from vault
     @param _min Minimum amount borrowed
     */
     function deposit(uint _amount, uint _min) external onlyAuthorized {
-        require(_amount > 0, "deposit = 0");
-
-        uint borrowed = vault.borrow(_amount);
-        require(borrowed >= _min, "borrowed < min");
-
+        if (_amount > 0) {
+            uint borrowed = vault.borrow(_amount);
+            require(borrowed >= _min, "borrowed < min");
+        }
         _deposit();
     }
 
