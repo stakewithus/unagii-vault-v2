@@ -33,8 +33,6 @@ abstract contract Strategy is PerfFee {
     IERC20 public immutable token;
     IVault public vault;
 
-    bool public skipHarvest;
-
     // TODO: worker, guardian?
     constructor(
         address _token,
@@ -159,15 +157,6 @@ abstract contract Strategy is PerfFee {
         token.safeApprove(_vault, type(uint).max);
 
         emit SetVault(_vault);
-    }
-
-    /*
-    @notice Set `skipHarvest`. If `true` skip call to `harvest` when `migrate`
-            is called.
-    @param _skipHarvest Boolean to skip or call `harvest`
-    */
-    function setSkipHarvest(bool _skipHarvest) external onlyTimeLockOrAdmin {
-        skipHarvest = _skipHarvest;
     }
 
     /*

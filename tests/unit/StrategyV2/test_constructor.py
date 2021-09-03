@@ -11,5 +11,4 @@ def test_constructor(strategyTest, testVault, token, admin, treasury):
 
     assert token.allowance(strategy, vault) == 2 ** 256 - 1
 
-    assert not strategy.skipHarvest()
     assert strategy.minProfit() < strategy.maxProfit()

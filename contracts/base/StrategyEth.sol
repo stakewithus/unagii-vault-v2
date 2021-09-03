@@ -36,8 +36,6 @@ abstract contract StrategyEth is PerfFee {
     address public constant token = ETH;
     IEthVault public vault;
 
-    bool public skipHarvest;
-
     constructor(
         address _vault,
         address _treasury,
@@ -162,15 +160,6 @@ abstract contract StrategyEth is PerfFee {
         vault = IEthVault(_vault);
 
         emit SetVault(_vault);
-    }
-
-    /*
-    @notice Set `skipHarvest`. If `true` skip call to `harvest` when `migrate`
-            is called.
-    @param _skipHarvest Boolean to skip or call `harvest`
-    */
-    function setSkipHarvest(bool _skipHarvest) external onlyTimeLockOrAdmin {
-        skipHarvest = _skipHarvest;
     }
 
     /*
