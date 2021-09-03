@@ -7,7 +7,7 @@ import "../interfaces/convex/BaseRewardPool.sol";
 import "../interfaces/convex/Booster.sol";
 import "../interfaces/curve/DepositZapUsdp3Crv.sol";
 import "../interfaces/curve/StableSwapUsdp3Crv.sol";
-import "../Strategy.sol";
+import "../base/Strategy.sol";
 
 contract StrategyConvexUsdp is Strategy {
     using SafeERC20 for IERC20;

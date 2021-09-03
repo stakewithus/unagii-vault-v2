@@ -6,7 +6,7 @@ import "../interfaces/convex/BaseRewardPool.sol";
 import "../interfaces/convex/Booster.sol";
 import "../interfaces/curve/DepositObtc.sol";
 import "../interfaces/curve/StableSwapObtc.sol";
-import "../Strategy.sol";
+import "../base/Strategy.sol";
 
 contract StrategyConvexObtc is Strategy {
     using SafeERC20 for IERC20;

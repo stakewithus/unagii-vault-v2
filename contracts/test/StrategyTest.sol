@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 pragma solidity 0.7.6;
 
-import "../Strategy.sol";
+import "../base/Strategy.sol";
 
 contract StrategyTest is Strategy {
     using SafeERC20 for IERC20;

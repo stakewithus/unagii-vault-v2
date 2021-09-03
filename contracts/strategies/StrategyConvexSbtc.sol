@@ -5,7 +5,7 @@ import "../interfaces/uniswap/UniswapV2Router.sol";
 import "../interfaces/convex/BaseRewardPool.sol";
 import "../interfaces/convex/Booster.sol";
 import "../interfaces/curve/StableSwapSbtc.sol";
-import "../Strategy.sol";
+import "../base/Strategy.sol";
 
 contract StrategyConvexSbtc is Strategy {
     using SafeERC20 for IERC20;

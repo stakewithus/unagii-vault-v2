@@ -5,7 +5,7 @@ pragma solidity 0.7.6;
 import "../interfaces/uniswap/UniswapV2Router.sol";
 import "../interfaces/compound/CErc20.sol";
 import "../interfaces/compound/Comptroller.sol";
-import "../Strategy.sol";
+import "../base/Strategy.sol";
 
 /*
 APY estimate

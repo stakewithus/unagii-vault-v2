@@ -1,15 +1,16 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 pragma solidity 0.7.6;
+// TODO: solidity version
 
 // version 1.0.0
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
-import "./base/PerfFee.sol";
-import "./interfaces/IEthVault.sol";
+import "../interfaces/IVault.sol";
+import "./PerfFee.sol";
 
-abstract contract StrategyEth is PerfFee {
+abstract contract Strategy is PerfFee {
     using SafeERC20 for IERC20;
     using SafeMath for uint;
 
@@ -20,8 +21,6 @@ abstract contract StrategyEth is PerfFee {
     event SetTreasury(address treasury);
     event SetVault(address vault);
 
-    event ReceiveEth(address indexed sender, uint amount);
-
     // Privilege - time lock >= admin >= authorized addresses
     address public timeLock;
     address public nextTimeLock;
@@ -31,13 +30,14 @@ abstract contract StrategyEth is PerfFee {
     // authorization other than time lock and admin
     mapping(address => bool) public authorized;
 
-    address internal constant ETH = 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE;
-    address public constant token = ETH;
-    IEthVault public vault;
+    IERC20 public immutable token;
+    IVault public vault;
 
     bool public claimRewardsOnMigrate = true;
 
+    // TODO: worker, guardian?
     constructor(
+        address _token,
         address _vault,
         address _treasury,
         uint _minProfit,
@@ -52,19 +52,12 @@ abstract contract StrategyEth is PerfFee {
 
         _setMinMaxProfit(_minProfit, _maxProfit);
 
-        require(IEthVault(_vault).token() == ETH, "fund manager token != ETH");
+        require(IVault(_vault).token() == _token, "vault token != token");
 
-        vault = IEthVault(_vault);
-    }
+        vault = IVault(_vault);
+        token = IERC20(_token);
 
-    receive() external payable {
-        emit ReceiveEth(msg.sender, msg.value);
-    }
-
-    function _sendEth(address _to, uint _amount) internal {
-        require(_to != address(0), "to = zero address");
-        (bool sent, ) = _to.call{value: _amount}("");
-        require(sent, "Send ETH failed");
+        IERC20(_token).safeApprove(_vault, type(uint).max);
     }
 
     modifier onlyTimeLock() {
@@ -156,9 +149,14 @@ abstract contract StrategyEth is PerfFee {
     @param _vault Address of vault
     */
     function setVault(address _vault) external onlyTimeLock {
-        require(IEthVault(_vault).token() == ETH, "new vault token != ETH");
+        if (address(vault) != address(0)) {
+            token.safeApprove(address(vault), 0);
+        }
 
-        vault = IEthVault(_vault);
+        require(IVault(_vault).token() == address(token), "new vault token != token");
+
+        vault = IVault(_vault);
+        token.safeApprove(_vault, type(uint).max);
 
         emit SetVault(_vault);
     }
@@ -173,27 +171,27 @@ abstract contract StrategyEth is PerfFee {
     }
 
     /*
-    @notice Returns approximate amount of ETH locked in this contract
+    @notice Returns approximate amount of token locked in this contract
     @dev Output may vary depending on price pulled from external DeFi contracts
     */
     function totalAssets() external view virtual returns (uint);
 
     /*
     @notice Deposit into strategy
-    @param _amount Amount of ETH to deposit from vault
+    @param _amount Amount of token to deposit from vault
     @param _min Minimum amount borrowed
     */
     function deposit(uint _amount, uint _min) external virtual;
 
     /*
-    @notice Withdraw ETH from this contract
+    @notice Withdraw token from this contract
     @dev Only vault can call
     */
     function withdraw(uint _amount) external virtual;
 
     /*
     @notice Repay vault
-    @param _amount Amount of ETH to repay to vault
+    @param _amount Amount of token to repay to vault
     @param _min Minimum amount repaid
     */
     function repay(uint _amount, uint _min) external virtual;
@@ -202,7 +200,7 @@ abstract contract StrategyEth is PerfFee {
 
     /*
     @notice Claim rewards
-    @param _minProfit Minumum amount of ETH to gain from selling rewards
+    @param _minProfit Minumum amount of token to gain from selling rewards
     */
     function harvest(uint _minProfit) external virtual;
 
@@ -211,7 +209,16 @@ abstract contract StrategyEth is PerfFee {
     @param _strategy Address of new strategy
     @dev Only callable by vault
     */
-    function migrate(address payable _strategy) external virtual;
+    function migrate(address _strategy) external virtual;
+
+    /*
+    @notice Transfer token from `_from` address. Used for migration.
+    @param _from Address to transfer token from
+    @param _amount Amount of token to transfer
+    */
+    function pull(address _from, uint _amount) external onlyAuthorized {
+        token.safeTransferFrom(_from, address(this), _amount);
+    }
 
     /*
     @notice Transfer token accidentally sent here back to admin
