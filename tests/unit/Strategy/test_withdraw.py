@@ -8,7 +8,7 @@ def test_withdraw(strategyTest, testVault, token, admin, user):
     amount = 100
     token.mint(strategy, amount)
 
-    # not auth
+    # not vault
     with brownie.reverts("!vault"):
         strategy.withdraw(0, {"from": user})
 
