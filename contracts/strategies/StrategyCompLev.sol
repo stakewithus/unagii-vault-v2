@@ -80,7 +80,6 @@ contract StrategyCompLev is Strategy {
         }
 
         dex = _dex;
-
         comp.safeApprove(_dex, type(uint).max);
     }
 
@@ -91,10 +90,10 @@ contract StrategyCompLev is Strategy {
 
     function _totalAssets() private view returns (uint total) {
         // WARNING: This returns balance last time someone transacted with cToken
-        (uint error, uint cTokenBal, uint borrowed, uint exchangeRate) = cToken
+        (uint err, uint cTokenBal, uint borrowed, uint exchangeRate) = cToken
         .getAccountSnapshot(address(this));
 
-        if (error > 0) {
+        if (err > 0) {
             // something is wrong, return 0
             return 0;
         }
@@ -353,7 +352,6 @@ contract StrategyCompLev is Strategy {
     @param _min Minimum amount to borrow from vault
     */
     function deposit(uint _amount, uint _min) external override onlyAuthorized {
-        // TODO: deposit with borrowed = 0
         require(_amount > 0, "deposit = 0");
 
         uint borrowed = vault.borrow(_amount);
