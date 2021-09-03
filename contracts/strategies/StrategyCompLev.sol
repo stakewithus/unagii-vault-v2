@@ -543,7 +543,7 @@ contract StrategyCompLev is Strategy {
         );
     }
 
-    function _harvest(uint _minProfit) private {
+    function harvest(uint _minProfit) external override onlyAuthorized {
         // calculate profit = balance of token after - balance of token before
         uint diff = token.balanceOf(address(this));
 
@@ -566,17 +566,6 @@ contract StrategyCompLev is Strategy {
             if (fee > 0) {
                 token.safeTransfer(treasury, fee);
             }
-        }
-    }
-
-    function harvest(uint _minProfit) external override onlyAuthorized {
-        _harvest(_minProfit);
-        // TODO: remove?
-        // _supply() to decrease collateral ratio and earn interest
-        // use _supply() instead of _deposit() to save gas
-        uint bal = token.balanceOf(address(this));
-        if (bal > 0) {
-            _supply(bal);
         }
     }
 

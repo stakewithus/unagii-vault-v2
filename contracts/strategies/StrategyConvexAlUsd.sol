@@ -305,7 +305,7 @@ contract StrategyConvexAlUsd is Strategy {
         );
     }
 
-    function _harvest(uint _minProfit) private {
+    function harvest(uint _minProfit) external override onlyAuthorized {
         // calculate profit = balance of token after - balance of token before
         uint diff = token.balanceOf(address(this));
 
@@ -331,10 +331,6 @@ contract StrategyConvexAlUsd is Strategy {
                 token.safeTransfer(treasury, fee);
             }
         }
-    }
-
-    function harvest(uint _minProfit) external override onlyAuthorized {
-        _harvest(_minProfit);
     }
 
     /*
