@@ -445,7 +445,7 @@ def calcSharesToMint(amount: uint256) -> uint256:
     )
 
 
-# TODO: assert balanceOfVault == token.balanceOf(self)
+# TODO: assert balanceOfVault <= token.balanceOf(self)
 @external
 @nonreentrant("lock")
 def deposit(amount: uint256, _min: uint256) -> uint256:
@@ -586,7 +586,7 @@ def withdraw(shares: uint256, _min: uint256) -> uint256:
         shares, self.uToken.totalSupply(), self._calcFreeFunds()
     )
 
-    # TODO: assert balanceOfVault == token.balanceOf(self)
+    # TODO: assert balanceOfVault <= token.balanceOf(self)
     # withdraw from strategies if amount to withdraw > balance of vault
     if amount > self.balanceOfVault:
         # msg.sender must cover all of loss
