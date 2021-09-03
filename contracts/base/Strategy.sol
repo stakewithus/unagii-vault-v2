@@ -187,10 +187,7 @@ abstract contract Strategy is PerfFee, Dex {
         _deposit();
     }
 
-    /*
-    @dev Returns amount available for for withdraw
-    */
-    function _withdraw(uint _amount) internal virtual returns (uint);
+    function _withdraw(uint _amount) internal virtual;
 
     /*
     @notice Withdraw token from this contract
@@ -200,11 +197,13 @@ abstract contract Strategy is PerfFee, Dex {
     function withdraw(uint _amount) external onlyVault {
         require(_amount > 0, "withdraw = 0");
 
-        uint available = _withdraw(_amount);
-        if (available > 0) {
-            if (available < _amount) {
-                _amount = available;
-            }
+        _withdraw(_amount);
+
+        uint bal = token.balanceOf(address(this));
+        if (bal < _amount) {
+            _amount = bal;
+        }
+        if (_amount > 0) {
             token.safeTransfer(msg.sender, _amount);
         }
     }
@@ -217,9 +216,11 @@ abstract contract Strategy is PerfFee, Dex {
     function repay(uint _amount, uint _min) external onlyAuthorized {
         require(_amount > 0, "repay = 0");
 
-        uint available = _withdraw(_amount);
-        if (available < _amount) {
-            _amount = available;
+        _withdraw(_amount);
+
+        uint bal = token.balanceOf(address(this));
+        if (bal < _amount) {
+            _amount = bal;
         }
 
         uint repaid = vault.repay(_amount);

@@ -427,10 +427,10 @@ contract StrategyCompLev is Strategy {
     }
 
     // @dev Returns amount available for transfer
-    function _withdraw(uint _amount) internal override returns (uint) {
+    function _withdraw(uint _amount) internal override {
         uint bal = token.balanceOf(address(this));
         if (_amount <= bal) {
-            return _amount;
+            return;
         }
 
         uint redeemAmount = _amount - bal;
@@ -468,12 +468,6 @@ contract StrategyCompLev is Strategy {
 
         _deleverage(supplied.sub(repayAmount));
         _redeem(redeemAmount);
-
-        uint balAfter = token.balanceOf(address(this));
-        if (balAfter < _amount) {
-            return balAfter;
-        }
-        return _amount;
     }
 
     function harvest(uint _minProfit) external override onlyAuthorized {

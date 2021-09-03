@@ -188,10 +188,10 @@ contract StrategyConvexObtc is Strategy {
         return 0;
     }
 
-    function _withdraw(uint _amount) internal override returns (uint) {
+    function _withdraw(uint _amount) internal override {
         uint bal = token.balanceOf(address(this));
         if (_amount <= bal) {
-            return _amount;
+            return;
         }
 
         uint total = _totalAssets();
@@ -221,18 +221,6 @@ contract StrategyConvexObtc is Strategy {
             uint min = need.mul(SLIP_MAX - slip) / SLIP_MAX;
             ZAP.remove_liquidity_one_coin(shares, int128(INDEX), min);
         }
-
-        uint balAfter = token.balanceOf(address(this));
-        if (balAfter < _amount) {
-            return balAfter;
-        }
-        // balAfter >= _amount >= total
-        // requested to withdraw all so return balAfter
-        if (_amount >= total) {
-            return balAfter;
-        }
-        // requested withdraw < all
-        return _amount;
     }
 
     function harvest(uint _minProfit) external override onlyAuthorized {

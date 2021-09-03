@@ -167,10 +167,10 @@ contract StrategyConvexStEth is StrategyEth {
         return 0;
     }
 
-    function _withdraw(uint _amount) internal override returns (uint) {
+    function _withdraw(uint _amount) internal override {
         uint bal = address(this).balance;
         if (_amount <= bal) {
-            return _amount;
+            return;
         }
 
         uint total = _totalAssets();
@@ -200,18 +200,6 @@ contract StrategyConvexStEth is StrategyEth {
             uint min = need.mul(SLIP_MAX - slip) / SLIP_MAX;
             CURVE_POOL.remove_liquidity_one_coin(shares, int128(INDEX), min);
         }
-
-        uint balAfter = address(this).balance;
-        if (balAfter < _amount) {
-            return balAfter;
-        }
-        // balAfter >= _amount >= total
-        // requested to withdraw all so return balAfter
-        if (_amount >= total) {
-            return balAfter;
-        }
-        // requested withdraw < all
-        return _amount;
     }
 
     function harvest(uint _minProfit) external override onlyAuthorized {

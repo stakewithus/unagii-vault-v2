@@ -95,10 +95,10 @@ def perfFeeTest(PerfFeeTest, admin):
 
 @pytest.fixture(scope="module")
 def strategyTest(StrategyTest, token, testVault, admin, treasury):
-    minTvl = 10 ** token.decimals()
-    maxTvl = 1000 * 10 ** token.decimals()
+    minProfit = 10 ** token.decimals()
+    maxProfit = 1000 * 10 ** token.decimals()
     strategyTest = StrategyTest.deploy(
-        token, testVault, treasury, minTvl, maxTvl, {"from": admin}
+        token, testVault, treasury, minProfit, maxProfit, {"from": admin}
     )
     yield strategyTest
 

@@ -20,13 +20,7 @@ contract StrategyTest is Strategy {
 
     function _deposit() internal override {}
 
-    function _withdraw(uint _amount) internal override returns (uint) {
-        uint bal = token.balanceOf(address(this));
-        if (bal < _amount) {
-            return bal;
-        }
-        return _amount;
-    }
+    function _withdraw(uint _amount) internal override {}
 
     function harvest(uint) external override onlyAuthorized {}
 
