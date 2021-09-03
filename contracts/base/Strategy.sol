@@ -34,7 +34,6 @@ abstract contract Strategy is PerfFee, Dex {
     IERC20 public immutable token;
     IVault public vault;
 
-    // TODO: worker, guardian?
     constructor(
         address _token,
         address _vault,
