@@ -186,6 +186,9 @@ abstract contract Strategy is PerfFee, Dex {
         _deposit();
     }
 
+    /*
+    @dev Returns amount available for for withdraw
+    */
     function _withdraw(uint _amount) internal virtual returns (uint);
 
     /*
@@ -195,10 +198,13 @@ abstract contract Strategy is PerfFee, Dex {
     */
     function withdraw(uint _amount) external onlyVault {
         require(_amount > 0, "withdraw = 0");
-        // available <= _amount
+
         uint available = _withdraw(_amount);
         if (available > 0) {
-            token.safeTransfer(msg.sender, available);
+            if (available < _amount) {
+                _amount = available;
+            }
+            token.safeTransfer(msg.sender, _amount);
         }
     }
 

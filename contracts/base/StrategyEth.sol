@@ -189,6 +189,9 @@ abstract contract StrategyEth is PerfFee, Dex {
         _deposit();
     }
 
+    /*
+    @dev Returns amount available for for withdraw
+    */
     function _withdraw(uint _amount) internal virtual returns (uint);
 
     /*
@@ -197,9 +200,12 @@ abstract contract StrategyEth is PerfFee, Dex {
     */
     function withdraw(uint _amount) external onlyVault {
         require(_amount > 0, "withdraw = 0");
-        // availabe <= _amount
+
         uint available = _withdraw(_amount);
         if (available > 0) {
+            if (available < _amount) {
+                _amount = available;
+            }
             _sendEth(msg.sender, available);
         }
     }
