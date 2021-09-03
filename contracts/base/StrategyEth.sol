@@ -9,8 +9,9 @@ import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
 import "../interfaces/IEthVault.sol";
 import "./PerfFee.sol";
+import "./Dex.sol";
 
-abstract contract StrategyEth is PerfFee {
+abstract contract StrategyEth is PerfFee, Dex {
     using SafeERC20 for IERC20;
     using SafeMath for uint;
 

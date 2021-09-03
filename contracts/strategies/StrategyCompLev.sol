@@ -2,7 +2,6 @@
 pragma solidity 0.7.6;
 // version 0.1.1
 
-import "../interfaces/uniswap/UniswapV2Router.sol";
 import "../interfaces/compound/CErc20.sol";
 import "../interfaces/compound/Comptroller.sol";
 import "../base/Strategy.sol";
@@ -49,7 +48,6 @@ contract StrategyCompLev is Strategy {
     // Uniswap and Sushiswap //
     // UNISWAP = 0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D;
     // SUSHISWAP = 0xd9e1cE17f2641f24aE83637ab66a2cca9C378B9F;
-    address private constant WETH = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
     address public dex;
 
     // Compound //
@@ -520,29 +518,6 @@ contract StrategyCompLev is Strategy {
         require(repaid >= _min, "repaid < min");
     }
 
-    /*
-    @dev Uniswap fails with zero address so no check is necessary here
-    */
-    function _swap(
-        address _from,
-        address _to,
-        uint _amount
-    ) private {
-        // create dynamic array with 3 elements
-        address[] memory path = new address[](3);
-        path[0] = _from;
-        path[1] = WETH;
-        path[2] = _to;
-
-        UniswapV2Router(dex).swapExactTokensForTokens(
-            _amount,
-            1,
-            path,
-            address(this),
-            block.timestamp
-        );
-    }
-
     function harvest(uint _minProfit) external override onlyAuthorized {
         // calculate profit = balance of token after - balance of token before
         uint diff = token.balanceOf(address(this));
@@ -554,7 +529,7 @@ contract StrategyCompLev is Strategy {
 
         uint compBal = comp.balanceOf(address(this));
         if (compBal > 0) {
-            _swap(address(comp), address(token), compBal);
+            _swap(dex, address(comp), address(token), compBal);
         }
 
         diff = token.balanceOf(address(this)) - diff;
