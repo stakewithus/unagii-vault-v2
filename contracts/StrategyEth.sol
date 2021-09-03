@@ -41,8 +41,8 @@ abstract contract StrategyEth is PerfFee {
     constructor(
         address _vault,
         address _treasury,
-        uint _minTvl,
-        uint _maxTvl
+        uint _minProfit,
+        uint _maxProfit
     ) {
         // Don't allow accidentally sending perf fee to 0 address
         require(_treasury != address(0), "treasury = 0 address");
@@ -51,7 +51,7 @@ abstract contract StrategyEth is PerfFee {
         admin = msg.sender;
         treasury = _treasury;
 
-        _setMinMaxTvl(_minTvl, _maxTvl);
+        _setMinMaxProfit(_minProfit, _maxProfit);
 
         require(IEthVault(_vault).token() == ETH, "fund manager token != ETH");
 
@@ -145,8 +145,11 @@ abstract contract StrategyEth is PerfFee {
         emit Authorize(_addr, _authorized);
     }
 
-    function setMinMaxTvl(uint _minTvl, uint _maxTvl) external onlyTimeLockOrAdmin {
-        _setMinMaxTvl(_minTvl, _maxTvl);
+    function setMinMaxProfit(uint _minProfit, uint _maxProfit)
+        external
+        onlyTimeLockOrAdmin
+    {
+        _setMinMaxProfit(_minProfit, _maxProfit);
     }
 
     /*
