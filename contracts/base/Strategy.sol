@@ -160,31 +160,60 @@ abstract contract Strategy is PerfFee, Dex {
         emit SetVault(_vault);
     }
 
+    function _totalAssets() internal view virtual returns (uint);
+
     /*
     @notice Returns approximate amount of token locked in this contract
     @dev Output may vary depending on price pulled from external DeFi contracts
     */
-    function totalAssets() external view virtual returns (uint);
+    function totalAssets() external view returns (uint) {
+        return _totalAssets();
+    }
+
+    function _deposit() internal virtual;
 
     /*
     @notice Deposit into strategy
     @param _amount Amount of token to deposit from vault
     @param _min Minimum amount borrowed
     */
-    function deposit(uint _amount, uint _min) external virtual;
+    function deposit(uint _amount, uint _min) external onlyAuthorized {
+        require(_amount > 0, "deposit = 0");
+
+        uint borrowed = vault.borrow(_amount);
+        require(borrowed >= _min, "borrowed < min");
+
+        _deposit();
+    }
+
+    function _withdraw(uint _amount) internal virtual returns (uint);
 
     /*
     @notice Withdraw token from this contract
+    @notice Withdraw undelying token to vault
     @dev Only vault can call
     */
-    function withdraw(uint _amount) external virtual;
+    function withdraw(uint _amount) external onlyVault {
+        require(_amount > 0, "withdraw = 0");
+        // available <= _amount
+        uint available = _withdraw(_amount);
+        if (available > 0) {
+            token.safeTransfer(msg.sender, available);
+        }
+    }
 
     /*
     @notice Repay vault
     @param _amount Amount of token to repay to vault
     @param _min Minimum amount repaid
     */
-    function repay(uint _amount, uint _min) external virtual;
+    function repay(uint _amount, uint _min) external onlyAuthorized {
+        require(_amount > 0, "repay = 0");
+        // availabe <= _amount
+        uint available = _withdraw(_amount);
+        uint repaid = vault.repay(available);
+        require(repaid >= _min, "repaid < min");
+    }
 
     /*
     @notice Claim rewards

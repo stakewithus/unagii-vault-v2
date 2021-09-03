@@ -86,7 +86,7 @@ contract StrategyCompLev is Strategy {
         _setDex(_dex);
     }
 
-    function _totalAssets() private view returns (uint total) {
+    function _totalAssets() internal view override returns (uint total) {
         // WARNING: This returns balance last time someone transacted with cToken
         (uint err, uint cTokenBal, uint borrowed, uint exchangeRate) = cToken
         .getAccountSnapshot(address(this));
@@ -101,13 +101,6 @@ contract StrategyCompLev is Strategy {
             return 0;
         }
         total = token.balanceOf(address(this)).add(supplied - borrowed);
-    }
-
-    /*
-    @notice Returns amount of tokens locked in this contract
-    */
-    function totalAssets() external view override returns (uint) {
-        return _totalAssets();
     }
 
     /*
@@ -335,27 +328,13 @@ contract StrategyCompLev is Strategy {
         _leverage(_targetSupply);
     }
 
-    function _deposit() private {
+    function _deposit() internal override {
         uint bal = token.balanceOf(address(this));
         if (bal > 0) {
             _supply(bal);
             // leverage to max
             _leverage(type(uint).max);
         }
-    }
-
-    /*
-    @notice Deposit token into this strategy
-    @param _amount Amount of token to deposit
-    @param _min Minimum amount to borrow from vault
-    */
-    function deposit(uint _amount, uint _min) external override onlyAuthorized {
-        require(_amount > 0, "deposit = 0");
-
-        uint borrowed = vault.borrow(_amount);
-        require(borrowed >= _min, "borrowed < min");
-
-        _deposit();
     }
 
     function _getRedeemAmount(
@@ -448,7 +427,7 @@ contract StrategyCompLev is Strategy {
     }
 
     // @dev Returns amount available for transfer
-    function _withdraw(uint _amount) private returns (uint) {
+    function _withdraw(uint _amount) internal override returns (uint) {
         uint bal = token.balanceOf(address(this));
         if (_amount <= bal) {
             return _amount;
@@ -495,27 +474,6 @@ contract StrategyCompLev is Strategy {
             return balAfter;
         }
         return _amount;
-    }
-
-    /*
-    @notice Withdraw undelying token to vault
-    @param _amount Amount of token to withdraw
-    */
-    function withdraw(uint _amount) external override onlyVault {
-        require(_amount > 0, "withdraw = 0");
-        // available <= _amount
-        uint available = _withdraw(_amount);
-        if (available > 0) {
-            token.safeTransfer(msg.sender, available);
-        }
-    }
-
-    function repay(uint _amount, uint _min) external override onlyAuthorized {
-        require(_amount > 0, "repay = 0");
-        // availabe <= _amount
-        uint available = _withdraw(_amount);
-        uint repaid = vault.repay(available);
-        require(repaid >= _min, "repaid < min");
     }
 
     function harvest(uint _minProfit) external override onlyAuthorized {

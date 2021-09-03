@@ -104,7 +104,7 @@ contract StrategyConvexStEth is StrategyEth {
         shouldClaimExtras = _shouldClaimExtras;
     }
 
-    function _totalAssets() private view returns (uint total) {
+    function _totalAssets() internal view override returns (uint total) {
         /*
         s0 = shares in curve pool
         p0 = price per share of curve pool
@@ -120,11 +120,7 @@ contract StrategyConvexStEth is StrategyEth {
         total = total.add(address(this).balance);
     }
 
-    function totalAssets() external view override returns (uint) {
-        return _totalAssets();
-    }
-
-    function _deposit() private {
+    function _deposit() internal override {
         uint bal = address(this).balance;
         if (bal > 0) {
             uint[2] memory amounts;
@@ -143,16 +139,6 @@ contract StrategyConvexStEth is StrategyEth {
         if (lpBal > 0) {
             require(BOOSTER.deposit(PID, lpBal, true), "deposit failed");
         }
-    }
-
-    function deposit(uint _amount, uint _min) external override onlyAuthorized {
-        // TODO: deposit with borrow = 0
-        require(_amount > 0, "deposit = 0");
-
-        uint borrowed = vault.borrow(_amount);
-        require(borrowed >= _min, "borrowed < min");
-
-        _deposit();
     }
 
     function _calcSharesToWithdraw(
@@ -181,7 +167,7 @@ contract StrategyConvexStEth is StrategyEth {
         return 0;
     }
 
-    function _withdraw(uint _amount) private returns (uint) {
+    function _withdraw(uint _amount) internal override returns (uint) {
         uint bal = address(this).balance;
         if (_amount <= bal) {
             return _amount;
@@ -226,25 +212,6 @@ contract StrategyConvexStEth is StrategyEth {
         }
         // requested withdraw < all
         return _amount;
-    }
-
-    function withdraw(uint _amount) external override onlyVault {
-        require(_amount > 0, "withdraw = 0");
-
-        // availabe <= _amount
-        uint available = _withdraw(_amount);
-
-        if (available > 0) {
-            _sendEth(msg.sender, available);
-        }
-    }
-
-    function repay(uint _amount, uint _min) external override onlyAuthorized {
-        require(_amount > 0, "repay = 0");
-        // availabe <= _amount
-        uint available = _withdraw(_amount);
-        uint repaid = vault.repay{value: available}();
-        require(repaid >= _min, "repaid < min");
     }
 
     function harvest(uint _minProfit) external override onlyAuthorized {
