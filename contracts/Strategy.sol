@@ -10,7 +10,6 @@ import "@openzeppelin/contracts/math/SafeMath.sol";
 import "./base/PerfFee.sol";
 import "./interfaces/IVault.sol";
 
-// TODO: DIY safe transfer / approve to save gas?
 abstract contract Strategy is PerfFee {
     using SafeERC20 for IERC20;
     using SafeMath for uint;
