@@ -36,7 +36,7 @@ abstract contract StrategyEth is PerfFee {
     address public constant token = ETH;
     IEthVault public vault;
 
-    bool public claimRewardsOnMigrate = true;
+    bool public skipHarvest;
 
     constructor(
         address _vault,
@@ -165,12 +165,12 @@ abstract contract StrategyEth is PerfFee {
     }
 
     /*
-    @notice Set `claimRewardsOnMigrate`. If `false` skip call to `claimRewards`
-            when `migrate` is called.
-    @param _claimRewards Boolean to call or skip call to `claimRewards`
+    @notice Set `skipHarvest`. If `true` skip call to `harvest` when `migrate`
+            is called.
+    @param _skipHarvest Boolean to skip or call `harvest`
     */
-    function setClaimRewardsOnMigrate(bool _claimRewards) external onlyTimeLockOrAdmin {
-        claimRewardsOnMigrate = _claimRewards;
+    function setSkipHarvest(bool _skipHarvest) external onlyTimeLockOrAdmin {
+        skipHarvest = _skipHarvest;
     }
 
     /*

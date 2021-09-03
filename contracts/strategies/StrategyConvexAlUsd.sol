@@ -305,7 +305,7 @@ contract StrategyConvexAlUsd is Strategy {
         );
     }
 
-    function _claimRewards(uint _minProfit) private {
+    function _harvest(uint _minProfit) private {
         // calculate profit = balance of token after - balance of token before
         uint diff = token.balanceOf(address(this));
 
@@ -334,8 +334,7 @@ contract StrategyConvexAlUsd is Strategy {
     }
 
     function harvest(uint _minProfit) external override onlyAuthorized {
-        _claimRewards(_minProfit);
-        // TODO: transfer profit to vault?
+        _harvest(_minProfit);
     }
 
     function migrate(address _strategy) external override onlyVault {
@@ -343,8 +342,8 @@ contract StrategyConvexAlUsd is Strategy {
         require(address(strat.token()) == address(token), "strategy token != token");
         require(address(strat.vault()) == address(vault), "strategy vault != vault");
 
-        if (claimRewardsOnMigrate) {
-            _claimRewards(1);
+        if (!skipHarvest) {
+            _harvest(1);
         }
 
         uint bal = _withdraw(type(uint).max);

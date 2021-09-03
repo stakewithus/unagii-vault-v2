@@ -296,7 +296,7 @@ contract StrategyConvexObtc is Strategy {
         );
     }
 
-    function _claimRewards(uint _minProfit) private {
+    function _harvest(uint _minProfit) private {
         // calculate profit = balance of token after - balance of token before
         uint diff = token.balanceOf(address(this));
 
@@ -326,8 +326,7 @@ contract StrategyConvexObtc is Strategy {
     }
 
     function harvest(uint _minProfit) external override onlyAuthorized {
-        _claimRewards(_minProfit);
-        // TODO: transfer profit to vault?
+        _harvest(_minProfit);
     }
 
     function migrate(address _strategy) external override onlyVault {
