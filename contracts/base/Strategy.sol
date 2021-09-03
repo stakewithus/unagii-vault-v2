@@ -215,9 +215,13 @@ abstract contract Strategy is PerfFee, Dex {
     */
     function repay(uint _amount, uint _min) external onlyAuthorized {
         require(_amount > 0, "repay = 0");
-        // availabe <= _amount
+
         uint available = _withdraw(_amount);
-        uint repaid = vault.repay(available);
+        if (available < _amount) {
+            _amount = available;
+        }
+
+        uint repaid = vault.repay(_amount);
         require(repaid >= _min, "repaid < min");
     }
 
