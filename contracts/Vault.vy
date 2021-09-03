@@ -32,7 +32,6 @@ interface IStrategy:
     def token() -> address: view
     def totalAssets() -> uint256: view
     def withdraw(amount: uint256): nonpayable
-    def migrate(newVersion: address): nonpayable
 
 
 interface UnagiiToken:
@@ -127,11 +126,6 @@ event SetQueue:
 
 event SetDebtRatios:
     debtRatios: uint256[MAX_QUEUE]
-
-
-event MigrateStrategy:
-    oldStrategy: indexed(address)
-    newStrategy: indexed(address)
 
 
 event ForceUpdateBalanceOfVault:
@@ -722,38 +716,6 @@ def deactivateStrategy(strategy: address):
     self.strategies[strategy].debtRatio = 0
 
     log DeactivateStrategy(strategy)
-
-
-@external
-def migrateStrategy(old: address, new: address):
-    """
-    @notice Migrate strategy
-    @param old Address of current strategy
-    @param new Address of new strategy
-    """
-    assert msg.sender in [self.timeLock, self.admin], "!auth"
-    assert self.strategies[old].active, "old !active"
-    assert self.strategies[new].approved, "new !approved"
-    assert not self.strategies[new].active, "new active"
-    assert self.strategies[new].debt == 0, "new debt != 0"
-
-    self.strategies[new] = Strategy(
-        {
-            approved: True,
-            active: True,
-            debtRatio: self.strategies[old].debtRatio,
-            debt: self.strategies[old].debt,
-        }
-    )
-
-    self.strategies[old].active = False
-    self.strategies[old].debtRatio = 0
-    self.strategies[old].debt = 0
-
-    self.queue[self._find(old)] = new
-
-    IStrategy(old).migrate(new)
-    log MigrateStrategy(old, new)
 
 
 @external
