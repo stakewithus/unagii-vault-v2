@@ -34,12 +34,6 @@ def totalAssets() -> uint256:
     return self._totalAssets()
 
 
-@external
-def migrate(newStrategy: address):
-    assert msg.sender == self.vault, "!vault"
-    self.token.transfer(newStrategy, self.token.balanceOf(self))
-
-
 ### test helpers ###
 @external
 def _setVault_(vault: address):
