@@ -292,10 +292,7 @@ contract StrategyConvexStEth is StrategyEth {
 
         // transfer performance fee to treasury
         if (diff > 0) {
-            uint total = _totalAssets();
             uint fee = _calcFee(diff);
-            // Performance fee sent to treasury
-
             if (fee > 0) {
                 _sendEth(treasury, fee);
             }
