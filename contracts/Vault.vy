@@ -167,6 +167,7 @@ strategies: public(HashMap[address, Strategy])  # all strategies
 queue: public(address[MAX_QUEUE])  # list of active strategies
 
 # TODO: migrate
+# TODO: assert balanceOfVault <= token.balanceOf(self)
 
 @external
 def __init__(token: address, uToken: address, guardian: address, worker: address):
@@ -439,7 +440,6 @@ def calcSharesToMint(amount: uint256) -> uint256:
     )
 
 
-# TODO: assert balanceOfVault <= token.balanceOf(self)
 @external
 @nonreentrant("lock")
 def deposit(amount: uint256, _min: uint256) -> uint256:
@@ -580,7 +580,6 @@ def withdraw(shares: uint256, _min: uint256) -> uint256:
         shares, self.uToken.totalSupply(), self._calcFreeFunds()
     )
 
-    # TODO: assert balanceOfVault <= token.balanceOf(self)
     # withdraw from strategies if amount to withdraw > balance of vault
     if amount > self.balanceOfVault:
         # msg.sender must cover all of loss
@@ -845,9 +844,7 @@ def borrow(amount: uint256) -> uint256:
 
     self._safeTransfer(self.token.address, msg.sender, _amount)
 
-    # TODO: assert balanceOfVault <= token.balanceOf(self)
     self.balanceOfVault -= _amount
-    # include fee on trasfer to debt
     self.debt += _amount
     self.strategies[msg.sender].debt += _amount
 
@@ -872,7 +869,6 @@ def repay(amount: uint256) -> uint256:
     self._safeTransferFrom(self.token.address, msg.sender, self, amount)
     diff: uint256 = self.token.balanceOf(self) - bal
 
-    # TODO: assert balanceOfVault <= token.balanceOf(self)
     self.balanceOfVault = bal + diff
     self.debt -= diff
     self.strategies[msg.sender].debt -= diff
