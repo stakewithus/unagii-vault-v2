@@ -202,7 +202,7 @@ contract StrategyConvexStEth is StrategyEth {
         }
     }
 
-    function harvest(uint _minProfit) external override onlyAuthorized {
+    function _harvest(uint _minProfit) internal override {
         // calculate profit = balance of ETH after - balance of ETH before
         uint diff = address(this).balance;
 

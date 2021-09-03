@@ -215,7 +215,7 @@ contract StrategyConvexSbtc is Strategy {
         }
     }
 
-    function harvest(uint _minProfit) external override onlyAuthorized {
+    function _harvest(uint _minProfit) internal override {
         // calculate profit = balance of token after - balance of token before
         uint diff = token.balanceOf(address(this));
 

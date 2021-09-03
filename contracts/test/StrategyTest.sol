@@ -22,7 +22,7 @@ contract StrategyTest is Strategy {
 
     function _withdraw(uint _amount) internal override {}
 
-    function harvest(uint) external override onlyAuthorized {}
+    function _harvest(uint) internal override {}
 
     function sweep(address) external override {}
 }

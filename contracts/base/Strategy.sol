@@ -227,11 +227,17 @@ abstract contract Strategy is PerfFee, Dex {
         require(repaid >= _min, "repaid < min");
     }
 
+    function _harvest(uint _minProfit) internal virtual;
+
     /*
     @notice Claim rewards
     @param _minProfit Minumum amount of token to gain from selling rewards
+    @dev Call internal harvest to guarantee that only authorized account can
+         call this function
     */
-    function harvest(uint _minProfit) external virtual;
+    function harvest(uint _minProfit) external onlyAuthorized {
+        _harvest(_minProfit);
+    }
 
     /*
     @notice Transfer token accidentally sent here back to admin
