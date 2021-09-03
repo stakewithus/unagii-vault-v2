@@ -96,7 +96,7 @@ event Repay:
 
 event Sync:
     strategy: indexed(address)
-    balanceOfVault: uint256
+    balance: uint256
     debt: uint256
     totalInStrategy: uint256
     gain: uint256
@@ -128,10 +128,6 @@ event SetDebtRatios:
     debtRatios: uint256[MAX_QUEUE]
 
 
-event ForceUpdateBalanceOfVault:
-    balanceOfVault: uint256
-
-
 paused: public(bool)
 
 token: public(ERC20)
@@ -143,9 +139,6 @@ admin: public(address)
 guardian: public(address)
 worker: public(address)
 
-# token balance of vault tracked internally to protect against share dilution
-# from sending tokens directly to this contract
-balanceOfVault: public(uint256)
 debt: public(uint256)  # debt to users (amount borrowed by strategies)
 # minimum amount of token to be kept in this vault for cheap withdraw
 minReserve: public(uint256)
@@ -167,7 +160,6 @@ strategies: public(HashMap[address, Strategy])  # all strategies
 queue: public(address[MAX_QUEUE])  # list of active strategies
 
 # TODO: migrate
-# TODO: assert balanceOfVault <= token.balanceOf(self)
 
 @external
 def __init__(token: address, uToken: address, guardian: address, worker: address):
@@ -345,13 +337,9 @@ def setWhitelist(addr: address, approved: bool):
 def _totalAssets() -> uint256:
     """
     @notice Total amount of token in this vault + amount in strategies
-    @dev State variable `balanceOfVault` is used to track balance of token in
-         this contract instead of `token.balanceOf(self)`. This is done to
-         protect against uToken shares being diluted by directly sending token
-         to this contract.
     @dev Returns total amount of token in this contract
     """
-    return self.balanceOfVault + self.debt
+    return self.token.balanceOf(self) + self.debt
 
 
 @external
@@ -469,8 +457,6 @@ def deposit(amount: uint256, _min: uint256) -> uint256:
     shares: uint256 = self._calcSharesToMint(diff, totalSupply, freeFunds)
     assert shares >= _min, "shares < min"
 
-    # update balanceOfVault after amount of shares is computed
-    self.balanceOfVault = bal + diff
     self.uToken.mint(msg.sender, shares)
 
     log Deposit(msg.sender, amount, diff, shares)
@@ -510,54 +496,6 @@ def _calcWithdraw(shares: uint256, totalSupply: uint256, freeFunds: uint256) -> 
 def calcWithdraw(shares: uint256) -> uint256:
     return self._calcWithdraw(shares, self.uToken.totalSupply(), self._calcFreeFunds())
 
- 
-@internal
-def _withdraw(amount: uint256) -> uint256:
-    """
-    @notice Withdraw from active strategies until balance of vault >= `amount`
-    @param amount Target balance of vault
-    @dev Returns sum of losses from active strategies
-    """
-    _amount: uint256 = amount
-    loss: uint256 = 0 # total loss
-    withdrawn: uint256 = 0 # total withdrawn
-    bal: uint256 = self.token.balanceOf(self)
-
-    for strat in self.queue:
-        # reached end of queue
-        if strat == ZERO_ADDRESS:
-            break
-
-        # done withdrawing
-        if bal >= _amount:
-            break
- 
-        debt: uint256 = self.strategies[strat].debt
-        need: uint256 = min(_amount - bal, debt)
-        if need > 0:
-            IStrategy(strat).withdraw(need)
-            diff: uint256 = self.token.balanceOf(self) - bal
-
-            withdrawn += diff
-            self.strategies[strat].debt -= diff
-            bal += diff # = self.token.balanceOf(self)
-
-            # calculate loss
-            total: uint256 = IStrategy(strat).totalAssets() + diff
-            if total < debt:
-                _loss: uint256 = debt - total
-                self.strategies[strat].debt -= _loss
-                loss += _loss
-                _amount -= _loss
-
-    if loss > 0:
-        self.debt -= loss
-
-    self.debt -= withdrawn
-    self.balanceOfVault = bal
-
-    return loss
-
 
 @external
 @nonreentrant("lock")
@@ -581,18 +519,41 @@ def withdraw(shares: uint256, _min: uint256) -> uint256:
     )
 
     # withdraw from strategies if amount to withdraw > balance of vault
-    if amount > self.balanceOfVault:
-        # msg.sender must cover all of loss
-        amount -= self._withdraw(amount)
+    bal: uint256 = self.token.balanceOf(self)
+    if amount > bal:
+        for strat in self.queue:
+            # reached end of queue
+            if strat == ZERO_ADDRESS:
+                break
 
-        if amount > self.balanceOfVault:
-            amount = self.balanceOfVault
+            # done withdrawing
+            if bal >= amount:
+                break
+    
+            debt: uint256 = self.strategies[strat].debt
+            need: uint256 = min(amount - bal, debt)
+            if need > 0:
+                IStrategy(strat).withdraw(need)
+                diff: uint256 = self.token.balanceOf(self) - bal
+                bal += diff # = self.token.balanceOf(self)
+
+                self.strategies[strat].debt -= diff
+                self.debt -= diff
+
+                # calculate loss
+                total: uint256 = IStrategy(strat).totalAssets() + diff
+                if total < debt:
+                    loss: uint256 = debt - total
+                    self.strategies[strat].debt -= loss
+                    self.debt -= loss
+                    amount -= loss
+
+        if amount > bal:
+            amount = bal
 
     self.uToken.burn(msg.sender, shares)
 
     assert amount >= _min, "amount < min"
-    self.balanceOfVault -= amount
-
     self._safeTransfer(self.token.address, msg.sender, amount)
 
     log Withdraw(msg.sender, shares, amount)
@@ -804,11 +765,12 @@ def _calcMaxBorrow(strategy: address) -> uint256:
     if self.paused or self.totalDebtRatio == 0:
         return 0
     
+    bal: uint256 = self.token.balanceOf(self)
     minReserve: uint256 = self._calcMinReserve()
-    if self.balanceOfVault <= minReserve:
+    if bal <= minReserve:
         return 0
     
-    free: uint256 = self.balanceOfVault - minReserve
+    free: uint256 = bal - minReserve
 
     # strategy debtRatio > 0 only if strategy is active
     limit: uint256 = (
@@ -844,7 +806,6 @@ def borrow(amount: uint256) -> uint256:
 
     self._safeTransfer(self.token.address, msg.sender, _amount)
 
-    self.balanceOfVault -= _amount
     self.debt += _amount
     self.strategies[msg.sender].debt += _amount
 
@@ -869,7 +830,6 @@ def repay(amount: uint256) -> uint256:
     self._safeTransferFrom(self.token.address, msg.sender, self, amount)
     diff: uint256 = self.token.balanceOf(self) - bal
 
-    self.balanceOfVault = bal + diff
     self.debt -= diff
     self.strategies[msg.sender].debt -= diff
 
@@ -921,24 +881,10 @@ def sync(strategy: address, minTotal: uint256, maxTotal: uint256):
 
     self.lastSync = block.timestamp
 
-    log Sync(
-        strategy, self.balanceOfVault, self.debt, total, gain, loss, self.lockedProfit
-    )
-
-
-@external
-def forceUpdateBalanceOfVault():
-    """
-    @notice Force `balanceOfVault` to equal `token.balanceOf(self)`
-    @dev Only use in case of emergency if `balanceOfVault` is > actual balance
-    """
-    assert msg.sender in [self.timeLock, self.admin], "!auth"
-
-    bal: uint256 = self.token.balanceOf(self)
-    assert bal < self.balanceOfVault, "bal >= vault"
-
-    self.balanceOfVault = bal
-    log ForceUpdateBalanceOfVault(bal)
+    # TODO:
+    # log Sync(
+    #     strategy, self.balanceOfVault, self.debt, total, gain, loss, self.lockedProfit
+    # )
 
 
 @external
