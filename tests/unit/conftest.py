@@ -4,6 +4,7 @@ from brownie import (
     Vault,
     UnagiiToken,
     TimeLock,
+    PerfFeeTest,
     StrategyTest,
     TestToken,
     TestVault,
@@ -85,6 +86,11 @@ def vault(Vault, token, uToken, admin, guardian, worker):
 @pytest.fixture(scope="module")
 def token(TestToken, admin):
     yield TestToken.deploy("test", "TEST", 18, {"from": admin})
+
+
+@pytest.fixture(scope="module")
+def perfFeeTest(PerfFeeTest, admin):
+    yield PerfFeeTest.deploy({"from": admin})
 
 
 @pytest.fixture(scope="module")

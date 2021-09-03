@@ -5,78 +5,76 @@ pragma solidity 0.7.6;
 
 import "@openzeppelin/contracts/math/SafeMath.sol";
 
-// TODO: test
 contract PerfFee {
     using SafeMath for uint;
 
-    event SetMinMaxTvl(uint _minTvl, uint _maxTvl);
+    event SetMinMaxProfit(uint _minProfit, uint _maxProfit);
 
-    // Performance fee sent to treasury
+    // Performance fee
     uint private constant MAX_PERF_FEE = 2000;
     uint private constant MIN_PERF_FEE = 100;
     uint private constant PERF_FEE_DIFF = MAX_PERF_FEE - MIN_PERF_FEE;
     uint private constant PERF_FEE_DENOMINATOR = 10000;
     /*
-    tvl = total value locked in this contract
-    min and max tvl are used to calculate performance fee
+    min and max profit are used to calculate performance fee
     */
-    uint public minTvl;
-    uint public maxTvl;
+    uint public minProfit;
+    uint public maxProfit;
 
     /*
-    @notice Set min and max TVL
-    @param _minTvl Minimum TVL
-    @param _maxTvl Maximum TVL
+    @notice Set min and max profit
+    @param _minProfit Minimum profit
+    @param _maxProfit Maximum profit
     */
-    function _setMinMaxTvl(uint _minTvl, uint _maxTvl) internal {
-        require(_minTvl < _maxTvl, "min tvl >= max tvl");
-        minTvl = _minTvl;
-        maxTvl = _maxTvl;
-        emit SetMinMaxTvl(_minTvl, _maxTvl);
+    function _setMinMaxProfit(uint _minProfit, uint _maxProfit) internal {
+        require(_minProfit < _maxProfit, "min profit >= max profit");
+        minProfit = _minProfit;
+        maxProfit = _maxProfit;
+        emit SetMinMaxProfit(_minProfit, _maxProfit);
     }
 
     /*
-    @notice Calculate performance fee based on total locked value
-    @param _tvl Current total locked value in this contract
+    @notice Calculate performance fee based on profit
+    @param _profit Current profit
     @dev Returns current perf fee 
-    @dev when tvl <= minTvl, perf fee is MAX_PERF_FEE
-         when tvl >= maxTvl, perf fee is MIN_PERF_FEE
+    @dev when profit <= minProfit, perf fee is MAX_PERF_FEE
+         when profit >= maxProfit, perf fee is MIN_PERF_FEE
     */
-    function _calcPerfFee(uint _tvl) internal view returns (uint) {
+    function _calcPerfFee(uint _profit) internal view returns (uint) {
         /*
         y0 = max perf fee
         y1 = min perf fee
-        x0 = min tvl
-        x1 = max tvl
+        x0 = min profit
+        x1 = max profit
 
-        x = current tvl
+        x = current profit
         y = perf fee
           = (y1 - y0) / (x1 - x0) * (x - x0) + y0
 
         when x = x0, y = y0
              x = x1, y = y1
         */
-        if (_tvl <= minTvl) {
+        if (_profit <= minProfit) {
             return MAX_PERF_FEE;
         }
-        if (_tvl < maxTvl) {
+        if (_profit < maxProfit) {
             return
-                MAX_PERF_FEE - ((PERF_FEE_DIFF.mul(_tvl - minTvl)) / (maxTvl - minTvl));
+                MAX_PERF_FEE -
+                ((PERF_FEE_DIFF.mul(_profit - minProfit)) / (maxProfit - minProfit));
         }
         return MIN_PERF_FEE;
     }
 
-    function calcPerfFee(uint _tvl) external view returns (uint) {
-        return _calcPerfFee(_tvl);
+    function calcPerfFee(uint _profit) external view returns (uint) {
+        return _calcPerfFee(_profit);
     }
 
     /*
-    @notice Calculate fee based on profit and TVL
-    @param _tvl Total value locked in this contract
+    @notice Calculate fee based on profit
     @param _profit Profit from harvest
     @dev Returns fee
     */
-    function _calcFee(uint _tvl, uint _profit) internal view returns (uint fee) {
-        fee = _profit.mul(_calcPerfFee(_tvl)) / PERF_FEE_DENOMINATOR;
+    function _calcFee(uint _profit) internal view returns (uint fee) {
+        fee = _profit.mul(_calcPerfFee(_profit)) / PERF_FEE_DENOMINATOR;
     }
 }
