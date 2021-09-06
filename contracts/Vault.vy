@@ -136,7 +136,6 @@ admin: public(address)
 guardian: public(address)
 worker: public(address)
 
-debt: public(uint256)  # debt to users (amount borrowed by strategies)
 # minimum amount of token to be kept in this vault for cheap withdraw
 minReserve: public(uint256)
 # timestamp of last sync
@@ -152,7 +151,8 @@ blockDelay: public(uint256)
 # whitelisted address can bypass block delay check
 whitelist: public(HashMap[address, bool])
 
-totalDebtRatio: public(uint256)
+totalDebt: public(uint256)  # debt to users (total borrowed by strategies)
+totalDebtRatio: public(uint256) # sum of strategy debt ratios
 strategies: public(HashMap[address, Strategy])  # all strategies
 queue: public(address[MAX_QUEUE])  # list of active strategies
 
@@ -337,7 +337,7 @@ def _totalAssets() -> uint256:
     @notice Total amount of token in this vault + amount in strategies
     @dev Returns total amount of token in this contract
     """
-    return self.token.balanceOf(self) + self.debt
+    return self.token.balanceOf(self) + self.totalDebt
 
 
 @external
@@ -536,14 +536,14 @@ def withdraw(shares: uint256, _min: uint256) -> uint256:
                 bal += diff # = self.token.balanceOf(self)
 
                 self.strategies[strat].debt -= diff
-                self.debt -= diff
+                self.totalDebt -= diff
 
                 # calculate loss
                 total: uint256 = IStrategy(strat).totalAssets() + diff
                 if total < debt:
                     loss: uint256 = debt - total
                     self.strategies[strat].debt -= loss
-                    self.debt -= loss
+                    self.totalDebt -= loss
                     amount -= loss
 
         if amount > bal:
@@ -805,7 +805,7 @@ def borrow(amount: uint256) -> uint256:
 
     self._safeTransfer(self.token.address, msg.sender, _amount)
 
-    self.debt += _amount
+    self.totalDebt += _amount
     self.strategies[msg.sender].debt += _amount
 
     log Borrow(msg.sender, _amount)
@@ -829,7 +829,7 @@ def repay(amount: uint256) -> uint256:
     self._safeTransferFrom(self.token.address, msg.sender, self, amount)
     diff: uint256 = self.token.balanceOf(self) - bal
 
-    self.debt -= diff
+    self.totalDebt -= diff
     self.strategies[msg.sender].debt -= diff
 
     log Repay(msg.sender, diff)
@@ -867,7 +867,7 @@ def sync(strategy: address, minTotal: uint256, maxTotal: uint256):
         self.lockedProfit = locked + gain
 
         self.strategies[strategy].debt += gain
-        self.debt += gain
+        self.totalDebt += gain
     elif total < debt:
         loss = debt - total
         if loss > locked:
@@ -876,7 +876,7 @@ def sync(strategy: address, minTotal: uint256, maxTotal: uint256):
             self.lockedProfit -= loss
 
         self.strategies[strategy].debt -= loss
-        self.debt -= loss
+        self.totalDebt -= loss
 
     self.lastSync = block.timestamp
 
