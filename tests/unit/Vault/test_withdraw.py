@@ -47,8 +47,7 @@ def test_withdraw_no_loss(chain, vault, token, uToken, user, deposit_amount, sha
             },
             "vault": {
                 "totalAssets": vault.totalAssets(),
-                "balanceOfVault": vault.balanceOfVault(),
-                "debt": vault.debt(),
+                "totalDebt": vault.totalDebt(),
             },
         }
 
@@ -67,9 +66,7 @@ def test_withdraw_no_loss(chain, vault, token, uToken, user, deposit_amount, sha
     assert after["token"]["vault"] == before["token"]["vault"] - diff
 
     assert after["vault"]["totalAssets"] == before["vault"]["totalAssets"] - diff
-    assert after["vault"]["balanceOfVault"] == before["vault"]["balanceOfVault"] - diff
-    assert after["vault"]["balanceOfVault"] == after["token"]["vault"]
-    assert after["vault"]["debt"] == before["vault"]["debt"]
+    assert after["vault"]["totalDebt"] == before["vault"]["totalDebt"]
 
     assert after["uToken"]["user"] == before["uToken"]["user"] - _shares
     assert after["uToken"]["totalSupply"] == before["uToken"]["totalSupply"] - _shares

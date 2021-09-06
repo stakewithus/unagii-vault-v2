@@ -19,5 +19,6 @@ def test_init(Vault, token, uToken, TestToken, admin, guardian, worker):
     assert vault.paused()
     assert vault.blockDelay() >= 1
     assert vault.lockedProfitDegradation() > 0
+    assert vault.lastSync() > 0
     assert vault.minReserve() > 0
     assert vault.minReserve() <= 10000

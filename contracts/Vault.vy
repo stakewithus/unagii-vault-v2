@@ -16,7 +16,7 @@ TRANSFER_FROM: constant(Bytes[4]) = method_id("transferFrom(address,address,uint
 # maximum number of active strategies
 MAX_QUEUE: constant(uint256) = 20
 MAX_TOTAL_DEBT_RATIO: constant(uint256) = 10000
-MAX_MIN_RESERVE: constant(uint256) = 10000
+MIN_RESERVE_DENOMINATOR: constant(uint256) = 10000
 MAX_DEGRADATION: constant(uint256) = 10 ** 18
 MAX_BLOCK_DELAY: constant(uint256) = 1000
 
@@ -84,23 +84,6 @@ event Withdraw:
     amount: uint256
 
 
-event Borrow:
-    strategy: indexed(address)
-    amount: uint256
-
-
-event Repay:
-    strategy: indexed(address)
-    amount: uint256
-
-
-event Sync:
-    strategy: indexed(address)
-    total: uint256
-    debt: uint256
-    lockedProfit: uint256
-
-
 event ApproveStrategy:
     strategy: indexed(address)
 
@@ -125,6 +108,23 @@ event SetDebtRatios:
     debtRatios: uint256[MAX_QUEUE]
 
 
+event Borrow:
+    strategy: indexed(address)
+    amount: uint256
+
+
+event Repay:
+    strategy: indexed(address)
+    amount: uint256
+
+
+event Sync:
+    strategy: indexed(address)
+    total: uint256
+    debt: uint256
+    lockedProfit: uint256
+
+
 paused: public(bool)
 
 token: public(ERC20)
@@ -138,23 +138,25 @@ worker: public(address)
 
 # minimum amount of token to be kept in this vault for cheap withdraw
 minReserve: public(uint256)
-# timestamp of last sync
-lastSync: public(uint256)
-# profit locked from report, released over time at a rate set by lockedProfitDegradation
+
+lastSync: public(uint256) # timestamp of last sync
+# profit locked from sync, released over time at a rate set by lockedProfitDegradation
 lockedProfit: public(uint256)
 # rate at which locked profit is released
-# 0 = forever, MAX_DEGREDATION = 100% of profit is released 1 block after report
+# 0 = forever, MAX_DEGRADATION = 100% of profit is released 1 block after sync
 lockedProfitDegradation: public(uint256)
+
+totalDebt: public(uint256)  # debt to users (total borrowed by strategies)
+totalDebtRatio: public(uint256) # sum of strategy debt ratios
+strategies: public(HashMap[address, Strategy])  # all strategies
+queue: public(address[MAX_QUEUE])  # list of active strategies
+
 # minimum number of block to wait before deposit / withdraw
 # used to protect agains flash attacks
 blockDelay: public(uint256)
 # whitelisted address can bypass block delay check
 whitelist: public(HashMap[address, bool])
 
-totalDebt: public(uint256)  # debt to users (total borrowed by strategies)
-totalDebtRatio: public(uint256) # sum of strategy debt ratios
-strategies: public(HashMap[address, Strategy])  # all strategies
-queue: public(address[MAX_QUEUE])  # list of active strategies
 
 # TODO: migrate
 
@@ -284,11 +286,11 @@ def setMinReserve(minReserve: uint256):
     @notice Set minimum amount of token reserved in this vault for cheap
             withdrawn by user
     @param minReserve Numerator to calculate min reserve
-           0 = all funds can be transferred to fund manager
-           MAX_MIN_RESERVE = 0 tokens can be transferred to fund manager
+           0 - all funds can be transferred to strategies
+           MIN_RESERVE_DENOMINATOR - no funds can be transferred to strategies
     """
     assert msg.sender in [self.timeLock, self.admin], "!auth"
-    assert minReserve <= MAX_MIN_RESERVE, "min reserve > max"
+    assert minReserve <= MIN_RESERVE_DENOMINATOR, "min reserve > max"
     self.minReserve = minReserve
 
 
@@ -297,8 +299,8 @@ def setLockedProfitDegradation(degradation: uint256):
     """
     @notice Set locked profit degradation (rate locked profit is released)
     @param degradation Rate of degradation
-                 0 = profit is locked forever
-                 MAX_DEGRADATION = 100% of profit is released 1 block after report
+           0 - profit is locked forever
+           MAX_DEGRADATION - 100% of profit is released 1 block after sync
     """
     assert msg.sender in [self.timeLock, self.admin], "!auth"
     assert degradation <= MAX_DEGRADATION, "degradation > max"
@@ -322,8 +324,7 @@ def setWhitelist(addr: address, approved: bool):
     @notice Approve or disapprove address to skip check on block delay.
             Approved address can deposit, withdraw and transfer uToken in
             a single transaction
-    @param approved Boolean True = approve
-                             False = disapprove
+    @param approved Boolean
     """
     assert msg.sender in [self.timeLock, self.admin], "!auth"
     self.whitelist[addr] = approved
@@ -335,7 +336,7 @@ def setWhitelist(addr: address, approved: bool):
 def _totalAssets() -> uint256:
     """
     @notice Total amount of token in this vault + amount in strategies
-    @dev Returns total amount of token in this contract
+    @dev Returns total amount of token locked in this contract
     """
     return self.token.balanceOf(self) + self.totalDebt
 
@@ -351,9 +352,9 @@ def totalAssets() -> uint256:
 def _calcLockedProfit() -> uint256:
     """
     @notice Calculated locked profit
-    @dev Returns amount of profit locked from last report. Profit is released
+    @dev Returns amount of profit locked from last sync. Profit is released
          over time, depending on the release rate `lockedProfitDegradation`.
-         Profit is locked after `report` to protect against sandwich attack.
+         Profit is locked after `sync` to protect against sandwich attack.
     """
     lockedFundsRatio: uint256 = (
         block.timestamp - self.lastSync
@@ -743,8 +744,7 @@ def _calcMinReserve() -> uint256:
             cheap withdraw by users
     @dev Returns min reserve
     """
-    freeFunds: uint256 = self._calcFreeFunds()
-    return freeFunds * self.minReserve / MAX_MIN_RESERVE
+    return self._calcFreeFunds() * self.minReserve / MIN_RESERVE_DENOMINATOR
 
 
 @external
@@ -880,9 +880,8 @@ def sync(strategy: address, minTotal: uint256, maxTotal: uint256):
 
     self.lastSync = block.timestamp
 
-    log Sync(
-        strategy, total, debt, self.lockedProfit
-    )
+    # log debt before update, so gain and loss can be computed offchain
+    log Sync(strategy, total, debt, self.lockedProfit)
 
 
 @external

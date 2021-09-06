@@ -70,8 +70,8 @@ def test_sync(
                 "strategy": token.balanceOf(strategy),
             },
             "vault": {
-                "balanceOfVault": vault.balanceOfVault(),
-                "debt": vault.debt(),
+                "totalAssets": vault.totalAssets(),
+                "totalDebt": vault.totalDebt(),
                 "lockedProfit": vault.lockedProfit(),
                 "strategy": {"debt": vault.strategies(strategy)["debt"]},
             },
@@ -88,8 +88,8 @@ def test_sync(
     assert after["token"]["vault"] == before["token"]["vault"]
     assert after["token"]["strategy"] == before["token"]["strategy"]
 
-    assert after["vault"]["balanceOfVault"] == before["vault"]["balanceOfVault"]
-    assert after["vault"]["debt"] == before["vault"]["debt"] + gain
+    assert after["vault"]["totalAssets"] == before["vault"]["totalAssets"] + gain
+    assert after["vault"]["totalDebt"] == before["vault"]["totalDebt"] + gain
     assert after["vault"]["lockedProfit"] >= before["vault"]["lockedProfit"] + gain
     assert (
         after["vault"]["strategy"]["debt"] == before["vault"]["strategy"]["debt"] + gain
@@ -99,16 +99,13 @@ def test_sync(
 
     assert tx.events["Sync"].values() == [
         strategy.address,
-        vault.balanceOfVault(),
-        vault.debt(),
         total,
-        gain,
-        0,
+        before["vault"]["strategy"]["debt"],
         vault.lockedProfit(),
     ]
 
     # test loss
-    _loss = min(loss, vault.debt())
+    _loss = min(loss, vault.totalDebt())
     token.burn(strategy, _loss, {"from": admin})
     total = strategy.totalAssets()
 
@@ -119,8 +116,8 @@ def test_sync(
     assert after["token"]["vault"] == before["token"]["vault"]
     assert after["token"]["strategy"] == before["token"]["strategy"]
 
-    assert after["vault"]["balanceOfVault"] == before["vault"]["balanceOfVault"]
-    assert after["vault"]["debt"] == before["vault"]["debt"] - _loss
+    assert after["vault"]["totalAssets"] == before["vault"]["totalAssets"] - _loss
+    assert after["vault"]["totalDebt"] == before["vault"]["totalDebt"] - _loss
 
     if before["vault"]["lockedProfit"] > _loss:
         assert after["vault"]["lockedProfit"] == before["vault"]["lockedProfit"] - _loss
@@ -136,10 +133,7 @@ def test_sync(
 
     assert tx.events["Sync"].values() == [
         strategy.address,
-        vault.balanceOfVault(),
-        vault.debt(),
         total,
-        0,
-        _loss,
+        before["vault"]["strategy"]["debt"],
         vault.lockedProfit(),
     ]

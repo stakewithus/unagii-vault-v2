@@ -45,7 +45,8 @@ def test_deposit(vault, token, uToken, user, amount):
                 "totalSupply": uToken.totalSupply(),
             },
             "vault": {
-                "balanceOfVault": vault.balanceOfVault(),
+                "totalAssets": vault.totalAssets(),
+                "totalDebt": vault.totalDebt(),
             },
         }
 
@@ -69,5 +70,8 @@ def test_deposit(vault, token, uToken, user, amount):
         after["token"]["balance"]["vault"]
         == before["token"]["balance"]["vault"] + amount
     )
-    assert after["vault"]["balanceOfVault"] == after["token"]["balance"]["vault"]
+    assert (
+        after["vault"]["totalAssets"]
+        == after["token"]["balance"]["vault"] + after["vault"]["totalDebt"]
+    )
     assert after["uToken"]["balance"]["user"] > before["uToken"]["balance"]["user"]

@@ -32,8 +32,8 @@ def test_repay(vault, token, admin, testStrategy, user):
                 "strategy": token.balanceOf(strategy),
             },
             "vault": {
-                "balanceOfVault": vault.balanceOfVault(),
-                "debt": vault.debt(),
+                "totalAssets": vault.totalAssets(),
+                "totalDebt": vault.totalDebt(),
                 "strategy": {
                     "debt": vault.strategies(strategy)["debt"],
                 },
@@ -52,11 +52,8 @@ def test_repay(vault, token, admin, testStrategy, user):
 
     assert after["token"]["vault"] == before["token"]["vault"] + repay_amount
     assert after["token"]["strategy"] == before["token"]["strategy"] - repay_amount
-    assert (
-        after["vault"]["balanceOfVault"]
-        == before["vault"]["balanceOfVault"] + repay_amount
-    )
-    assert after["vault"]["debt"] == before["vault"]["debt"] - repay_amount
+    assert after["vault"]["totalAssets"] == before["vault"]["totalAssets"]
+    assert after["vault"]["totalDebt"] == before["vault"]["totalDebt"] - repay_amount
     assert (
         after["vault"]["strategy"]["debt"]
         == before["vault"]["strategy"]["debt"] - repay_amount

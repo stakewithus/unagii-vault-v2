@@ -69,8 +69,8 @@ def test_borrow(vault, token, admin, guardian, testStrategy, user):
                 "strategy": token.balanceOf(strategy),
             },
             "vault": {
-                "balanceOfVault": vault.balanceOfVault(),
-                "debt": vault.strategies(strategy)["debt"],
+                "totalAssets": vault.totalAssets(),
+                "totalDebt": vault.totalDebt(),
                 "strategy": {"debt": strat["debt"]},
             },
         }
@@ -83,8 +83,8 @@ def test_borrow(vault, token, admin, guardian, testStrategy, user):
     assert diff == calc
     assert after["token"]["vault"] == before["token"]["vault"] - diff
     assert after["token"]["strategy"] == before["token"]["strategy"] + diff
-    assert after["vault"]["balanceOfVault"] == before["vault"]["balanceOfVault"] - diff
-    assert after["vault"]["debt"] == before["vault"]["debt"] + diff
+    assert after["vault"]["totalAssets"] == before["vault"]["totalAssets"]
+    assert after["vault"]["totalDebt"] == before["vault"]["totalDebt"] + diff
     assert (
         after["vault"]["strategy"]["debt"] == before["vault"]["strategy"]["debt"] + diff
     )
