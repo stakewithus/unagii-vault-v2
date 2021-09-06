@@ -1,7 +1,7 @@
 # @version 0.2.15
 
 """
-@title Unagii Vault V2 1.0.0
+@title Unagii Vault 3.0.0
 @author stakewith.us
 @license AGPL-3.0-or-later
 """
@@ -157,8 +157,6 @@ blockDelay: public(uint256)
 # whitelisted address can bypass block delay check
 whitelist: public(HashMap[address, bool])
 
-
-# TODO: migrate
 
 @external
 def __init__(token: address, uToken: address, guardian: address, worker: address):
