@@ -96,11 +96,8 @@ event Repay:
 
 event Sync:
     strategy: indexed(address)
-    balance: uint256
+    total: uint256
     debt: uint256
-    totalInStrategy: uint256
-    gain: uint256
-    loss: uint256
     lockedProfit: uint256
 
 
@@ -177,6 +174,7 @@ def __init__(token: address, uToken: address, guardian: address, worker: address
     self.blockDelay = 10
     # 6 hours
     self.lockedProfitDegradation = convert(MAX_DEGRADATION / (3600 * 6), uint256)
+    self.lastSync = block.timestamp
     # 5% of free funds
     self.minReserve = 500 
 
@@ -640,6 +638,7 @@ def revokeStrategy(strategy: address):
     self.strategies[strategy].approved = False
     log RevokeStrategy(strategy)
 
+
 @external
 def activateStrategy(strategy: address, debtRatio: uint256):
     """
@@ -881,10 +880,9 @@ def sync(strategy: address, minTotal: uint256, maxTotal: uint256):
 
     self.lastSync = block.timestamp
 
-    # TODO:
-    # log Sync(
-    #     strategy, self.balanceOfVault, self.debt, total, gain, loss, self.lockedProfit
-    # )
+    log Sync(
+        strategy, total, debt, self.lockedProfit
+    )
 
 
 @external
