@@ -45,8 +45,7 @@ class StateMachine:
 
     def setup(self):
         self.totalAssets = 0
-        self.balanceOfVault = 0
-        self.debt = 0
+        self.totalDebt = 0
 
     def rule_deposit(self, user, deposit_amount):
         print("deposit", user, deposit_amount)
@@ -62,18 +61,17 @@ class StateMachine:
                 self.vault.deposit(deposit_amount, 0, {"from": user})
         else:
             self.vault.deposit(deposit_amount, 0, {"from": user})
-
-            self.balanceOfVault += deposit_amount
+            self.totalAssets += deposit_amount
 
     def rule_withdraw(self, user, shares_to_withdraw, loss):
         shares = min(shares_to_withdraw, self.uToken.balanceOf(user))
 
         if shares > 0:
             bal = self.token.balanceOf(self.vault)
-            debt = self.vault.debt()
+            totalDebt = self.vault.totalDebt()
             calc = self.vault.calcWithdraw(shares)
 
-            _loss = min(loss, debt)
+            _loss = min(loss, totalDebt)
             if calc >= bal:
                 _loss = min(_loss, calc - bal)
 
@@ -86,15 +84,15 @@ class StateMachine:
                 calc,
                 "bal",
                 bal,
-                "debt",
-                debt,
+                "total debt",
+                totalDebt,
                 "loss",
                 _loss,
             )
 
             if bal >= calc:
                 # no loss
-                self.balanceOfVault -= calc
+                self.totalAssets -= calc
             else:
                 if _loss > 0:
                     ## simulate withdraw ##
@@ -130,14 +128,11 @@ class StateMachine:
                         print(i, "b", b, "w", w, "debt", debt, "total", total, "l", l)
 
                     diff = b - bal
-                    # withdraw from strategies
-                    self.balanceOfVault += diff
-                    self.debt -= diff + _loss
-                    # withdraw from vault, transfer to user
-                    self.balanceOfVault -= calc - _loss
+                    self.totalDebt -= diff + _loss
+                    self.totalAssets -= calc
                 else:
-                    self.balanceOfVault = 0
-                    self.debt -= calc - bal
+                    self.totalAssets -= calc
+                    self.totalDebt -= calc - bal
 
             self.vault.withdraw(shares, 0, {"from": user})
 
@@ -159,9 +154,7 @@ class StateMachine:
             )
 
             self.vault.borrow(borrow, {"from": strat})
-
-            self.balanceOfVault -= borrow
-            self.debt += borrow
+            self.totalDebt += borrow
 
     def rule_repay(self, repay_amount, j):
         strat = self.strategies[j]
@@ -172,9 +165,7 @@ class StateMachine:
             print("repay", repay, "debt", debt, j)
 
             self.vault.repay(repay, {"from": strat})
-
-            self.balanceOfVault += repay
-            self.debt -= repay
+            self.totalDebt -= repay
 
     def rule_sync_gain(self, gain, k):
         strat = self.strategies[k]
@@ -184,7 +175,8 @@ class StateMachine:
 
         self.vault.sync(strat, 0, 2 ** 256 - 1, {"from": self.admin})
 
-        self.debt += gain
+        self.totalAssets += gain
+        self.totalDebt += gain
 
     def rule_sync_loss(self, loss, k):
         strat = self.strategies[k]
@@ -197,12 +189,15 @@ class StateMachine:
             self.token.burn(strat, _loss)
             self.vault.sync(strat, 0, 2 ** 256 - 1, {"from": self.admin})
 
-            self.debt -= _loss
+            self.totalAssets -= _loss
+            self.totalDebt -= _loss
 
     def invariant(self):
-        assert self.vault.balanceOfVault() <= self.token.balanceOf(self.vault)
-        assert self.vault.balanceOfVault() == self.balanceOfVault
-        assert self.vault.debt() == self.debt
+        assert self.vault.totalDebt() == self.totalDebt
+        assert (
+            self.totalAssets
+            == self.token.balanceOf(self.vault) + self.vault.totalDebt()
+        )
 
 
 def test_stateful(setup, vault, admin, treasury, token, uToken, state_machine):
