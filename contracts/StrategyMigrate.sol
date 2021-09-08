@@ -4,7 +4,7 @@ pragma solidity 0.7.6;
 // contract to migrate from v2 to v3 vault
 import "./v2/V2Strategy.sol";
 
-interface V2Vault {
+interface IV2Vault {
     function paused() external view returns (bool);
 
     function token() external view returns (address);
@@ -18,7 +18,7 @@ interface V2Vault {
     function calcMaxBorrow() external view returns (uint);
 }
 
-interface V3Vault {
+interface IV3Vault {
     function paused() external view returns (bool);
 
     function token() external view returns (address);
@@ -26,7 +26,7 @@ interface V3Vault {
     function uToken() external view returns (address);
 }
 
-interface UToken {
+interface IUnagiiToken {
     function minter() external view returns (address);
 }
 
@@ -34,8 +34,8 @@ contract StrategyMigrate is V2Strategy {
     using SafeERC20 for IERC20;
     using SafeMath for uint;
 
-    V2Vault public v2;
-    V3Vault public v3;
+    IV2Vault public v2;
+    IV3Vault public v3;
 
     constructor(
         address _token,
@@ -46,8 +46,8 @@ contract StrategyMigrate is V2Strategy {
     ) V2Strategy(_token, _fundManager, _treasury) {
         require(_v2 != _v3, "v2 = v3");
 
-        v2 = V2Vault(_v2);
-        v3 = V3Vault(_v3);
+        v2 = IV2Vault(_v2);
+        v3 = IV3Vault(_v3);
 
         require(v2.token() == _token, "v2 token != token");
         require(v3.token() == _token, "v3 token != token");
@@ -157,7 +157,7 @@ contract StrategyMigrate is V2Strategy {
         require(v3.paused(), "v3 not paused");
 
         // check v3 is not initialized, uToken minter is still v2
-        require(UToken(v2.uToken()).minter() == address(v2), "v2 != minter");
+        require(IUnagiiToken(v2.uToken()).minter() == address(v2), "v2 != minter");
 
         // check fund manager has borrowed everything in v2
         require(token.balanceOf(address(v2)) == 0, "v2 balance > 0");
