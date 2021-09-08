@@ -13,8 +13,6 @@ interface IV2Vault {
 
     function totalAssets() external view returns (uint);
 
-    function debt() external view returns (uint);
-
     function calcMaxBorrow() external view returns (uint);
 }
 
@@ -137,7 +135,7 @@ contract StrategyMigrate is V2Strategy {
     ut.minter() == v2
 
     token.balanceOf(v2) == 0
-    token.balanceOf(f) >= v2.debt()
+    token.balanceOf(f) >= v2.totalAssets()
     f.calcMaxBorrow(s) == token.balanceOf(f)
 
     # transfer funds from V2 to V3
@@ -162,7 +160,7 @@ contract StrategyMigrate is V2Strategy {
         // check fund manager has borrowed everything in v2
         require(token.balanceOf(address(v2)) == 0, "v2 balance > 0");
         uint bal = token.balanceOf((address(fundManager)));
-        require(bal >= v2.debt(), "fund manager balance < debt");
+        require(bal >= v2.totalAssets(), "fund manager balance < v2 total assets");
 
         // check this contract can borrow everything from fund manager
         require(
