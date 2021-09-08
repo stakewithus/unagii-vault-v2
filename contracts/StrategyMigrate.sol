@@ -171,14 +171,6 @@ contract StrategyMigrate is V2Strategy {
         );
     }
 
-    /*
-    @notice hepler function to check state before migration 
-    */
-    function checkBefore() external view returns (bool) {
-        _checkBefore();
-        return true;
-    }
-
     function migrateToV3() external onlyTimeLock {
         _checkBefore();
 
@@ -198,14 +190,5 @@ contract StrategyMigrate is V2Strategy {
         require(token.balanceOf(address(fundManager)) == 0, "fund manager balance > 0");
         require(token.balanceOf(address(this)) == 0, "balance > 0");
         require(token.balanceOf(address(v3)) >= _balBefore, "v3 balance != v2 balance");
-    }
-
-    /*
-    @notice hepler function to check state after migration 
-    */
-    function checkAfter() external view returns (bool) {
-        uint balBefore = v2.totalAssets(); // v2.balanceOfVault() + v2.debt()
-        _checkAfter(balBefore);
-        return true;
     }
 }
