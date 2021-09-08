@@ -20,6 +20,7 @@ MIN_RESERVE_DENOMINATOR: constant(uint256) = 10000
 MAX_DEGRADATION: constant(uint256) = 10 ** 18
 MAX_BLOCK_DELAY: constant(uint256) = 1000
 
+
 struct Strategy:
     approved: bool
     active: bool
@@ -139,7 +140,7 @@ worker: public(address)
 # minimum amount of token to be kept in this vault for cheap withdraw
 minReserve: public(uint256)
 
-lastSync: public(uint256) # timestamp of last sync
+lastSync: public(uint256)  # timestamp of last sync
 # profit locked from sync, released over time at a rate set by lockedProfitDegradation
 lockedProfit: public(uint256)
 # rate at which locked profit is released
@@ -147,7 +148,7 @@ lockedProfit: public(uint256)
 lockedProfitDegradation: public(uint256)
 
 totalDebt: public(uint256)  # debt to users (total borrowed by strategies)
-totalDebtRatio: public(uint256) # sum of strategy debt ratios
+totalDebtRatio: public(uint256)  # sum of strategy debt ratios
 strategies: public(HashMap[address, Strategy])  # all strategies
 queue: public(address[MAX_QUEUE])  # list of active strategies
 
@@ -176,7 +177,7 @@ def __init__(token: address, uToken: address, guardian: address, worker: address
     self.lockedProfitDegradation = convert(MAX_DEGRADATION / (3600 * 6), uint256)
     self.lastSync = block.timestamp
     # 5% of free funds
-    self.minReserve = 500 
+    self.minReserve = 500
 
 
 @internal
@@ -439,8 +440,8 @@ def deposit(amount: uint256, _min: uint256) -> uint256:
 
     # check whitelisted or block delay
     assert (
-        self.whitelist[msg.sender] or
-        block.number >= self.uToken.lastBlock(msg.sender) + self.blockDelay
+        self.whitelist[msg.sender]
+        or block.number >= self.uToken.lastBlock(msg.sender) + self.blockDelay
     ), "block < delay"
 
     totalSupply: uint256 = self.uToken.totalSupply()
@@ -507,8 +508,8 @@ def withdraw(shares: uint256, _min: uint256) -> uint256:
 
     # check whitelisted or block delay
     assert (
-        self.whitelist[msg.sender] or
-        block.number >= self.uToken.lastBlock(msg.sender) + self.blockDelay
+        self.whitelist[msg.sender]
+        or block.number >= self.uToken.lastBlock(msg.sender) + self.blockDelay
     ), "block < delay"
 
     amount: uint256 = self._calcWithdraw(
@@ -526,13 +527,13 @@ def withdraw(shares: uint256, _min: uint256) -> uint256:
             # done withdrawing
             if bal >= amount:
                 break
-    
+
             debt: uint256 = self.strategies[strat].debt
             need: uint256 = min(amount - bal, debt)
             if need > 0:
                 IStrategy(strat).withdraw(need)
                 diff: uint256 = self.token.balanceOf(self) - bal
-                bal += diff # = self.token.balanceOf(self)
+                bal += diff  # = self.token.balanceOf(self)
 
                 self.strategies[strat].debt -= diff
                 self.totalDebt -= diff
@@ -693,7 +694,7 @@ def setQueue(queue: address[MAX_QUEUE]):
             assert new == ZERO_ADDRESS, "new != zero address"
         else:
             assert new != ZERO_ADDRESS, "new = zero address"
-        
+
             # Check new strategy is active and no duplicate
             # assert will fail if duplicate strategy in new queue
             assert self.strategies[new].active, "!active"
@@ -761,18 +762,16 @@ def _calcMaxBorrow(strategy: address) -> uint256:
     """
     if self.paused or self.totalDebtRatio == 0:
         return 0
-    
+
     bal: uint256 = self.token.balanceOf(self)
     minReserve: uint256 = self._calcMinReserve()
     if bal <= minReserve:
         return 0
-    
+
     free: uint256 = bal - minReserve
 
     # strategy debtRatio > 0 only if strategy is active
-    limit: uint256 = (
-        self.strategies[strategy].debtRatio * free / self.totalDebtRatio
-    )
+    limit: uint256 = self.strategies[strategy].debtRatio * free / self.totalDebtRatio
     debt: uint256 = self.strategies[strategy].debt
 
     if debt >= limit:
