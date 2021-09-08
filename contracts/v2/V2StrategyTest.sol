@@ -3,10 +3,6 @@ pragma solidity 0.7.6;
 
 import "./V2Strategy.sol";
 
-interface ITestToken {
-    function burn(address, uint) external;
-}
-
 contract V2StrategyTest is V2Strategy {
     using SafeERC20 for IERC20;
 
