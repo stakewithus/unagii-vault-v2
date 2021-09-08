@@ -17,6 +17,8 @@ interface IFundManager {
     function report(uint gain, uint loss) external;
 
     function getDebt(address strategy) external view returns (uint);
+
+    function calcMaxBorrow(address strategy) external view returns (uint);
 }
 
 abstract contract V2Strategy {
