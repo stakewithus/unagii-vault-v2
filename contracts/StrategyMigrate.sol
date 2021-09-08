@@ -5,7 +5,11 @@ pragma solidity 0.7.6;
 import "./v2/V2Strategy.sol";
 
 interface V2Vault {
+    function paused() external view returns (bool);
+
     function token() external view returns (address);
+
+    function uToken() external view returns (address);
 
     function totalAssets() external view returns (uint);
 
@@ -15,7 +19,15 @@ interface V2Vault {
 }
 
 interface V3Vault {
+    function paused() external view returns (bool);
+
     function token() external view returns (address);
+
+    function uToken() external view returns (address);
+}
+
+interface UToken {
+    function minter() external view returns (address);
 }
 
 contract StrategyMigrate is V2Strategy {
@@ -32,11 +44,15 @@ contract StrategyMigrate is V2Strategy {
         address _v2,
         address _v3
     ) V2Strategy(_token, _fundManager, _treasury) {
+        require(_v2 != _v3, "v2 = v3");
+
         v2 = V2Vault(_v2);
         v3 = V3Vault(_v3);
 
         require(v2.token() == _token, "v2 token != token");
         require(v3.token() == _token, "v3 token != token");
+
+        require(v2.uToken() == v3.uToken(), "v2 uToken != v3 uToken");
     }
 
     function totalAssets() external view override returns (uint) {
@@ -112,7 +128,14 @@ contract StrategyMigrate is V2Strategy {
     # transfer funds from v2 to fund manager
     f.borrowFromVault(MAX_UINT, token.balanceOf(v2)) | time lock
     --------------------------
+    v2.setPause(true) | time lock
+
     # checks right before migration
+    v3.paused() == true
+    v2.paused() == true
+
+    ut.minter() == v2
+
     token.balanceOf(v2) == 0
     token.balanceOf(f) >= v2.debt()
     f.calcMaxBorrow(s) == token.balanceOf(f)
@@ -124,17 +147,24 @@ contract StrategyMigrate is V2Strategy {
     token.balanceOf(v2) == 0
     token.balanceOf(f) == 0
     token.balanceOf(s) == 0
-    token.balanceOf(v3) == balance of fund manager before transfer
+    token.balanceOf(v3) >= balance of fund manager before transfer
     --------------------------
-    v2.setPause(true) | time lock
     ut.setMinter(v3) | time lock
     */
 
     function _checkBefore() private view {
-        // check fund manager has borrowed everything in vault
+        require(v2.paused(), "v2 not paused");
+        require(v3.paused(), "v3 not paused");
+
+        // check v3 is not initialized, uToken minter is still v2
+        require(UToken(v2.uToken()).minter() == address(v2), "v2 != minter");
+
+        // check fund manager has borrowed everything in v2
         require(token.balanceOf(address(v2)) == 0, "v2 balance > 0");
         uint bal = token.balanceOf((address(fundManager)));
         require(bal >= v2.debt(), "fund manager balance < debt");
+
+        // check this contract can borrow everything from fund manager
         require(
             bal == fundManager.calcMaxBorrow(address(this)),
             "fund manager balance != max borrow"
@@ -167,7 +197,7 @@ contract StrategyMigrate is V2Strategy {
         require(token.balanceOf(address(v2)) == 0, "v2 balance > 0");
         require(token.balanceOf(address(fundManager)) == 0, "fund manager balance > 0");
         require(token.balanceOf(address(this)) == 0, "balance > 0");
-        require(token.balanceOf(address(v3)) == _balBefore, "v3 balance != v2 balance");
+        require(token.balanceOf(address(v3)) >= _balBefore, "v3 balance != v2 balance");
     }
 
     /*
