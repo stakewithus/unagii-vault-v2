@@ -8,6 +8,21 @@
 
 from vyper.interfaces import ERC20
 
+interface IStrategy:
+    def vault() -> address: view
+    def token() -> address: view
+    def totalAssets() -> uint256: view
+    def withdraw(amount: uint256): nonpayable
+
+
+interface UnagiiToken:
+    def token() -> address: view
+    def totalSupply() -> uint256: view
+    def mint(receiver: address, amount: uint256): nonpayable
+    def burn(spender: address, amount: uint256): nonpayable
+    def lastBlock(owner: address) -> uint256: view
+
+
 # ERC20 selectors
 APPROVE: constant(Bytes[4]) = method_id("approve(address,uint256)")
 TRANSFER: constant(Bytes[4]) = method_id("transfer(address,uint256)")
@@ -26,21 +41,6 @@ struct Strategy:
     active: bool
     debtRatio: uint256  # ratio of total assets this strategy can borrow
     debt: uint256  # current amount borrowed
-
-
-interface IStrategy:
-    def vault() -> address: view
-    def token() -> address: view
-    def totalAssets() -> uint256: view
-    def withdraw(amount: uint256): nonpayable
-
-
-interface UnagiiToken:
-    def token() -> address: view
-    def totalSupply() -> uint256: view
-    def mint(receiver: address, amount: uint256): nonpayable
-    def burn(spender: address, amount: uint256): nonpayable
-    def lastBlock(owner: address) -> uint256: view
 
 
 event SetNextTimeLock:
