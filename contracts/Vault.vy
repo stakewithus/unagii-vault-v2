@@ -137,7 +137,8 @@ admin: public(address)
 guardian: public(address)
 worker: public(address)
 
-# minimum amount of token to be kept in this vault for cheap withdraw
+# numerator to calculate the minimum amount of token to be kept in this vault
+# for cheap withdraw
 minReserve: public(uint256)
 
 lastSync: public(uint256)  # timestamp of last sync
@@ -386,6 +387,24 @@ def _calcFreeFunds() -> uint256:
 @view
 def calcFreeFunds() -> uint256:
     return self._calcFreeFunds()
+
+
+@internal
+@view
+def _calcMinReserve(freeFunds: uint256) -> uint256:
+    """
+    @notice Calculates minimum amount of token that is reserved in vault for
+            cheap withdraw
+    @param freeFunds Free funds
+    @dev Returns min reserve
+    """
+    return freeFunds * self.minReserve / MIN_RESERVE_DENOMINATOR
+
+
+@external
+@view
+def calcMinReserve() -> uint256:
+    return self._calcMinReserve(self._calcFreeFunds())
 
 
 @internal
@@ -737,23 +756,6 @@ def setDebtRatios(debtRatios: uint256[MAX_QUEUE]):
 
 @internal
 @view
-def _calcMinReserve() -> uint256:
-    """
-    @notice Calculate minimum amount of token that is reserved in vault for
-            cheap withdraw by users
-    @dev Returns min reserve
-    """
-    return self._calcFreeFunds() * self.minReserve / MIN_RESERVE_DENOMINATOR
-
-
-@external
-@view
-def calcMinReserve() -> uint256:
-    return self._calcMinReserve()
-
-
-@internal
-@view
 def _calcMaxBorrow(strategy: address) -> uint256:
     """
     @notice Calculate how much `token` strategy can borrow
@@ -764,20 +766,21 @@ def _calcMaxBorrow(strategy: address) -> uint256:
         return 0
 
     bal: uint256 = self.token.balanceOf(self)
-    minReserve: uint256 = self._calcMinReserve()
+    freeFunds: uint256 = self._calcFreeFunds()
+    minReserve: uint256 = self._calcMinReserve(freeFunds)
     if bal <= minReserve:
         return 0
 
-    free: uint256 = bal - minReserve
-
-    # strategy debtRatio > 0 only if strategy is active
-    limit: uint256 = self.strategies[strategy].debtRatio * free / self.totalDebtRatio
+    # min reserve <= free funds
+    # strategy debtRatio = 0 if strategy is not active
+    limit: uint256 = (freeFunds - minReserve) * self.strategies[strategy].debtRatio / self.totalDebtRatio
     debt: uint256 = self.strategies[strategy].debt
 
     if debt >= limit:
         return 0
 
-    return limit - debt
+    # minimum of debt limit and tokens available in this vault
+    return min(limit - debt, bal - minReserve)
 
 
 @external
