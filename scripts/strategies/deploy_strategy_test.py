@@ -2,7 +2,9 @@ from brownie import StrategyTest, accounts, network
 
 config = {
     "token": "0xfA4B8F893631814bF47E05a1a29d9d4365A90adD",
-    "fundManager": "0xe9558bC2fC2d8203bFC467Ab67f7016c90400549",
+    "vault": "0x2FD1Ec28fbb5392c5488F417883f4992D54e4f98",
+    "minProfit": 10 ** 18,
+    "maxProfit": 100 * 10 ** 18,
 }
 
 
@@ -21,5 +23,10 @@ def main():
     treasury = account
 
     StrategyTest.deploy(
-        config["token"], config["fundManager"], treasury, {"from": account}
+        config["token"],
+        config["vault"],
+        treasury,
+        config["minProfit"],
+        config["maxProfit"],
+        {"from": account},
     )
