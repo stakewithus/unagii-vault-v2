@@ -87,6 +87,7 @@ env $(cat .env) brownie run scripts/script-to-run.py [function] --network ropste
     strategyEthTest3: "0xE732303f7A2997D2ddE1bEBB6c30d3A7dac4f7cd",
     strategyEthTest4: "0x1133b7AA55fB87Af5dE48A6C908E6436d09F1644",
     strategyEthTest5: "0x4Da0f9627616951BD694fEc66e1A24715dB584b0",
+    v3Vault: "0x2FD1Ec28fbb5392c5488F417883f4992D54e4f98",
   },
   mainnet: {
     timeLock: "0x6e8a1e3b0B59C029809eDEE5bb9dF96FF34812a9",
