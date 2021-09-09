@@ -7,8 +7,4 @@ contract PerfFeeTest is PerfFee {
     function setMinMaxProfit(uint _minProfit, uint _maxProfit) external {
         _setMinMaxProfit(_minProfit, _maxProfit);
     }
-
-    function calcFee(uint _profit) external view returns (uint) {
-        return _calcFee(_profit);
-    }
 }

@@ -251,7 +251,7 @@ contract StrategyConvexUsdp is Strategy {
 
         // transfer performance fee to treasury
         if (diff > 0) {
-            uint fee = _calcFee(diff);
+            uint fee = _calcPerfFee(diff);
             if (fee > 0) {
                 token.safeTransfer(treasury, fee);
             }

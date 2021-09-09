@@ -32,13 +32,13 @@ contract PerfFee {
     }
 
     /*
-    @notice Calculate performance fee based on profit
+    @notice Calculate numerator of performance fee
     @param _profit Current profit
     @dev Returns current perf fee 
     @dev when profit <= minProfit, perf fee is MAX_PERF_FEE
          when profit >= maxProfit, perf fee is MIN_PERF_FEE
     */
-    function _calcPerfFee(uint _profit) internal view returns (uint) {
+    function _calcPerfFeeNumerator(uint _profit) internal view returns (uint) {
         /*
         y0 = max perf fee
         y1 = min perf fee
@@ -63,16 +63,16 @@ contract PerfFee {
         return MIN_PERF_FEE;
     }
 
-    function calcPerfFee(uint _profit) external view returns (uint) {
-        return _calcPerfFee(_profit);
+    /*
+    @notice Calculate performance fee based on profit
+    @param _profit Profit from harvest
+    @dev Returns performance fee
+    */
+    function _calcPerfFee(uint _profit) internal view returns (uint fee) {
+        fee = _profit.mul(_calcPerfFeeNumerator(_profit)) / PERF_FEE_DENOMINATOR;
     }
 
-    /*
-    @notice Calculate fee based on profit
-    @param _profit Profit from harvest
-    @dev Returns fee
-    */
-    function _calcFee(uint _profit) internal view returns (uint fee) {
-        fee = _profit.mul(_calcPerfFee(_profit)) / PERF_FEE_DENOMINATOR;
+    function calcPerfFee(uint _profit) external view returns (uint) {
+        return _calcPerfFee(_profit);
     }
 }
