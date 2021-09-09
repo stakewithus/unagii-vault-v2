@@ -1,4 +1,4 @@
-from brownie import Vault, accounts, network
+from brownie import Vault, accounts, network, web3
 from brownie import ZERO_ADDRESS
 
 config = {
@@ -63,4 +63,13 @@ def deploy(args):
     guardian = account
     worker = account
 
-    Vault.deploy(args["token"], args["uToken"], guardian, worker, {"from": account})
+    gas_price = web3.eth.gas_price * 1.2
+    print("gas price:", gas_price)
+
+    Vault.deploy(
+        args["token"],
+        args["uToken"],
+        guardian,
+        worker,
+        {"from": account, "gas_price": gas_price},
+    )
