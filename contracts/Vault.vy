@@ -175,7 +175,7 @@ def __init__(token: address, uToken: address, guardian: address, worker: address
     self.paused = True
     self.blockDelay = 10
     # 6 hours
-    self.lockedProfitDegradation = convert(MAX_DEGRADATION / (3600 * 6), uint256)
+    self.lockedProfitDegradation = MAX_DEGRADATION / (3600 * 6)
     self.lastSync = block.timestamp
     # 5% of free funds
     self.minReserve = 500
