@@ -5,8 +5,7 @@ config = {
     "ropsten": {
         "TEST": {
             "token": "0xfA4B8F893631814bF47E05a1a29d9d4365A90adD",
-            # "uToken": "0x69c529Ec8e451D15c5EB394B3Edaca7304B7ff56",
-            "uToken": "0xE241795cacaF3083Aee8054E2F34520b1e3A0940",
+            "uToken": "0x69c529Ec8e451D15c5EB394B3Edaca7304B7ff56",
         },
     },
     "mainnet": {

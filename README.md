@@ -84,10 +84,10 @@ env $(cat .env) brownie run scripts/script-to-run.py [function] --network ropste
     strategyEthTest3: "0xE732303f7A2997D2ddE1bEBB6c30d3A7dac4f7cd",
     strategyEthTest4: "0x1133b7AA55fB87Af5dE48A6C908E6436d09F1644",
     strategyEthTest5: "0x4Da0f9627616951BD694fEc66e1A24715dB584b0",
-    // "uToken": "0xE241795cacaF3083Aee8054E2F34520b1e3A0940",
-    v3Vault: "0xEF01D1d98aB3B13947d39B7E2Ebe168a7eEE1743",
+    strategyMigrate: "0xfe3329E9156e05234ff9efF779bCc766F08019CB",
+    v3TestVault: "0xD5198E50741FE6A513ce9940b78daa7f6766fB54",
     v3StrategyTest0: "0x44ADEef348D8E6fB636d56f09c91b642EcfA45A1",
-    v3StrategyTest1: "0x516E8AAc53C480B96ffDD9CE1ECfD914c67ba327",
+    v3StrategyTest1: "0x516E8AAc53C480B96ffDD9CE1ECfD914c67ba327"
   },
   mainnet: {
     timeLock: "0x6e8a1e3b0B59C029809eDEE5bb9dF96FF34812a9",
