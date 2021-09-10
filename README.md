@@ -85,7 +85,7 @@ env $(cat .env) brownie run scripts/script-to-run.py [function] --network ropste
     strategyEthTest4: "0x1133b7AA55fB87Af5dE48A6C908E6436d09F1644",
     strategyEthTest5: "0x4Da0f9627616951BD694fEc66e1A24715dB584b0",
     // "uToken": "0xE241795cacaF3083Aee8054E2F34520b1e3A0940",
-    v3Vault: "0xEAa84fc94bCE3028050D185657eBcA4B3dcc232B",
+    v3Vault: "0xEF01D1d98aB3B13947d39B7E2Ebe168a7eEE1743",
     v3StrategyTest0: "0x44ADEef348D8E6fB636d56f09c91b642EcfA45A1",
     v3StrategyTest1: "0x516E8AAc53C480B96ffDD9CE1ECfD914c67ba327",
   },
