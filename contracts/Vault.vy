@@ -29,7 +29,7 @@ TRANSFER: constant(Bytes[4]) = method_id("transfer(address,uint256)")
 TRANSFER_FROM: constant(Bytes[4]) = method_id("transferFrom(address,address,uint256)")
 
 # maximum number of active strategies
-MAX_QUEUE: constant(uint256) = 20
+MAX_ACTIVE: constant(uint256) = 20
 MAX_TOTAL_DEBT_RATIO: constant(uint256) = 10000
 MIN_RESERVE_DENOMINATOR: constant(uint256) = 10000
 MAX_DEGRADATION: constant(uint256) = 10 ** 18
@@ -101,12 +101,12 @@ event DeactivateStrategy:
     strategy: indexed(address)
 
 
-event SetQueue:
-    queue: address[MAX_QUEUE]
+event SetActiveStrategies:
+    strategies: address[MAX_ACTIVE]
 
 
 event SetDebtRatios:
-    debtRatios: uint256[MAX_QUEUE]
+    debtRatios: uint256[MAX_ACTIVE]
 
 
 event Borrow:
@@ -141,17 +141,17 @@ worker: public(address)
 # for cheap withdraw
 minReserve: public(uint256)
 
+totalDebt: public(uint256)  # debt to users (total borrowed by strategies)
+totalDebtRatio: public(uint256)  # sum of strategy debt ratios
+strategies: public(HashMap[address, Strategy])  # all strategies
+activeStrategies: public(address[MAX_ACTIVE])  # list of active strategies
+
 lastSync: public(uint256)  # timestamp of last sync
 # profit locked from sync, released over time at a rate set by lockedProfitDegradation
 lockedProfit: public(uint256)
 # rate at which locked profit is released
 # 0 = forever, MAX_DEGRADATION = 100% of profit is released 1 block after sync
 lockedProfitDegradation: public(uint256)
-
-totalDebt: public(uint256)  # debt to users (total borrowed by strategies)
-totalDebtRatio: public(uint256)  # sum of strategy debt ratios
-strategies: public(HashMap[address, Strategy])  # all strategies
-queue: public(address[MAX_QUEUE])  # list of active strategies
 
 # minimum number of block to wait before deposit / withdraw
 # used to protect agains flash attacks
@@ -451,8 +451,8 @@ def deposit(amount: uint256, _min: uint256) -> uint256:
     """
     @notice Deposit token into vault
     @param amount Amount of token to deposit
-    @param _min Minimum amount of uToken to be minted
-    @dev Returns actual amount of uToken minted
+    @param _min Minimum amount of shares to be minted
+    @dev Returns actual amount of shares minted
     """
     assert not self.paused, "paused"
     assert amount > 0, "deposit = 0"
@@ -538,8 +538,8 @@ def withdraw(shares: uint256, _min: uint256) -> uint256:
     # withdraw from strategies if amount to withdraw > balance of vault
     bal: uint256 = self.token.balanceOf(self)
     if amount > bal:
-        for strat in self.queue:
-            # reached end of queue
+        for strat in self.activeStrategies:
+            # reached end of active strategies
             if strat == ZERO_ADDRESS:
                 break
 
@@ -587,35 +587,35 @@ def _pack():
          before [1, 2, 0, 0, 3]
          after  [1, 2, 3, 0, 0]
     """
-    arr: address[MAX_QUEUE] = empty(address[MAX_QUEUE])
+    arr: address[MAX_ACTIVE] = empty(address[MAX_ACTIVE])
     i: uint256 = 0
-    for strat in self.queue:
+    for strat in self.activeStrategies:
         if strat != ZERO_ADDRESS:
             arr[i] = strat
             i += 1
-    self.queue = arr
+    self.activeStrategies = arr
 
 
 @internal
 def _append(strategy: address):
-    assert self.queue[MAX_QUEUE - 1] == ZERO_ADDRESS, "queue > max"
-    self.queue[MAX_QUEUE - 1] = strategy
+    assert self.activeStrategies[MAX_ACTIVE - 1] == ZERO_ADDRESS, "active > max"
+    self.activeStrategies[MAX_ACTIVE - 1] = strategy
     self._pack()
 
 
 @internal
 def _remove(i: uint256):
-    assert i < MAX_QUEUE, "i >= max"
-    assert self.queue[i] != ZERO_ADDRESS, "zero address"
-    self.queue[i] = ZERO_ADDRESS
+    assert i < MAX_ACTIVE, "i >= max"
+    assert self.activeStrategies[i] != ZERO_ADDRESS, "zero address"
+    self.activeStrategies[i] = ZERO_ADDRESS
     self._pack()
 
 
 @internal
 @view
 def _find(strategy: address) -> uint256:
-    for i in range(MAX_QUEUE):
-        if self.queue[i] == strategy:
+    for i in range(MAX_ACTIVE):
+        if self.activeStrategies[i] == strategy:
             return i
     raise "not found"
 
@@ -663,7 +663,7 @@ def activateStrategy(strategy: address, debtRatio: uint256):
     """
     @notice Activate strategy
     @param strategy Address of strategy
-    @param debtRatio Ratio of total assets this strategy can borrow
+    @param debtRatio Ratio of total assets of vault that strategy can borrow
     """
     assert msg.sender in [self.timeLock, self.admin], "!auth"
     assert self.strategies[strategy].approved, "!approved"
@@ -697,41 +697,41 @@ def deactivateStrategy(strategy: address):
 
 
 @external
-def setQueue(queue: address[MAX_QUEUE]):
+def setActiveStrategies(strategies: address[MAX_ACTIVE]):
     """
-    @notice Reorder queue
-    @param queue Array of active strategies
+    @notice Reorder active strategies
+    @param strategies Array of active strategies
     """
     assert msg.sender in [self.timeLock, self.admin], "!auth"
 
-    for i in range(MAX_QUEUE):
-        old: address = self.queue[i]
-        new: address = queue[i]
+    for i in range(MAX_ACTIVE):
+        old: address = self.activeStrategies[i]
+        new: address = strategies[i]
 
-        # check old and new queue have the same number of strategies
+        # check old and new strategies have the same number of strategies
         if old == ZERO_ADDRESS:
             assert new == ZERO_ADDRESS, "new != zero address"
         else:
             assert new != ZERO_ADDRESS, "new = zero address"
 
             # Check new strategy is active and no duplicate
-            # assert will fail if duplicate strategy in new queue
+            # assert will fail if duplicate strategy in new strategies
             assert self.strategies[new].active, "!active"
             self.strategies[new].active = False
 
-    # update queue
-    for i in range(MAX_QUEUE):
-        new: address = queue[i]
+    # update active strategies
+    for i in range(MAX_ACTIVE):
+        new: address = strategies[i]
         if new == ZERO_ADDRESS:
             break
         self.strategies[new].active = True
-        self.queue[i] = new
+        self.activeStrategies[i] = new
 
-    log SetQueue(queue)
+    log SetActiveStrategies(strategies)
 
 
 @external
-def setDebtRatios(debtRatios: uint256[MAX_QUEUE]):
+def setDebtRatios(debtRatios: uint256[MAX_ACTIVE]):
     """
     @notice Update debt ratios of active strategies
     @param debtRatios Array of debt ratios
@@ -740,8 +740,8 @@ def setDebtRatios(debtRatios: uint256[MAX_QUEUE]):
 
     # use memory to save gas
     totalDebtRatio: uint256 = 0
-    for i in range(MAX_QUEUE):
-        strat: address = self.queue[i]
+    for i in range(MAX_ACTIVE):
+        strat: address = self.activeStrategies[i]
         if strat == ZERO_ADDRESS:
             break
 
@@ -840,15 +840,12 @@ def repay(amount: uint256) -> uint256:
 @external
 def sync(strategy: address, minTotal: uint256, maxTotal: uint256):
     """
-    @notice Increase or decrease debt from strategy based on total
-            asset of strategy
+    @notice Update debt of strategy based on total asset of strategy
     @param strategy Address of active strategy
     @param minTotal Minimum of total asset of strategy
     @param maxTotal Maximum of total asset of strategy
     @dev `minTotal` and `maxTotal` are used to make sure total asset is within
           a reasonable range
-    @dev Only approved and active strategy can repay
-    @dev Returns actual amount that was repaid
     """
     assert msg.sender in [self.worker, self.admin, self.timeLock], "!auth"
     assert self.strategies[strategy].active, "!active strategy"
@@ -889,7 +886,7 @@ def sweep(token: address):
     """
     @notice Transfer any token (except `token`) accidentally sent to this contract
             to admin or time lock
-    @dev Cannot transfer `token`
+    @dev Cannot transfer `self.token`
     """
     assert msg.sender in [self.timeLock, self.admin], "!auth"
     assert token != self.token.address, "protected"

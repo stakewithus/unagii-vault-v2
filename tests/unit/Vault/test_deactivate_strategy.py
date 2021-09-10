@@ -27,7 +27,7 @@ def test_deactivate_strategy(vault, admin, testStrategy, user):
     assert strat["debtRatio"] == 0
 
     assert after["totalDebtRatio"] == before["totalDebtRatio"] - 123
-    assert vault.queue(0) == ZERO_ADDRESS
+    assert vault.activeStrategies(0) == ZERO_ADDRESS
 
     assert tx.events["DeactivateStrategy"].values() == [strategy]
 

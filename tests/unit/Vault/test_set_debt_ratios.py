@@ -2,7 +2,7 @@ import brownie
 from brownie import ZERO_ADDRESS
 from brownie.test import given, strategy
 
-# max queue
+# max active strategies
 N = 20
 
 
@@ -43,5 +43,5 @@ def test_set_debt_ratios(vault, admin, TestStrategy, token, user, k, rands):
     assert tx.events["SetDebtRatios"].values() == [debtRatios]
 
     for i in range(N):
-        addr = vault.queue(i)
+        addr = vault.activeStrategies(i)
         assert vault.strategies(addr)["debtRatio"] == debtRatios[i]

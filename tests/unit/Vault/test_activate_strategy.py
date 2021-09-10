@@ -33,7 +33,7 @@ def test_activate_strategy(vault, admin, testStrategy, user):
     assert strat["debtRatio"] == 123
 
     assert after["totalDebtRatio"] == before["totalDebtRatio"] + strat["debtRatio"]
-    assert vault.queue(0) == strategy
+    assert vault.activeStrategies(0) == strategy
 
     assert tx.events["ActivateStrategy"].values() == [strategy]
 

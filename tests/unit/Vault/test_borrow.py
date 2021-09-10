@@ -1,6 +1,6 @@
 import brownie
 
-# max queue
+# max active strategies
 N = 20
 
 

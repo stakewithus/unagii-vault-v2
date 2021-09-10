@@ -28,7 +28,7 @@ class StateMachine:
     def setup(self):
         self.approved = {}
         self.active = {}
-        self.queue = []
+        self.activeStrategies = []
 
     def rule_approve(self, i):
         addr = self.strategies[i]
@@ -53,7 +53,7 @@ class StateMachine:
         if strat["approved"] and not strat["active"]:
             self.vault.activateStrategy(addr, 1, {"from": self.admin})
             self.active[addr] = True
-            self.queue.append(addr)
+            self.activeStrategies.append(addr)
 
     def rule_deactivate(self, i):
         addr = self.strategies[i]
@@ -62,7 +62,7 @@ class StateMachine:
         if strat["approved"] and strat["active"]:
             self.vault.deactivateStrategy(addr, {"from": self.admin})
             self.active[addr] = False
-            self.queue.remove(addr)
+            self.activeStrategies.remove(addr)
 
     def invariant(self):
         for i in range(N):
@@ -71,12 +71,12 @@ class StateMachine:
             assert strat["approved"] == self.approved.get(addr, False)
             assert strat["active"] == self.active.get(addr, False)
         for i in range(N):
-            if i < len(self.queue):
-                assert self.vault.queue(i) == self.queue[i]
+            if i < len(self.activeStrategies):
+                assert self.vault.activeStrategies(i) == self.activeStrategies[i]
             else:
-                assert self.vault.queue(i) == ZERO_ADDRESS
+                assert self.vault.activeStrategies(i) == ZERO_ADDRESS
 
-        # print("queue", self.queue)
+        # print("activeStrategies", self.activeStrategies)
         # print("approved", self.approved)
         # print("active", self.active)
 
