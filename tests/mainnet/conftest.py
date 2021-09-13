@@ -1,6 +1,7 @@
+import os
 import pytest
 
-from brownie import interface, FundManager, EthFundManager, ZERO_ADDRESS
+from brownie import interface, Vault, UnagiiToken, ZERO_ADDRESS
 
 
 @pytest.fixture(scope="session")
@@ -29,46 +30,17 @@ def eth_whale(accounts):
 
 
 @pytest.fixture(scope="session")
-def daiFundManager(admin, guardian, worker, dai):
-    fundManager = FundManager.deploy(
-        dai, guardian, worker, ZERO_ADDRESS, {"from": admin}
-    )
-    fundManager.initialize({"from": admin})
-    yield fundManager
+def uDai(dai, admin):
+    uToken = UnagiiToken.deploy(dai, {"from": admin})
+    yield uToken
 
 
 @pytest.fixture(scope="session")
-def usdcFundManager(admin, guardian, worker, usdc):
-    fundManager = FundManager.deploy(
-        usdc, guardian, worker, ZERO_ADDRESS, {"from": admin}
-    )
-    fundManager.initialize({"from": admin})
-    yield fundManager
-
-
-@pytest.fixture(scope="session")
-def usdtFundManager(admin, guardian, worker, usdt):
-    fundManager = FundManager.deploy(
-        usdt, guardian, worker, ZERO_ADDRESS, {"from": admin}
-    )
-    fundManager.initialize({"from": admin})
-    yield fundManager
-
-
-@pytest.fixture(scope="session")
-def wbtcFundManager(admin, guardian, worker, wbtc):
-    fundManager = FundManager.deploy(
-        wbtc, guardian, worker, ZERO_ADDRESS, {"from": admin}
-    )
-    fundManager.initialize({"from": admin})
-    yield fundManager
-
-
-@pytest.fixture(scope="session")
-def ethFundManager(admin, guardian, worker):
-    fundManager = EthFundManager.deploy(guardian, worker, ZERO_ADDRESS, {"from": admin})
-    fundManager.initialize({"from": admin})
-    yield fundManager
+def daiVault(dai, uDai, admin, guardian, worker):
+    vault = Vault.deploy(dai, uDai, guardian, worker, {"from": admin})
+    uDai.setMinter(vault, {"from": admin})
+    vault.setPause(False)
+    yield vault
 
 
 @pytest.fixture(scope="session")
@@ -93,19 +65,19 @@ def wbtc():
 
 @pytest.fixture(scope="session")
 def dai_whale(accounts):
-    yield accounts.at("0xF977814e90dA44bFA03b6295A0616a897441aceC", force=True)
+    yield accounts.at(os.getenv("DAI_WHALE"), force=True)
 
 
 @pytest.fixture(scope="session")
 def usdc_whale(accounts):
-    yield accounts.at("0xF977814e90dA44bFA03b6295A0616a897441aceC", force=True)
+    yield accounts.at(os.getenv("USDC_WHALE"), force=True)
 
 
 @pytest.fixture(scope="session")
 def usdt_whale(accounts):
-    yield accounts.at("0xF977814e90dA44bFA03b6295A0616a897441aceC", force=True)
+    yield accounts.at(os.getenv("USDT_WHALE"), force=True)
 
 
 @pytest.fixture(scope="session")
 def wbtc_whale(accounts):
-    yield accounts.at("0xF977814e90dA44bFA03b6295A0616a897441aceC", force=True)
+    yield accounts.at(os.getenv("WBTC_WHALE"), force=True)

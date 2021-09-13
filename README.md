@@ -37,9 +37,7 @@ brownie test tests/path-to-test-file-or-folder
 ### Mainnet Test
 
 ```shell
-source .env
-
-ganache-cli \
+env $(cat .env) ganache-cli \
 --fork https://mainnet.infura.io/v3/$WEB3_INFURA_PROJECT_ID \
 --unlock $DAI_WHALE \
 --unlock $USDC_WHALE \
