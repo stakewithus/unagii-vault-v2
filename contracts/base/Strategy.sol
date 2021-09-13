@@ -236,7 +236,20 @@ abstract contract Strategy is PerfFee, Dex {
          call this function
     */
     function harvest(uint _minProfit) external onlyAuthorized {
+        // calculate profit = balance of token after - balance of token before
+        uint diff = token.balanceOf(address(this));
         _harvest(_minProfit);
+        diff = token.balanceOf(address(this)) - diff;
+
+        require(diff >= _minProfit, "profit < min");
+
+        // transfer performance fee to treasury
+        if (diff > 0) {
+            uint fee = _calcPerfFee(diff);
+            if (fee > 0) {
+                token.safeTransfer(treasury, fee);
+            }
+        }
     }
 
     /*

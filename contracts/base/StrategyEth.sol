@@ -242,7 +242,20 @@ abstract contract StrategyEth is PerfFee, Dex {
          call this function
     */
     function harvest(uint _minProfit) external onlyAuthorized {
+        // calculate profit = balance of ETH after - balance of ETH before
+        uint diff = address(this).balance;
         _harvest(_minProfit);
+        diff = address(this).balance - diff;
+
+        require(diff >= _minProfit, "profit < min");
+
+        // transfer performance fee to treasury
+        if (diff > 0) {
+            uint fee = _calcPerfFee(diff);
+            if (fee > 0) {
+                _sendEth(treasury, fee);
+            }
+        }
     }
 
     /*

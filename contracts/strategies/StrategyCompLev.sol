@@ -426,7 +426,6 @@ contract StrategyCompLev is Strategy {
         _deleverage(_targetSupply);
     }
 
-    // @dev Returns amount available for transfer
     function _withdraw(uint _amount) internal override {
         uint bal = token.balanceOf(address(this));
         if (_amount <= bal) {
@@ -471,9 +470,6 @@ contract StrategyCompLev is Strategy {
     }
 
     function _harvest(uint _minProfit) internal override {
-        // calculate profit = balance of token after - balance of token before
-        uint diff = token.balanceOf(address(this));
-
         // claim COMP
         address[] memory cTokens = new address[](1);
         cTokens[0] = address(cToken);
@@ -482,17 +478,6 @@ contract StrategyCompLev is Strategy {
         uint compBal = comp.balanceOf(address(this));
         if (compBal > 0) {
             _swap(dex, address(comp), address(token), compBal);
-        }
-
-        diff = token.balanceOf(address(this)) - diff;
-        require(diff >= _minProfit, "profit < min");
-
-        // transfer performance fee to treasury
-        if (diff > 0) {
-            uint fee = _calcPerfFee(diff);
-            if (fee > 0) {
-                token.safeTransfer(treasury, fee);
-            }
         }
     }
 

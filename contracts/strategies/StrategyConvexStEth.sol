@@ -203,9 +203,6 @@ contract StrategyConvexStEth is StrategyEth {
     }
 
     function _harvest(uint _minProfit) internal override {
-        // calculate profit = balance of ETH after - balance of ETH before
-        uint diff = address(this).balance;
-
         require(
             REWARD.getReward(address(this), shouldClaimExtras),
             "get reward failed"
@@ -215,17 +212,6 @@ contract StrategyConvexStEth is StrategyEth {
             uint rewardBal = IERC20(REWARDS[i]).balanceOf(address(this));
             if (rewardBal > 0) {
                 _swapToEth(dex[i], REWARDS[i], rewardBal);
-            }
-        }
-
-        diff = address(this).balance - diff;
-        require(diff >= _minProfit, "profit < min");
-
-        // transfer performance fee to treasury
-        if (diff > 0) {
-            uint fee = _calcPerfFee(diff);
-            if (fee > 0) {
-                _sendEth(treasury, fee);
             }
         }
     }

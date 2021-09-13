@@ -237,9 +237,6 @@ contract StrategyConvexAlUsd is Strategy {
     }
 
     function _harvest(uint _minProfit) internal override {
-        // calculate profit = balance of token after - balance of token before
-        uint diff = token.balanceOf(address(this));
-
         require(
             REWARD.getReward(address(this), shouldClaimExtras),
             "get reward failed"
@@ -249,17 +246,6 @@ contract StrategyConvexAlUsd is Strategy {
             uint rewardBal = IERC20(REWARDS[i]).balanceOf(address(this));
             if (rewardBal > 0) {
                 _swap(dex[i], REWARDS[i], address(token), rewardBal);
-            }
-        }
-
-        diff = token.balanceOf(address(this)) - diff;
-        require(diff >= _minProfit, "profit < min");
-
-        // transfer performance fee to treasury
-        if (diff > 0) {
-            uint fee = _calcPerfFee(diff);
-            if (fee > 0) {
-                token.safeTransfer(treasury, fee);
             }
         }
     }
