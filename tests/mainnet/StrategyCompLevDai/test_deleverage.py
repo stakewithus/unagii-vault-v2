@@ -2,17 +2,19 @@ import brownie
 import pytest
 
 
-def test_deleverage(strategy, daiFundManager, admin, dai, dai_whale):
+def test_deleverage(strategy, daiVault, admin, dai, dai_whale):
     token = dai
     whale = dai_whale
-
-    fundManager = daiFundManager
+    vault = daiVault
 
     deposit_amount = 10 ** 18
-    token.transfer(fundManager, deposit_amount, {"from": whale})
+    token.transfer(vault, deposit_amount, {"from": whale})
+
+    calc = vault.calcMaxBorrow(strategy)
+    assert calc > 0
 
     # transfer to strategy
-    strategy.deposit(2 ** 256 - 1, deposit_amount, {"from": admin})
+    strategy.deposit(2 ** 256 - 1, calc, {"from": admin})
 
     (supplied, borrowed, market_col, safe_col) = strategy.getLivePosition.call()
     # print(supplied, borrowed, market_col, safe_col)
@@ -39,12 +41,10 @@ def test_deleverage(strategy, daiFundManager, admin, dai, dai_whale):
         }
 
     before = snapshot()
-    tx = strategy.deleverage(s, {"from": admin})
+    strategy.deleverage(s, {"from": admin})
     after = snapshot()
 
     print(before)
     print(after)
-    # # for e in tx.events:
-    # #     print(e)
 
     assert abs(after["supplied"] - s) <= 0.001 * 10 ** 18
