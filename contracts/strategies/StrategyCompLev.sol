@@ -45,9 +45,6 @@ contract StrategyCompLev is Strategy {
     using SafeERC20 for IERC20;
     using SafeMath for uint;
 
-    // Uniswap and Sushiswap //
-    // UNISWAP = 0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D;
-    // SUSHISWAP = 0xd9e1cE17f2641f24aE83637ab66a2cca9C378B9F;
     address public dex;
 
     // Compound //
@@ -69,7 +66,7 @@ contract StrategyCompLev is Strategy {
         cToken = CErc20(_cToken);
         IERC20(_token).safeApprove(_cToken, type(uint).max);
 
-        _setDex(0xd9e1cE17f2641f24aE83637ab66a2cca9C378B9F); // Sushiswap
+        _setDex(SUSHISWAP);
     }
 
     function _setDex(address _dex) private {

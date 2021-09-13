@@ -12,9 +12,6 @@ contract StrategyConvexBbtc is Strategy {
     using SafeERC20 for IERC20;
     using SafeMath for uint;
 
-    // Uniswap and Sushiswap //
-    // UNISWAP = 0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D;
-    // SUSHISWAP = 0xd9e1cE17f2641f24aE83637ab66a2cca9C378B9F;
     uint private constant NUM_REWARDS = 2;
     // address of DEX (uniswap or sushiswap) to use for selling reward tokens
     // CRV, CVX
@@ -86,8 +83,8 @@ contract StrategyConvexBbtc is Strategy {
         // withdraw from ZAP
         CURVE_LP.safeApprove(address(ZAP), type(uint).max);
 
-        _setDex(0, 0xd9e1cE17f2641f24aE83637ab66a2cca9C378B9F); // CRV - sushiswap
-        _setDex(1, 0xd9e1cE17f2641f24aE83637ab66a2cca9C378B9F); // CVX - sushiswap
+        _setDex(0, SUSHISWAP); // CRV
+        _setDex(1, SUSHISWAP); // CVX
     }
 
     function _setDex(uint _i, address _dex) private {
