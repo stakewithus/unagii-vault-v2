@@ -1,7 +1,5 @@
 # unagii-vault-v2
 
-### TODO: update doc
-
 ![unagii-v2](./doc/unagii-v2.png)
 
 ### Install
