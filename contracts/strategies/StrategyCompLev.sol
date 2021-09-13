@@ -48,10 +48,10 @@ contract StrategyCompLev is Strategy {
     address public dex;
 
     // Compound //
-    Comptroller private constant comptroller =
+    Comptroller private constant COMPTROLLER =
         Comptroller(0x3d9819210A31b4961b30EF54bE2aeD79B9c9Cd3B);
-    IERC20 private constant comp = IERC20(0xc00e94Cb662C3520282E6f5717214004A7f26888);
-    CErc20 private immutable cToken;
+    IERC20 private constant COMP = IERC20(0xc00e94Cb662C3520282E6f5717214004A7f26888);
+    CErc20 private immutable CTOKEN;
     uint public buffer = 0.04 * 1e18;
 
     constructor(
@@ -62,8 +62,8 @@ contract StrategyCompLev is Strategy {
         uint _maxProfit,
         address _cToken
     ) Strategy(_token, _vault, _treasury, _minProfit, _maxProfit) {
-        require(_cToken != address(0), "cToken = zero address");
-        cToken = CErc20(_cToken);
+        require(_cToken != address(0), "CTOKEN = zero address");
+        CTOKEN = CErc20(_cToken);
         IERC20(_token).safeApprove(_cToken, type(uint).max);
 
         _setDex(SUSHISWAP);
@@ -71,11 +71,11 @@ contract StrategyCompLev is Strategy {
 
     function _setDex(address _dex) private {
         if (dex != address(0)) {
-            comp.safeApprove(dex, 0);
+            COMP.safeApprove(dex, 0);
         }
 
         dex = _dex;
-        comp.safeApprove(_dex, type(uint).max);
+        COMP.safeApprove(_dex, type(uint).max);
     }
 
     function setDex(address _dex) external onlyTimeLock {
@@ -84,8 +84,8 @@ contract StrategyCompLev is Strategy {
     }
 
     function _totalAssets() internal view override returns (uint total) {
-        // WARNING: This returns balance last time someone transacted with cToken
-        (uint err, uint cTokenBal, uint borrowed, uint exchangeRate) = cToken
+        // WARNING: This returns balance last time someone transacted with CTOKEN
+        (uint err, uint cTokenBal, uint borrowed, uint exchangeRate) = CTOKEN
         .getAccountSnapshot(address(this));
 
         if (err > 0) {
@@ -114,7 +114,7 @@ contract StrategyCompLev is Strategy {
         This can be changed by Compound Governance, with a minimum waiting
         period of five days
         */
-        (, uint col, ) = comptroller.markets(address(cToken));
+        (, uint col, ) = COMPTROLLER.markets(address(CTOKEN));
         return col;
     }
 
@@ -127,12 +127,12 @@ contract StrategyCompLev is Strategy {
 
     // Not view function
     function _getSupplied() private returns (uint) {
-        return cToken.balanceOfUnderlying(address(this));
+        return CTOKEN.balanceOfUnderlying(address(this));
     }
 
     // Not view function
     function _getBorrowed() private returns (uint) {
-        return cToken.borrowBalanceCurrent(address(this));
+        return CTOKEN.borrowBalanceCurrent(address(this));
     }
 
     // Not view function. Call using static call from web3
@@ -151,7 +151,7 @@ contract StrategyCompLev is Strategy {
         safeCol = _getSafeCollateralRatio(marketCol);
     }
 
-    // @dev This returns balance last time someone transacted with cToken
+    // @dev This returns balance last time someone transacted with CTOKEN
     function getCachedPosition()
         external
         view
@@ -163,7 +163,7 @@ contract StrategyCompLev is Strategy {
         )
     {
         // ignore first output, which is error code
-        (, uint cTokenBal, uint _borrowed, uint exchangeRate) = cToken
+        (, uint cTokenBal, uint _borrowed, uint exchangeRate) = CTOKEN
         .getAccountSnapshot(address(this));
         supplied = cTokenBal.mul(exchangeRate) / 1e18;
         borrowed = _borrowed;
@@ -187,11 +187,11 @@ contract StrategyCompLev is Strategy {
 
     // @dev In case infinite approval is reduced so that strategy cannot function
     function approve(uint _amount) external onlyAuthorized {
-        token.safeApprove(address(cToken), _amount);
+        token.safeApprove(address(CTOKEN), _amount);
     }
 
     function _supply(uint _amount) private {
-        require(cToken.mint(_amount) == 0, "mint");
+        require(CTOKEN.mint(_amount) == 0, "mint");
     }
 
     // @dev Execute manual recovery by admin
@@ -201,7 +201,7 @@ contract StrategyCompLev is Strategy {
     }
 
     function _borrow(uint _amount) private {
-        require(cToken.borrow(_amount) == 0, "borrow");
+        require(CTOKEN.borrow(_amount) == 0, "borrow");
     }
 
     // @dev Execute manual recovery by admin
@@ -210,7 +210,7 @@ contract StrategyCompLev is Strategy {
     }
 
     function _repay(uint _amount) private {
-        require(cToken.repayBorrow(_amount) == 0, "repay");
+        require(CTOKEN.repayBorrow(_amount) == 0, "repay");
     }
 
     // @dev Execute manual recovery by admin
@@ -220,7 +220,7 @@ contract StrategyCompLev is Strategy {
     }
 
     function _redeem(uint _amount) private {
-        require(cToken.redeemUnderlying(_amount) == 0, "redeem");
+        require(CTOKEN.redeemUnderlying(_amount) == 0, "redeem");
     }
 
     // @dev Execute manual recovery by admin
@@ -469,12 +469,12 @@ contract StrategyCompLev is Strategy {
     function _harvest() internal override {
         // claim COMP
         address[] memory cTokens = new address[](1);
-        cTokens[0] = address(cToken);
-        comptroller.claimComp(address(this), cTokens);
+        cTokens[0] = address(CTOKEN);
+        COMPTROLLER.claimComp(address(this), cTokens);
 
-        uint compBal = comp.balanceOf(address(this));
+        uint compBal = COMP.balanceOf(address(this));
         if (compBal > 0) {
-            _swap(dex, address(comp), address(token), compBal);
+            _swap(dex, address(COMP), address(token), compBal);
         }
     }
 
@@ -484,8 +484,8 @@ contract StrategyCompLev is Strategy {
     */
     function sweep(address _token) external override onlyAuthorized {
         require(_token != address(token), "protected token");
-        require(_token != address(cToken), "protected token");
-        require(_token != address(comp), "protected token");
+        require(_token != address(CTOKEN), "protected token");
+        require(_token != address(COMP), "protected token");
         IERC20(_token).safeTransfer(admin, IERC20(_token).balanceOf(address(this)));
     }
 }
