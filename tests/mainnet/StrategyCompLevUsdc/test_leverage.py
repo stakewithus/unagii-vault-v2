@@ -2,11 +2,14 @@ import brownie
 import pytest
 
 
+DECIMALS = 6
+
+
 def test_leverage(strategy, admin, usdc, usdc_whale):
     token = usdc
     whale = usdc_whale
 
-    deposit_amount = 10 ** 6
+    deposit_amount = 10 ** DECIMALS
     token.transfer(strategy, deposit_amount, {"from": whale})
     strategy.supplyManual(deposit_amount, {"from": admin})
 
@@ -31,12 +34,11 @@ def test_leverage(strategy, admin, usdc, usdc_whale):
         }
 
     before = snapshot()
-    tx = strategy.leverage(s, {"from": admin})
+    strategy.leverage(s, {"from": admin})
     after = snapshot()
 
     print(before)
     print(after)
-    # # for e in tx.events:
-    # #     print(e)
 
-    assert abs(after["supplied"] - s) <= 0.001 * 10 ** 6
+    print(after["supplied"] - s)
+    assert abs(after["supplied"] - s) <= 0.001 * 10 ** DECIMALS

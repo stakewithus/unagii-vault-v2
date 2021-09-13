@@ -1,16 +1,18 @@
 import brownie
-from brownie import interface, StrategyCompLevUsdc
+from brownie import StrategyCompLevUsdc
 import pytest
 
 
 @pytest.fixture(scope="session")
-def strategy(usdcFundManager, admin, treasury):
-    fundManager = usdcFundManager
-    timeLock = fundManager.timeLock()
+def strategy(usdcVault, admin, treasury):
+    vault = usdcVault
+    timeLock = vault.timeLock()
 
-    strategy = StrategyCompLevUsdc.deploy(fundManager, treasury, {"from": admin})
+    strategy = StrategyCompLevUsdc.deploy(
+        vault, treasury, 0, 2 ** 256 - 1, {"from": admin}
+    )
 
-    fundManager.approveStrategy(strategy, {"from": timeLock})
-    fundManager.addStrategyToQueue(strategy, 1, 0, 2 ** 256 - 1, {"from": admin})
+    vault.approveStrategy(strategy, {"from": timeLock})
+    vault.activateStrategy(strategy, 100, {"from": admin})
 
     yield strategy

@@ -2,13 +2,16 @@ import brownie
 import pytest
 
 
+DECIMALS = 18
+
+
 def test_harvest(strategy, daiVault, admin, treasury, dai, dai_whale):
     token = dai
     whale = dai_whale
     vault = daiVault
 
     # deposit into fund manager
-    deposit_amount = 100 * 10 ** 18
+    deposit_amount = 100 * 10 ** DECIMALS
     token.transfer(vault, deposit_amount, {"from": whale})
 
     calc = vault.calcMaxBorrow(strategy)

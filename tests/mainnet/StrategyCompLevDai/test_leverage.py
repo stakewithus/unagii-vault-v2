@@ -2,11 +2,14 @@ import brownie
 import pytest
 
 
+DECIMALS = 18
+
+
 def test_leverage(strategy, admin, dai, dai_whale):
     token = dai
     whale = dai_whale
 
-    deposit_amount = 10 ** 18
+    deposit_amount = 10 ** DECIMALS
     token.transfer(strategy, deposit_amount, {"from": whale})
     strategy.supplyManual(deposit_amount, {"from": admin})
 
@@ -37,4 +40,4 @@ def test_leverage(strategy, admin, dai, dai_whale):
     print(before)
     print(after)
 
-    assert abs(after["supplied"] - s) <= 0.001 * 10 ** 18
+    assert abs(after["supplied"] - s) <= 0.001 * 10 ** DECIMALS

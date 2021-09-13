@@ -2,46 +2,48 @@ import brownie
 import pytest
 
 
-def test_withdraw(strategy, usdcFundManager, admin, usdc, usdc_whale):
+DECIMALS = 6
+
+
+def test_withdraw(strategy, usdcVault, admin, usdc, usdc_whale):
     token = usdc
     whale = usdc_whale
-
-    fundManager = usdcFundManager
+    vault = usdcVault
 
     # deposit into fund manager
-    deposit_amount = 10 ** 6
-    token.transfer(fundManager, deposit_amount, {"from": whale})
+    deposit_amount = 10 ** DECIMALS
+    token.transfer(vault, deposit_amount, {"from": whale})
+
+    calc = vault.calcMaxBorrow(strategy)
+    assert calc > 0
 
     # transfer to strategy
-    strategy.deposit(2 ** 256 - 1, deposit_amount, {"from": admin})
+    strategy.deposit(2 ** 256 - 1, calc, {"from": admin})
 
     def snapshot():
         return {
             "token": {
                 "strategy": token.balanceOf(strategy),
-                "fundManager": token.balanceOf(fundManager),
+                "vault": token.balanceOf(vault),
             },
             "strategy": {"totalAssets": strategy.totalAssets()},
         }
 
-    withdraw_amount = deposit_amount / 2
+    total = strategy.totalAssets()
+    assert total >= calc * 0.99
+    withdraw_amount = total / 2
 
     before = snapshot()
-    tx = strategy.withdraw(withdraw_amount, {"from": fundManager})
+    strategy.withdraw(withdraw_amount, {"from": vault})
     after = snapshot()
 
     print(before)
     print(after)
-    # for e in tx.events:
-    #     print(e)
 
-    event = tx.events[-1]
-    withdrawn = event["withdrawn"]
-    loss = event["loss"]
-
+    withdrawn = after["token"]["vault"] - before["token"]["vault"]
     assert withdrawn >= 0.99 * withdraw_amount
-    assert loss <= 0.01 * withdraw_amount
-    assert after["token"]["fundManager"] == before["token"]["fundManager"] + withdrawn
-    assert after["strategy"]["totalAssets"] >= 0.99 * (
-        before["strategy"]["totalAssets"] - withdraw_amount
+    # less than 0.01% slip
+    assert (
+        before["strategy"]["totalAssets"] - after["strategy"]["totalAssets"]
+        <= 1.0001 * withdraw_amount
     )

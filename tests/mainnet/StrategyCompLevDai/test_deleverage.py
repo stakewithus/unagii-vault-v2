@@ -1,13 +1,15 @@
 import brownie
 import pytest
 
+DECIMALS = 18
+
 
 def test_deleverage(strategy, daiVault, admin, dai, dai_whale):
     token = dai
     whale = dai_whale
     vault = daiVault
 
-    deposit_amount = 10 ** 18
+    deposit_amount = 10 ** DECIMALS
     token.transfer(vault, deposit_amount, {"from": whale})
 
     calc = vault.calcMaxBorrow(strategy)
@@ -47,4 +49,4 @@ def test_deleverage(strategy, daiVault, admin, dai, dai_whale):
     print(before)
     print(after)
 
-    assert abs(after["supplied"] - s) <= 0.001 * 10 ** 18
+    assert abs(after["supplied"] - s) <= 0.001 * 10 ** DECIMALS

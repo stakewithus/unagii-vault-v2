@@ -1,18 +1,22 @@
 import brownie
 import pytest
 
+DECIMALS = 6
 
-def test_deleverage(strategy, usdcFundManager, admin, usdc, usdc_whale):
+
+def test_deleverage(strategy, usdcVault, admin, usdc, usdc_whale):
     token = usdc
     whale = usdc_whale
+    vault = usdcVault
 
-    fundManager = usdcFundManager
+    deposit_amount = 10 ** DECIMALS
+    token.transfer(vault, deposit_amount, {"from": whale})
 
-    deposit_amount = 10 ** 6
-    token.transfer(fundManager, deposit_amount, {"from": whale})
+    calc = vault.calcMaxBorrow(strategy)
+    assert calc > 0
 
     # transfer to strategy
-    strategy.deposit(2 ** 256 - 1, deposit_amount, {"from": admin})
+    strategy.deposit(2 ** 256 - 1, calc, {"from": admin})
 
     (supplied, borrowed, market_col, safe_col) = strategy.getLivePosition.call()
     # print(supplied, borrowed, market_col, safe_col)
@@ -39,12 +43,10 @@ def test_deleverage(strategy, usdcFundManager, admin, usdc, usdc_whale):
         }
 
     before = snapshot()
-    tx = strategy.deleverage(s, {"from": admin})
+    strategy.deleverage(s, {"from": admin})
     after = snapshot()
 
     print(before)
     print(after)
-    # # for e in tx.events:
-    # #     print(e)
 
-    assert abs(after["supplied"] - s) <= 0.001 * 10 ** 6
+    assert abs(after["supplied"] - s) <= 0.001 * 10 ** DECIMALS
