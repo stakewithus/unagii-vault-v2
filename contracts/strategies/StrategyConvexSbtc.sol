@@ -49,7 +49,7 @@ contract StrategyConvexSbtc is Strategy {
     1 - WBTC
     2 - SBTC
     */
-    // multipliers to normalize token decimals to 10 ** 18
+    // multipliers to normalize token decimals to 1e18
     uint[3] private MULS = [1e10, 1e10, 1];
     uint private immutable MUL; // multiplier of token
     uint private immutable INDEX; // index of token

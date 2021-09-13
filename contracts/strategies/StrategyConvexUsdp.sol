@@ -56,7 +56,7 @@ contract StrategyConvexUsdp is Strategy {
     2 - USDC
     3 - USDT
     */
-    // multipliers to normalize token decimals to 10 ** 18
+    // multipliers to normalize token decimals to 1e18
     uint[4] private MULS = [1, 1, 1e12, 1e12];
     uint private immutable MUL; // multiplier of token
     uint private immutable INDEX; // index of token
