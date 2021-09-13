@@ -4,6 +4,7 @@ pragma solidity 0.7.6;
 import "../interfaces/uniswap/UniswapV2Router.sol";
 
 contract Dex {
+    // TODO: use Uniswap v3?
     address private constant WETH = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
 
     function _swap(

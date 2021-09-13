@@ -68,7 +68,7 @@ contract StrategyCompLev is Strategy {
         require(_cToken != address(0), "cToken = zero address");
         cToken = CErc20(_cToken);
         IERC20(_token).safeApprove(_cToken, type(uint).max);
-        // TODO: use uniswap 3?
+
         _setDex(0xd9e1cE17f2641f24aE83637ab66a2cca9C378B9F); // Sushiswap
     }
 
