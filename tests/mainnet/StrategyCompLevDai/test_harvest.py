@@ -27,10 +27,7 @@ def test_harvest(strategy, daiVault, admin, treasury, dai, dai_whale):
             "strategy": {"totalAssets": strategy.totalAssets()},
         }
 
-    # create profit
-    # min_profit = 10 ** 18
     min_profit = 0
-    # token.transfer(strategy, min_profit, {"from": whale})
 
     before = snapshot()
     strategy.harvest(min_profit, {"from": admin})
