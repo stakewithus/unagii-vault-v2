@@ -3,6 +3,10 @@ pragma solidity 0.7.6;
 
 import "../base/Strategy.sol";
 
+interface ITestToken {
+    function mint(address to, uint amount) external;
+}
+
 contract StrategyTest is Strategy {
     using SafeERC20 for IERC20;
 
@@ -22,7 +26,9 @@ contract StrategyTest is Strategy {
 
     function _withdraw(uint _amount) internal override {}
 
-    function _harvest(uint) internal override {}
+    function _harvest(uint) internal override {
+        ITestToken(address(token)).mint(address(this), 1e18);
+    }
 
     function sweep(address) external override {}
 }
