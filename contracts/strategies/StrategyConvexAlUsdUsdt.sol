@@ -11,6 +11,7 @@ contract StrategyConvexAlUsdUsdt is StrategyConvexAlUsd {
         uint _maxProfit
     )
         StrategyConvexAlUsd(
+            // USDT
             0xdAC17F958D2ee523a2206206994597C13D831ec7,
             _vault,
             _treasury,

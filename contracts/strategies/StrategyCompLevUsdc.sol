@@ -11,11 +11,13 @@ contract StrategyCompLevUsdc is StrategyCompLev {
         uint _maxProfit
     )
         StrategyCompLev(
+            // USDC
             0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48,
             _vault,
             _treasury,
             _minProfit,
             _maxProfit,
+            // CUSDC
             0x39AA39c021dfbaE8faC545936693aC917d5E7563
         )
     {}
