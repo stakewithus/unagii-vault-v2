@@ -31,12 +31,10 @@ def test_leverage(strategy, admin, dai, dai_whale):
         }
 
     before = snapshot()
-    tx = strategy.leverage(s, {"from": admin})
+    strategy.leverage(s, {"from": admin})
     after = snapshot()
 
     print(before)
     print(after)
-    # # for e in tx.events:
-    # #     print(e)
 
     assert abs(after["supplied"] - s) <= 0.001 * 10 ** 18
