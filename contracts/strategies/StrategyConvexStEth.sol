@@ -202,7 +202,7 @@ contract StrategyConvexStEth is StrategyEth {
         }
     }
 
-    function _harvest(uint _minProfit) internal override {
+    function _harvest() internal override {
         require(
             REWARD.getReward(address(this), shouldClaimExtras),
             "get reward failed"

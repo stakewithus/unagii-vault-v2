@@ -233,7 +233,7 @@ abstract contract StrategyEth is PerfFee, Dex {
         require(repaid >= _min, "repaid < min");
     }
 
-    function _harvest(uint _minProfit) internal virtual;
+    function _harvest() internal virtual;
 
     /*
     @notice Claim rewards
@@ -244,7 +244,7 @@ abstract contract StrategyEth is PerfFee, Dex {
     function harvest(uint _minProfit) external onlyAuthorized {
         // calculate profit = balance of ETH after - balance of ETH before
         uint diff = address(this).balance;
-        _harvest(_minProfit);
+        _harvest();
         diff = address(this).balance - diff;
 
         require(diff >= _minProfit, "profit < min");

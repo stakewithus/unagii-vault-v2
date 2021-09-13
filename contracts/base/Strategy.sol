@@ -227,7 +227,7 @@ abstract contract Strategy is PerfFee, Dex {
         require(repaid >= _min, "repaid < min");
     }
 
-    function _harvest(uint _minProfit) internal virtual;
+    function _harvest() internal virtual;
 
     /*
     @notice Claim rewards
@@ -238,7 +238,7 @@ abstract contract Strategy is PerfFee, Dex {
     function harvest(uint _minProfit) external onlyAuthorized {
         // calculate profit = balance of token after - balance of token before
         uint diff = token.balanceOf(address(this));
-        _harvest(_minProfit);
+        _harvest();
         diff = token.balanceOf(address(this)) - diff;
 
         require(diff >= _minProfit, "profit < min");

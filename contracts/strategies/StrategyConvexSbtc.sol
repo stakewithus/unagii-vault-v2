@@ -215,10 +215,7 @@ contract StrategyConvexSbtc is Strategy {
         }
     }
 
-    function _harvest(uint _minProfit) internal override {
-        // calculate profit = balance of token after - balance of token before
-        uint diff = token.balanceOf(address(this));
-
+    function _harvest() internal override {
         require(
             REWARD.getReward(address(this), shouldClaimExtras),
             "get reward failed"
@@ -229,17 +226,6 @@ contract StrategyConvexSbtc is Strategy {
             if (rewardBal > 0) {
                 // swap may fail if rewards are too small
                 _swap(dex[i], REWARDS[i], address(token), rewardBal);
-            }
-        }
-
-        diff = token.balanceOf(address(this)) - diff;
-        require(diff >= _minProfit, "profit < min");
-
-        // transfer performance fee to treasury
-        if (diff > 0) {
-            uint fee = _calcPerfFee(diff);
-            if (fee > 0) {
-                token.safeTransfer(treasury, fee);
             }
         }
     }

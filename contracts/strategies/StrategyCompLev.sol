@@ -469,7 +469,7 @@ contract StrategyCompLev is Strategy {
         _redeem(redeemAmount);
     }
 
-    function _harvest(uint _minProfit) internal override {
+    function _harvest() internal override {
         // claim COMP
         address[] memory cTokens = new address[](1);
         cTokens[0] = address(cToken);

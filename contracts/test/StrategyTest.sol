@@ -26,7 +26,7 @@ contract StrategyTest is Strategy {
 
     function _withdraw(uint _amount) internal override {}
 
-    function _harvest(uint) internal override {
+    function _harvest() internal override {
         ITestToken(address(token)).mint(address(this), 1e18);
     }
 
