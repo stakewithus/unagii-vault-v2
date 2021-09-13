@@ -57,8 +57,6 @@ contract StrategyConvexObtc is Strategy {
     uint private immutable MUL; // multiplier of token
     uint private immutable INDEX; // index of token
 
-    // WBTC = 0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599
-
     constructor(
         address _token,
         address _vault,
