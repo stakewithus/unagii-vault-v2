@@ -70,7 +70,7 @@ abstract contract Strategy is PerfFee, Dex {
 
     modifier onlyAuthorized() {
         require(
-            msg.sender == timeLock || msg.sender == admin || authorized[msg.sender],
+            authorized[msg.sender] || msg.sender == timeLock || msg.sender == admin,
             "!auth"
         );
         _;
