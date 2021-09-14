@@ -90,6 +90,9 @@ def ethVault(EthVault, uEth, admin, guardian, worker):
     ethVault.setPause(False, {"from": admin})
     ethVault.setBlockDelay(1, {"from": admin})
 
+    # allow admin to send ETH
+    ethVault.setWhitelist(admin, True, {"from": admin})
+
     yield ethVault
 
 

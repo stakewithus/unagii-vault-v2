@@ -8,8 +8,6 @@ def test_default(ethVault, admin, user):
     with brownie.reverts("!whitelist"):
         user.transfer(vault, 1)
 
-    vault.setWhitelist(admin, True, {"from": admin})
-
     def snapshot():
         return {"vault": {"balance": vault.balance()}}
 
