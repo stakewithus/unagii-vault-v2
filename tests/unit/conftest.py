@@ -82,6 +82,17 @@ def vault(Vault, token, uToken, admin, guardian, worker):
     yield vault
 
 
+@pytest.fixture(scope="module")
+def ethVault(EthVault, uEth, admin, guardian, worker):
+    ethVault = EthVault.deploy(uEth, guardian, worker, {"from": admin})
+
+    uEth.setMinter(ethVault, {"from": admin})
+    ethVault.setPause(False, {"from": admin})
+    ethVault.setBlockDelay(1, {"from": admin})
+
+    yield ethVault
+
+
 # test contracts
 @pytest.fixture(scope="module")
 def token(TestToken, admin):
