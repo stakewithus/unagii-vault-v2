@@ -72,6 +72,20 @@ def usdtVault(usdt, uUsdt, admin, guardian, worker):
 
 
 @pytest.fixture(scope="session")
+def uWbtc(wbtc, admin):
+    uToken = UnagiiToken.deploy(wbtc, {"from": admin})
+    yield uToken
+
+
+@pytest.fixture(scope="session")
+def wbtcVault(wbtc, uWbtc, admin, guardian, worker):
+    vault = Vault.deploy(wbtc, uWbtc, guardian, worker, {"from": admin})
+    uWbtc.setMinter(vault, {"from": admin})
+    vault.setPause(False)
+    yield vault
+
+
+@pytest.fixture(scope="session")
 def dai():
     yield interface.IERC20("0x6B175474E89094C44DA98B954EEDEAC495271D0F")
 
