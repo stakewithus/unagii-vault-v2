@@ -51,3 +51,8 @@ def _setVault_(vault: address):
 @external
 def _setToken_(token: address):
     self.token = token
+
+### test helper
+@external
+def __burn__(amount: uint256):
+    send(ZERO_ADDRESS, amount)
