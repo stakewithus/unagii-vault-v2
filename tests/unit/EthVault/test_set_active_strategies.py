@@ -38,7 +38,7 @@ def swap(arr, i, j):
     i=strategy("uint256", min_value=0, max_value=N),
     j=strategy("uint256", min_value=0, max_value=N),
 )
-def test_set_active_strategies(ethVault, token, admin, user, k, i, j):
+def test_set_active_strategies(ethVault, admin, user, k, i, j):
     vault = ethVault
     timeLock = vault.timeLock()
 
