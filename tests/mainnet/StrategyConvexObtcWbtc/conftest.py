@@ -1,14 +1,14 @@
 import brownie
-from brownie import StrategyConvexAlUsdDai
+from brownie import StrategyConvexObtcWbtc
 import pytest
 
 
 @pytest.fixture(scope="session")
-def strategy(daiVault, admin, treasury):
-    vault = daiVault
+def strategy(wbtcVault, admin, treasury):
+    vault = wbtcVault
     timeLock = vault.timeLock()
 
-    strategy = StrategyConvexAlUsdDai.deploy(
+    strategy = StrategyConvexObtcWbtc.deploy(
         vault, treasury, 0, 2 ** 256 - 1, {"from": admin}
     )
 

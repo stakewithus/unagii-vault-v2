@@ -1,5 +1,5 @@
 import brownie
-from brownie import interface, StrategyConvexBbtcWbtc
+from brownie import StrategyConvexBbtcWbtc
 import pytest
 
 

@@ -1,5 +1,5 @@
 import brownie
-from brownie import interface, StrategyConvexAlUsdUsdt
+from brownie import StrategyConvexAlUsdUsdt
 import pytest
 
 
