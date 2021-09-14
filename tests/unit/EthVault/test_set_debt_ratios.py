@@ -12,7 +12,7 @@ N = 20
     # random numbers for debt ratios
     rands=strategy("uint256[]", min_value=0, max_value=100, min_length=N, max_length=N),
 )
-def test_set_debt_ratios(ethVault, admin, token, user, k, rands):
+def test_set_debt_ratios(ethVault, admin, user, k, rands):
     vault = ethVault
     timeLock = vault.timeLock()
 

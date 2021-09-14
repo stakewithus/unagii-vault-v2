@@ -21,7 +21,7 @@ def test_approve_strategy(ethVault, testStrategyEth, user):
 
     strategy._setVault_(vault)
 
-    # revert if strategy.token != token
+    # revert if strategy.token != ETH
     strategy._setToken_(ZERO_ADDRESS)
     with brownie.reverts("strategy token != ETH"):
         vault.approveStrategy(strategy, {"from": timeLock})

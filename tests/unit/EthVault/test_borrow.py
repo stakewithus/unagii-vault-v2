@@ -63,7 +63,7 @@ def test_borrow(ethVault, admin, guardian, testStrategyEth, user):
         strat = vault.strategies(strategy)
 
         return {
-            "token": {"vault": vault.balance(), "strategy": strategy.balance()},
+            "eth": {"vault": vault.balance(), "strategy": strategy.balance()},
             "vault": {
                 "totalAssets": vault.totalAssets(),
                 "totalDebt": vault.totalDebt(),
@@ -75,10 +75,10 @@ def test_borrow(ethVault, admin, guardian, testStrategyEth, user):
     tx = vault.borrow(2 ** 256 - 1, {"from": strategy})
     after = snapshot()
 
-    diff = before["token"]["vault"] - after["token"]["vault"]
+    diff = before["eth"]["vault"] - after["eth"]["vault"]
     assert diff == calc
-    assert after["token"]["vault"] == before["token"]["vault"] - diff
-    assert after["token"]["strategy"] == before["token"]["strategy"] + diff
+    assert after["eth"]["vault"] == before["eth"]["vault"] - diff
+    assert after["eth"]["strategy"] == before["eth"]["strategy"] + diff
     assert after["vault"]["totalAssets"] == before["vault"]["totalAssets"]
     assert after["vault"]["totalDebt"] == before["vault"]["totalDebt"] + diff
     assert (

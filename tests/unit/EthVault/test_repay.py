@@ -26,7 +26,7 @@ def test_repay(ethVault, admin, testStrategyEth, user):
     # test borrow
     def snapshot():
         return {
-            "token": {"vault": vault.balance(), "strategy": strategy.balance()},
+            "eth": {"vault": vault.balance(), "strategy": strategy.balance()},
             "vault": {
                 "totalAssets": vault.totalAssets(),
                 "totalDebt": vault.totalDebt(),
@@ -45,8 +45,8 @@ def test_repay(ethVault, admin, testStrategyEth, user):
     tx = vault.repay({"from": strategy, "value": repay_amount})
     after = snapshot()
 
-    assert after["token"]["vault"] == before["token"]["vault"] + repay_amount
-    assert after["token"]["strategy"] == before["token"]["strategy"] - repay_amount
+    assert after["eth"]["vault"] == before["eth"]["vault"] + repay_amount
+    assert after["eth"]["strategy"] == before["eth"]["strategy"] - repay_amount
     assert after["vault"]["totalAssets"] == before["vault"]["totalAssets"]
     assert after["vault"]["totalDebt"] == before["vault"]["totalDebt"] - repay_amount
     assert (

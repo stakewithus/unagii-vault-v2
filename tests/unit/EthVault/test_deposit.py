@@ -40,7 +40,7 @@ def test_deposit(ethVault, uEth, user, amount):
 
     def snapshot():
         return {
-            "token": {
+            "eth": {
                 "balance": {
                     "user": user.balance(),
                     "vault": vault.balance(),
@@ -65,16 +65,15 @@ def test_deposit(ethVault, uEth, user, amount):
 
     assert tx.events["Deposit"].values() == [user, amount, calc]
 
-    # token balances
-    assert after["token"]["balance"]["user"] == (
-        before["token"]["balance"]["user"] - amount
+    # ETH balances
+    assert after["eth"]["balance"]["user"] == (
+        before["eth"]["balance"]["user"] - amount
     )
     assert (
-        after["token"]["balance"]["vault"]
-        == before["token"]["balance"]["vault"] + amount
+        after["eth"]["balance"]["vault"] == before["eth"]["balance"]["vault"] + amount
     )
     assert (
         after["vault"]["totalAssets"]
-        == after["token"]["balance"]["vault"] + after["vault"]["totalDebt"]
+        == after["eth"]["balance"]["vault"] + after["vault"]["totalDebt"]
     )
     assert after["uEth"]["balance"]["user"] > before["uEth"]["balance"]["user"]
