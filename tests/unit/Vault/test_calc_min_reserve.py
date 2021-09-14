@@ -1,11 +1,11 @@
 from brownie import ZERO_ADDRESS
-from brownie.test import given, strategy
 
 
-def test_calc_min_reserve(chain, vault, token, admin, testStrategy):
-    strategy = testStrategy
-    timeLock = vault.timeLock()
-
+def test_calc_min_reserve(
+    vault,
+    token,
+    admin,
+):
     token.mint(vault, 123456)
     free = vault.calcFreeFunds()
 
