@@ -23,6 +23,12 @@ def __init__(vault: address):
     self.token = ETH
 
 
+@external
+@payable
+def __default__():
+    pass
+
+
 @internal
 @view
 def _totalAssets() -> uint256:
