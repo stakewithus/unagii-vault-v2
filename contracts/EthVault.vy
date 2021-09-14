@@ -1,6 +1,5 @@
 # @version 0.2.15
 
-
 """
 @title Unagii EthVault 3.0.0
 @author stakewith.us
@@ -8,6 +7,7 @@
 """
 
 from vyper.interfaces import ERC20
+
 
 interface IStrategy:
     def vault() -> address: view
@@ -25,9 +25,7 @@ interface UnagiiToken:
 
 
 # ERC20 selectors
-APPROVE: constant(Bytes[4]) = method_id("approve(address,uint256)")
 TRANSFER: constant(Bytes[4]) = method_id("transfer(address,uint256)")
-TRANSFER_FROM: constant(Bytes[4]) = method_id("transferFrom(address,address,uint256)")
 
 # maximum number of active strategies
 MAX_ACTIVE: constant(uint256) = 20
@@ -35,6 +33,8 @@ MAX_TOTAL_DEBT_RATIO: constant(uint256) = 10000
 MIN_RESERVE_DENOMINATOR: constant(uint256) = 10000
 MAX_DEGRADATION: constant(uint256) = 10 ** 18
 MAX_BLOCK_DELAY: constant(uint256) = 1000
+
+ETH: constant(address) = 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE
 
 
 struct Strategy:
@@ -76,7 +76,6 @@ event SetWhitelist:
 event Deposit:
     sender: indexed(address)
     amount: uint256
-    diff: uint256
     shares: uint256
 
 
@@ -127,9 +126,13 @@ event Sync:
     lockedProfit: uint256
 
 
+event ReceiveEth:
+    sender: indexed(address)
+    amount: uint256
+
+
 paused: public(bool)
 
-token: public(ERC20)
 uToken: public(UnagiiToken)
 # privileges: time lock >= admin >= guardian >= worker
 timeLock: public(address)
@@ -138,7 +141,7 @@ admin: public(address)
 guardian: public(address)
 worker: public(address)
 
-# numerator to calculate the minimum amount of token to be kept in this vault
+# numerator to calculate the minimum amount of ETH to be kept in this vault
 # for cheap withdraw
 minReserve: public(uint256)
 
@@ -162,16 +165,15 @@ whitelist: public(HashMap[address, bool])
 
 
 @external
-def __init__(token: address, uToken: address, guardian: address, worker: address):
+def __init__(uToken: address, guardian: address, worker: address):
     self.timeLock = msg.sender
     self.admin = msg.sender
     self.guardian = guardian
     self.worker = worker
 
-    self.token = ERC20(token)
     self.uToken = UnagiiToken(uToken)
 
-    assert self.uToken.token() == self.token.address, "uToken token != token"
+    assert self.uToken.token() == ETH, "uToken token != ETH"
 
     self.paused = True
     self.blockDelay = 10
@@ -182,19 +184,26 @@ def __init__(token: address, uToken: address, guardian: address, worker: address
     self.minReserve = 500
 
 
+@external
+@payable
+def __default__():
+    """
+    @dev Prevent users from accidentally sending ETH
+    """
+    assert self.strategies[msg.sender].approved or self.whitelist[msg.sender], "!whitelist"
+    log ReceiveEth(msg.sender, msg.value)
+
+
+@external
+@view
+def token() -> address:
+    return ETH
+
+
 @internal
-def _safeApprove(token: address, spender: address, amount: uint256):
-    res: Bytes[32] = raw_call(
-        token,
-        concat(
-            APPROVE,
-            convert(spender, bytes32),
-            convert(amount, bytes32),
-        ),
-        max_outsize=32,
-    )
-    if len(res) > 0:
-        assert convert(res, bool), "approve failed"
+def _sendEth(to: address, amount: uint256):
+    assert to != ZERO_ADDRESS, "to = 0 address"
+    raw_call(to, b"", value=amount)
 
 
 @internal
@@ -210,24 +219,6 @@ def _safeTransfer(token: address, receiver: address, amount: uint256):
     )
     if len(res) > 0:
         assert convert(res, bool), "transfer failed"
-
-
-@internal
-def _safeTransferFrom(
-    token: address, owner: address, receiver: address, amount: uint256
-):
-    res: Bytes[32] = raw_call(
-        token,
-        concat(
-            TRANSFER_FROM,
-            convert(owner, bytes32),
-            convert(receiver, bytes32),
-            convert(amount, bytes32),
-        ),
-        max_outsize=32,
-    )
-    if len(res) > 0:
-        assert convert(res, bool), "transferFrom failed"
 
 
 @external
@@ -284,7 +275,7 @@ def setPause(paused: bool):
 @external
 def setMinReserve(minReserve: uint256):
     """
-    @notice Set minimum amount of token reserved in this vault for cheap
+    @notice Set minimum amount of ETH reserved in this vault for cheap
             withdrawn by user
     @param minReserve Numerator to calculate min reserve
            0 - all funds can be transferred to strategies
@@ -336,10 +327,10 @@ def setWhitelist(addr: address, approved: bool):
 @view
 def _totalAssets() -> uint256:
     """
-    @notice Total amount of token in this vault + amount in strategies
-    @dev Returns total amount of token locked in this contract
+    @notice Total amount of ETH in this vault + amount in strategies
+    @dev Returns total amount of ETH locked in this contract
     """
-    return self.token.balanceOf(self) + self.totalDebt
+    return self.balance + self.totalDebt
 
 
 @external
@@ -379,7 +370,7 @@ def calcLockedProfit() -> uint256:
 def _calcFreeFunds() -> uint256:
     """
     @notice Calculate free funds (total assets - locked profit)
-    @dev Returns total amount of tokens that can be withdrawn
+    @dev Returns total amount of ETH that can be withdrawn
     """
     return self._totalAssets() - self._calcLockedProfit()
 
@@ -394,7 +385,7 @@ def calcFreeFunds() -> uint256:
 @view
 def _calcMinReserve(freeFunds: uint256) -> uint256:
     """
-    @notice Calculates minimum amount of token that is reserved in vault for
+    @notice Calculates minimum amount of ETH that is reserved in vault for
             cheap withdraw
     @param freeFunds Free funds
     @dev Returns min reserve
@@ -415,7 +406,7 @@ def _calcSharesToMint(
 ) -> uint256:
     """
     @notice Calculate uToken shares to mint
-    @param amount Amount of token to deposit
+    @param amount Amount of ETH to deposit
     @param totalSupply Total amount of shares
     @param freeFunds Free funds before deposit
     @dev Returns amount of uToken to mint. Input must be numbers before deposit
@@ -424,7 +415,7 @@ def _calcSharesToMint(
     # s = shares to mint
     # T = total shares before mint
     # a = deposit amount
-    # P = total amount of token in vault + strategies before deposit
+    # P = total amount of ETH in vault + strategies before deposit
     # s / (T + s) = a / (P + a)
     # sP = aT
     # a = 0               | mint s = 0
@@ -447,16 +438,16 @@ def calcSharesToMint(amount: uint256) -> uint256:
 
 
 @external
+@payable
 @nonreentrant("lock")
-def deposit(amount: uint256, _min: uint256) -> uint256:
+def deposit(_min: uint256) -> uint256:
     """
-    @notice Deposit token into vault
-    @param amount Amount of token to deposit
+    @notice Deposit ETH into vault
     @param _min Minimum amount of shares to be minted
     @dev Returns actual amount of shares minted
     """
     assert not self.paused, "paused"
-    assert amount > 0, "deposit = 0"
+    assert msg.value > 0, "deposit = 0"
 
     # check whitelisted or block delay
     assert (
@@ -465,19 +456,15 @@ def deposit(amount: uint256, _min: uint256) -> uint256:
     ), "block < delay"
 
     totalSupply: uint256 = self.uToken.totalSupply()
-    freeFunds: uint256 = self._calcFreeFunds()
-
-    bal: uint256 = self.token.balanceOf(self)
-    self._safeTransferFrom(self.token.address, msg.sender, self, amount)
-    diff: uint256 = self.token.balanceOf(self) - bal
+    freeFunds: uint256 = self._calcFreeFunds() - msg.value
 
     # calculate with free funds before deposit
-    shares: uint256 = self._calcSharesToMint(diff, totalSupply, freeFunds)
+    shares: uint256 = self._calcSharesToMint(msg.value, totalSupply, freeFunds)
     assert shares >= _min, "shares < min"
 
     self.uToken.mint(msg.sender, shares)
 
-    log Deposit(msg.sender, amount, diff, shares)
+    log Deposit(msg.sender, msg.value, shares)
 
     return shares
 
@@ -486,17 +473,17 @@ def deposit(amount: uint256, _min: uint256) -> uint256:
 @pure
 def _calcWithdraw(shares: uint256, totalSupply: uint256, freeFunds: uint256) -> uint256:
     """
-    @notice Calculate amount of token to withdraw
+    @notice Calculate amount of ETH to withdraw
     @param shares Amount of uToken shares to burn
     @param totalSupply Total amount of shares before burn
     @param freeFunds Free funds
-    @dev Returns amount of token to withdraw
+    @dev Returns amount of ETH to withdraw
     @dev Calculated with `freeFunds`, not `totalAssets`
     """
     # s = shares
     # T = total supply of shares
     # a = amount to withdraw
-    # P = total amount of token in vault + strategies
+    # P = total amount of ETH in vault + strategies
     # s / T = a / P (constraints T >= s, P >= a)
     # sP = aT
     # s = 0               | a = 0
@@ -517,12 +504,11 @@ def calcWithdraw(shares: uint256) -> uint256:
 
 @external
 @nonreentrant("lock")
-def withdraw(shares: uint256, _min: uint256) -> uint256:
+def withdraw(shares: uint256, _min: uint256):
     """
-    @notice Withdraw token from vault
+    @notice Withdraw ETH from vault
     @param shares Amount of uToken to burn
-    @param _min Minimum amount of token that msg.sender will receive
-    @dev Returns actual amount of token transferred to msg.sender
+    @param _min Minimum amount of ETH that msg.sender will receive
     """
     assert shares > 0, "shares = 0"
 
@@ -537,7 +523,7 @@ def withdraw(shares: uint256, _min: uint256) -> uint256:
     )
 
     # withdraw from strategies if amount to withdraw > balance of vault
-    bal: uint256 = self.token.balanceOf(self)
+    bal: uint256 = self.balance
     if amount > bal:
         for strat in self.activeStrategies:
             # reached end of active strategies
@@ -552,8 +538,8 @@ def withdraw(shares: uint256, _min: uint256) -> uint256:
             need: uint256 = min(amount - bal, debt)
             if need > 0:
                 IStrategy(strat).withdraw(need)
-                diff: uint256 = self.token.balanceOf(self) - bal
-                bal += diff  # = self.token.balanceOf(self)
+                diff: uint256 = self.balance - bal
+                bal += diff  # = self.balance
 
                 self.strategies[strat].debt -= diff
                 self.totalDebt -= diff
@@ -572,11 +558,9 @@ def withdraw(shares: uint256, _min: uint256) -> uint256:
     self.uToken.burn(msg.sender, shares)
 
     assert amount >= _min, "amount < min"
-    self._safeTransfer(self.token.address, msg.sender, amount)
+    self._sendEth(msg.sender, amount)
 
     log Withdraw(msg.sender, shares, amount)
-
-    return amount
 
 
 # array functions see test/ArrayTest.vy for tests
@@ -631,7 +615,7 @@ def approveStrategy(strategy: address):
 
     assert not self.strategies[strategy].approved, "approved"
     assert IStrategy(strategy).vault() == self, "strategy vault != vault"
-    assert IStrategy(strategy).token() == self.token.address, "strategy token != token"
+    assert IStrategy(strategy).token() == ETH, "strategy token != ETH"
 
     self.strategies[strategy] = Strategy(
         {
@@ -759,14 +743,14 @@ def setDebtRatios(debtRatios: uint256[MAX_ACTIVE]):
 @view
 def _calcMaxBorrow(strategy: address) -> uint256:
     """
-    @notice Calculate how much `token` strategy can borrow
+    @notice Calculate how much ETH strategy can borrow
     @param strategy Address of strategy
-    @dev Returns amount of `token` that `strategy` can borrow
+    @dev Returns amount of ETH that `strategy` can borrow
     """
     if self.paused or self.totalDebtRatio == 0:
         return 0
 
-    bal: uint256 = self.token.balanceOf(self)
+    bal: uint256 = self.balance
     freeFunds: uint256 = self._calcFreeFunds()
     minReserve: uint256 = self._calcMinReserve(freeFunds)
     if bal <= minReserve:
@@ -780,7 +764,7 @@ def _calcMaxBorrow(strategy: address) -> uint256:
     if debt >= limit:
         return 0
 
-    # minimum of debt limit and tokens available in this vault
+    # minimum of debt limit and ETH available in this vault
     return min(limit - debt, bal - minReserve)
 
 
@@ -791,12 +775,11 @@ def calcMaxBorrow(strategy: address) -> uint256:
 
 
 @external
-def borrow(amount: uint256) -> uint256:
+def borrow(amount: uint256):
     """
-    @notice Borrow token from vault
-    @param amount Amount of token to borrow
+    @notice Borrow ETH from vault
+    @param amount Amount of ETH to borrow
     @dev Only active strategy can borrow
-    @dev Returns amount that was sent
     """
     assert self.strategies[msg.sender].active, "!active strategy"
 
@@ -804,38 +787,28 @@ def borrow(amount: uint256) -> uint256:
     _amount: uint256 = min(amount, available)
     assert _amount > 0, "borrow = 0"
 
-    self._safeTransfer(self.token.address, msg.sender, _amount)
+    self._sendEth(msg.sender, _amount)
 
     self.totalDebt += _amount
     self.strategies[msg.sender].debt += _amount
 
     log Borrow(msg.sender, _amount)
 
-    return _amount
-
 
 @external
-def repay(amount: uint256) -> uint256:
+@payable
+def repay():
     """
-    @notice Repay token to vault
-    @param amount Amount of token to repay
+    @notice Repay ETH to vault
     @dev Only approved and active strategy can repay
-    @dev Returns actual amount that was repaid
     """
     assert self.strategies[msg.sender].approved, "!approved strategy"
+    assert msg.value > 0, "repay = 0"
 
-    assert amount > 0, "repay = 0"
+    self.totalDebt -= msg.value
+    self.strategies[msg.sender].debt -= msg.value
 
-    bal: uint256 = self.token.balanceOf(self)
-    self._safeTransferFrom(self.token.address, msg.sender, self, amount)
-    diff: uint256 = self.token.balanceOf(self) - bal
-
-    self.totalDebt -= diff
-    self.strategies[msg.sender].debt -= diff
-
-    log Repay(msg.sender, diff)
-
-    return diff
+    log Repay(msg.sender, msg.value)
 
 
 @external
@@ -885,10 +858,8 @@ def sync(strategy: address, minTotal: uint256, maxTotal: uint256):
 @external
 def sweep(token: address):
     """
-    @notice Transfer any token (except `token`) accidentally sent to this contract
+    @notice Transfer any token accidentally sent to this contract
             to admin or time lock
-    @dev Cannot transfer `self.token`
     """
     assert msg.sender in [self.timeLock, self.admin], "!auth"
-    assert token != self.token.address, "protected"
     self._safeTransfer(token, msg.sender, ERC20(token).balanceOf(self))

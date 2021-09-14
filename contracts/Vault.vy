@@ -822,7 +822,6 @@ def repay(amount: uint256) -> uint256:
     @dev Returns actual amount that was repaid
     """
     assert self.strategies[msg.sender].approved, "!approved strategy"
-
     assert amount > 0, "repay = 0"
 
     bal: uint256 = self.token.balanceOf(self)
