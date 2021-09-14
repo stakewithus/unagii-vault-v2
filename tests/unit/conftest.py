@@ -9,6 +9,7 @@ from brownie import (
     TestToken,
     TestVault,
     TestStrategy,
+    TestStrategyEth,
     TxTest,
     ZERO_ADDRESS,
 )
@@ -135,3 +136,8 @@ def testEthVault(TestEthVault, admin):
 @pytest.fixture(scope="module")
 def testStrategy(TestStrategy, vault, token, admin):
     yield TestStrategy.deploy(vault, token, {"from": admin})
+
+
+@pytest.fixture(scope="module")
+def testStrategyEth(TestStrategyEth, ethVault, admin):
+    yield TestStrategyEth.deploy(ethVault, {"from": admin})
