@@ -2,44 +2,50 @@ import brownie
 import pytest
 
 
-def test_repay(strategy, usdtFundManager, admin, usdt, usdt_whale):
+DECIMALS = 6
+
+
+def test_repay(strategy, usdtVault, admin, usdt, usdt_whale):
     token = usdt
     whale = usdt_whale
+    vault = usdtVault
 
-    fundManager = usdtFundManager
+    # deposit into vault
+    deposit_amount = 10 ** DECIMALS
+    token.transfer(vault, deposit_amount, {"from": whale})
 
-    amount = 10 ** 6
-    token.transfer(fundManager, amount, {"from": whale})
+    calc = vault.calcMaxBorrow(strategy)
+    assert calc > 0
 
-    strategy.deposit(2 ** 256 - 1, amount, {"from": admin})
+    # transfer to strategy
+    strategy.deposit(2 ** 256 - 1, calc, {"from": admin})
 
     def snapshot():
         return {
             "token": {
                 "strategy": token.balanceOf(strategy),
-                "fundManager": token.balanceOf(fundManager),
+                "vault": token.balanceOf(vault),
             },
             "strategy": {"totalAssets": strategy.totalAssets()},
-            "fundManager": {"debt": fundManager.getDebt(strategy)},
+            "vault": {"debt": vault.strategies(strategy)["debt"]},
         }
 
+    total = strategy.totalAssets()
+    assert total >= calc * 0.99
+    repay_amount = total
+
     before = snapshot()
-    tx = strategy.repay(2 ** 256 - 1, 1, {"from": admin})
+    strategy.repay(repay_amount, repay_amount * 0.99, {"from": admin})
     after = snapshot()
 
-    # print(before)
-    # print(after)
-    # for e in tx.events:
-    #     print(e)
+    print(before)
+    print(after)
 
-    event = tx.events[-1]
-    repaid = event["repaid"]
-
-    assert after["strategy"]["totalAssets"] == 0
-
-    diff = before["strategy"]["totalAssets"] - after["strategy"]["totalAssets"]
-    assert diff > 0
-    assert repaid >= 0.99 * diff
-    assert after["token"]["strategy"] == 0
-    assert after["token"]["fundManager"] == before["token"]["fundManager"] + repaid
-    assert after["fundManager"]["debt"] == before["fundManager"]["debt"] - repaid
+    repaid = after["token"]["vault"] - before["token"]["vault"]
+    assert repaid >= 0.99 * repay_amount
+    # less than 0.01% slip
+    assert (
+        before["strategy"]["totalAssets"] - after["strategy"]["totalAssets"]
+        <= 1.0001 * repay_amount
+    )
+    assert before["vault"]["debt"] - after["vault"]["debt"] == repaid

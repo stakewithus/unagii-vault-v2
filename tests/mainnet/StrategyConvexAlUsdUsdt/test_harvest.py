@@ -2,41 +2,43 @@ import brownie
 import pytest
 
 
-def test_harvest(strategy, usdtFundManager, admin, usdt, usdt_whale):
+DECIMALS = 6
+
+
+def test_harvest(strategy, usdtVault, admin, treasury, usdt, usdt_whale):
     token = usdt
     whale = usdt_whale
+    vault = usdtVault
 
-    fundManager = usdtFundManager
+    # deposit into vault
+    deposit_amount = 1000 * 10 ** DECIMALS
+    token.transfer(vault, deposit_amount, {"from": whale})
 
-    # deposit into fund manager
-    deposit_amount = 10 ** 6
-    token.transfer(fundManager, deposit_amount, {"from": whale})
+    calc = vault.calcMaxBorrow(strategy)
+    assert calc > 0
 
     # transfer to strategy
-    strategy.deposit(2 ** 256 - 1, deposit_amount, {"from": admin})
+    strategy.deposit(2 ** 256 - 1, calc, {"from": admin})
 
     def snapshot():
         return {
             "token": {
                 "strategy": token.balanceOf(strategy),
-                "fundManager": token.balanceOf(fundManager),
+                "vault": token.balanceOf(vault),
+                "treasury": token.balanceOf(treasury),
             },
             "strategy": {"totalAssets": strategy.totalAssets()},
-            "fundManager": {"debt": fundManager.getDebt(strategy)},
         }
 
-    # create profit
-    min_profit = 0.001 * deposit_amount
-    token.transfer(strategy, min_profit, {"from": whale})
+    min_profit = 0
 
     before = snapshot()
-    tx = strategy.harvest(1, 0, 2 ** 256 - 1, {"from": admin})
+    strategy.harvest(min_profit, {"from": admin})
     after = snapshot()
 
-    # print(before)
-    # print(after)
-    # for e in tx.events:
-    #     print(e)
+    print(before)
+    print(after)
 
-    assert after["strategy"]["totalAssets"] >= before["fundManager"]["debt"]
-    assert after["token"]["fundManager"] >= before["token"]["fundManager"]
+    assert after["strategy"]["totalAssets"] >= before["strategy"]["totalAssets"]
+    assert after["token"]["strategy"] >= before["token"]["strategy"]
+    assert after["token"]["treasury"] >= before["token"]["treasury"]
