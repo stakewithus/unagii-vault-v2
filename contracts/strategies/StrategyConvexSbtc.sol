@@ -111,7 +111,7 @@ contract StrategyConvexSbtc is Strategy {
         shouldClaimExtras = _shouldClaimExtras;
     }
 
-    function _totalAssets() internal view override returns (uint) {
+    function _totalAssets() internal view override returns (uint total) {
         /*
         s0 = shares in curve pool
         p0 = price per share of curve pool
@@ -121,11 +121,8 @@ contract StrategyConvexSbtc is Strategy {
         */
         // amount of Curve LP tokens in Convex
         uint lpBal = REWARD.balanceOf(address(this));
-        uint bal = lpBal.mul(CURVE_POOL.get_virtual_price()) / (MUL * 1e18);
-
-        bal = bal.add(token.balanceOf(address(this)));
-
-        return bal;
+        total = lpBal.mul(CURVE_POOL.get_virtual_price()) / (MUL * 1e18);
+        total = total.add(token.balanceOf(address(this)));
     }
 
     function _deposit() internal override {

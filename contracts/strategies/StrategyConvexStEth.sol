@@ -113,7 +113,6 @@ contract StrategyConvexStEth is StrategyEth {
         uint lpBal = REWARD.balanceOf(address(this));
         // amount of ETH converted from Curve LP
         total = lpBal.mul(CURVE_POOL.get_virtual_price()) / 1e18;
-
         total = total.add(address(this).balance);
     }
 

@@ -137,7 +137,6 @@ contract StrategyConvexUsdp is Strategy {
         // BASE_POOL.get_virtual_price is included in CURVE_POOL.get_virtual_price
         // so CURVE_POOL.get_virtual_price = p0 * p1
         total = lpBal.mul(CURVE_POOL.get_virtual_price()) / (MUL * 1e18);
-
         total = total.add(token.balanceOf(address(this)));
     }
 
