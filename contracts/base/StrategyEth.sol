@@ -229,8 +229,8 @@ abstract contract StrategyEth is PerfFee, Dex {
             _amount = bal;
         }
 
-        uint repaid = vault.repay{value: _amount}();
-        require(repaid >= _min, "repaid < min");
+        vault.repay{value: _amount}();
+        require(_amount >= _min, "repaid < min");
     }
 
     function _harvest() internal virtual;

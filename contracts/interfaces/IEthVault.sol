@@ -8,5 +8,5 @@ interface IEthVault {
 
     function borrow(uint amount) external returns (uint);
 
-    function repay() external payable returns (uint);
+    function repay() external payable;
 }

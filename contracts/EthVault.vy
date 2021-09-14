@@ -781,11 +781,12 @@ def calcMaxBorrow(strategy: address) -> uint256:
 
 
 @external
-def borrow(amount: uint256):
+def borrow(amount: uint256) -> uint256:
     """
     @notice Borrow ETH from vault
     @param amount Amount of ETH to borrow
     @dev Only active strategy can borrow
+    @dev Returns amount that was sent
     """
     assert self.strategies[msg.sender].active, "!active strategy"
 
@@ -799,6 +800,8 @@ def borrow(amount: uint256):
     self.strategies[msg.sender].debt += _amount
 
     log Borrow(msg.sender, _amount)
+
+    return _amount
 
 
 @external
