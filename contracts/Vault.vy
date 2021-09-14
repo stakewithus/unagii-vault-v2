@@ -8,6 +8,7 @@
 
 from vyper.interfaces import ERC20
 
+
 interface IStrategy:
     def vault() -> address: view
     def token() -> address: view
@@ -773,7 +774,11 @@ def _calcMaxBorrow(strategy: address) -> uint256:
 
     # min reserve <= free funds
     # strategy debtRatio = 0 if strategy is not active
-    limit: uint256 = (freeFunds - minReserve) * self.strategies[strategy].debtRatio / self.totalDebtRatio
+    limit: uint256 = (
+        (freeFunds - minReserve)
+        * self.strategies[strategy].debtRatio
+        / self.totalDebtRatio
+    )
     debt: uint256 = self.strategies[strategy].debt
 
     if debt >= limit:

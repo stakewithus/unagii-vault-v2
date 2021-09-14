@@ -190,7 +190,9 @@ def __default__():
     """
     @dev Prevent users from accidentally sending ETH
     """
-    assert self.strategies[msg.sender].approved or self.whitelist[msg.sender], "!whitelist"
+    assert (
+        self.strategies[msg.sender].approved or self.whitelist[msg.sender]
+    ), "!whitelist"
     log ReceiveEth(msg.sender, msg.value)
 
 
@@ -758,7 +760,11 @@ def _calcMaxBorrow(strategy: address) -> uint256:
 
     # min reserve <= free funds
     # strategy debtRatio = 0 if strategy is not active
-    limit: uint256 = (freeFunds - minReserve) * self.strategies[strategy].debtRatio / self.totalDebtRatio
+    limit: uint256 = (
+        (freeFunds - minReserve)
+        * self.strategies[strategy].debtRatio
+        / self.totalDebtRatio
+    )
     debt: uint256 = self.strategies[strategy].debt
 
     if debt >= limit:
