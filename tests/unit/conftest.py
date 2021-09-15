@@ -6,8 +6,10 @@ from brownie import (
     TimeLock,
     PerfFeeTest,
     StrategyTest,
+    StrategyEthTest,
     TestToken,
     TestVault,
+    TestEthVault,
     TestStrategy,
     TestStrategyEth,
     TxTest,
@@ -119,6 +121,16 @@ def strategyTest(StrategyTest, token, testVault, admin, treasury):
 
 
 @pytest.fixture(scope="module")
+def strategyEthTest(StrategyEthTest, testEthVault, admin, treasury):
+    minProfit = 10 ** 18
+    maxProfit = 1000 * 10 ** 18
+    strategyTest = StrategyEthTest.deploy(
+        testEthVault, treasury, minProfit, maxProfit, {"from": admin}
+    )
+    yield strategyTest
+
+
+@pytest.fixture(scope="module")
 def txTest(TxTest, admin):
     yield TxTest.deploy({"from": admin})
 
@@ -130,7 +142,7 @@ def testVault(TestVault, token, admin):
 
 @pytest.fixture(scope="module")
 def testEthVault(TestEthVault, admin):
-    yield TestEthVault.deploy(ETH, {"from": admin})
+    yield TestEthVault.deploy({"from": admin})
 
 
 @pytest.fixture(scope="module")
