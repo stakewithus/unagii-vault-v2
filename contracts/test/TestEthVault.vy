@@ -2,7 +2,9 @@
 
 from vyper.interfaces import ERC20
 
-token: public(ERC20)
+ETH: constant(address) = 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE
+
+token: public(address)
 
 ## test helpers ##
 maxBorrow: public(uint256)
@@ -12,30 +14,34 @@ loss: public(uint256)
 
 
 @external
-def __init__(token: address):
-    self.token = ERC20(token)
+def __init__():
+    self.token = ETH
     self.maxBorrow = MAX_UINT256
     self.maxRepay = MAX_UINT256
 
 
 @external
-def borrow(_amount: uint256) -> uint256:
-    amount: uint256 = min(_amount, self.maxBorrow)
-    self.token.transfer(msg.sender, amount)
-    return amount
+@payable
+def __default__():
+    pass
 
 
 @external
-def repay(_amount: uint256) -> uint256:
-    amount: uint256 = min(_amount, self.maxRepay)
-    self.token.transferFrom(msg.sender, self, amount)
-    return amount
+def borrow(_amount: uint256) -> uint256:
+    send(msg.sender, _amount)
+    return _amount
+
+
+@external
+@payable
+def repay():
+    pass
 
 
 ## test helpers ##
 @external
 def _setToken_(token: address):
-    self.token = ERC20(token)
+    self.token = token
 
 
 @external
@@ -46,3 +52,8 @@ def _setMaxBorrow_(maxBorrow: uint256):
 @external
 def _setMaxRepay_(maxRepay: uint256):
     self.maxRepay = maxRepay
+
+
+@external
+def _burn_(amount: uint256):
+    send(ZERO_ADDRESS, amount)

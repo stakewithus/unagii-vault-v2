@@ -13,11 +13,11 @@ def test_set_vault(strategyTest, TestVault, token, admin, user):
         strategy.setVault(newVault, {"from": user})
 
     # new vault token != token
-    newVault.setToken(ZERO_ADDRESS)
+    newVault._setToken_(ZERO_ADDRESS)
     with brownie.reverts("new vault token != token"):
         strategy.setVault(newVault, {"from": timeLock})
 
-    newVault.setToken(token)
+    newVault._setToken_(token)
 
     tx = strategy.setVault(newVault, {"from": timeLock})
 

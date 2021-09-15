@@ -103,7 +103,7 @@ def test_sync(
 
     # test loss
     _loss = min(loss, vault.totalDebt())
-    strategy.__burn__(_loss, {"from": admin})
+    strategy._burn_(_loss, {"from": admin})
     total = strategy.totalAssets()
 
     before = snapshot()

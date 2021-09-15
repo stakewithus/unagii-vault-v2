@@ -52,7 +52,7 @@ def _setVault_(vault: address):
 def _setToken_(token: address):
     self.token = token
 
-### test helper
+
 @external
-def __burn__(amount: uint256):
+def _burn_(amount: uint256):
     send(ZERO_ADDRESS, amount)
