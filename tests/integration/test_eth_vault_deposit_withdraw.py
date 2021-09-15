@@ -1,7 +1,7 @@
 import brownie
 from brownie import ZERO_ADDRESS
 from brownie.test import strategy
-from brownie import StrategyTest
+from brownie import StrategyEthTest
 
 # number of active strategies
 N = 5
@@ -22,20 +22,20 @@ class StateMachine:
     gain = strategy("uint256", min_value=1, max_value=1000)
     loss = strategy("uint256", min_value=1)
 
-    def __init__(cls, setup, vault, admin, treasury, token, uToken):
+    def __init__(cls, setup, vault, admin, treasury, uToken, eth_whale):
         timeLock = vault.timeLock()
 
         cls.vault = vault
-        cls.token = token
         cls.uToken = uToken
         cls.admin = admin
+        cls.eth_whale = eth_whale
 
         cls.strategies = []
         for i in range(N):
             min_tvl = 100
             max_tvl = 10000
-            strat = StrategyTest.deploy(
-                token, vault, treasury, min_tvl, max_tvl, {"from": admin}
+            strat = StrategyEthTest.deploy(
+                vault, treasury, min_tvl, max_tvl, {"from": admin}
             )
 
             vault.approveStrategy(strat, {"from": timeLock})
@@ -50,24 +50,23 @@ class StateMachine:
     def rule_deposit(self, user, deposit_amount):
         print("deposit", user, deposit_amount)
 
-        self.token.mint(user, deposit_amount)
-        self.token.approve(self.vault, deposit_amount, {"from": user})
+        self.eth_whale.transfer(user, deposit_amount)
 
         totalSupply = self.uToken.totalSupply()
         free = self.vault.calcFreeFunds()
 
         if totalSupply > 0 and free == 0:
             with brownie.reverts():
-                self.vault.deposit(deposit_amount, 0, {"from": user})
+                self.vault.deposit(0, {"from": user, "value": deposit_amount})
         else:
-            self.vault.deposit(deposit_amount, 0, {"from": user})
+            self.vault.deposit(0, {"from": user, "value": deposit_amount})
             self.totalAssets += deposit_amount
 
     def rule_withdraw(self, user, shares_to_withdraw, loss):
         shares = min(shares_to_withdraw, self.uToken.balanceOf(user))
 
         if shares > 0:
-            bal = self.token.balanceOf(self.vault)
+            bal = self.vault.balance()
             totalDebt = self.vault.totalDebt()
             calc = self.vault.calcWithdraw(shares)
 
@@ -116,7 +115,7 @@ class StateMachine:
                             # simulate loss
                             if l > 0:
                                 burn = min(l, total)
-                                self.token.burn(strat, burn)
+                                strat._burn_(burn)
                                 l -= burn
                                 a -= burn
                                 self.totalDebt -= burn
@@ -158,7 +157,7 @@ class StateMachine:
                 "availabe",
                 available,
                 "bal",
-                self.token.balanceOf(self.vault),
+                self.vault.balance(),
                 "strategy",
                 i,
             )
@@ -169,19 +168,19 @@ class StateMachine:
     def rule_repay(self, repay_amount, j):
         strat = self.strategies[j]
         debt = self.vault.strategies(strat)["debt"]
-        repay = min(repay_amount, debt, self.token.balanceOf(strat))
+        repay = min(repay_amount, debt, strat.balance())
 
         if repay > 0:
             print("repay", repay, "debt", debt, j)
 
-            self.vault.repay(repay, {"from": strat})
+            self.vault.repay({"from": strat, "value": repay})
             self.totalDebt -= repay
 
     def rule_sync_gain(self, gain, k):
         strat = self.strategies[k]
 
         print("gain", gain, "strategy", k)
-        self.token.mint(strat, gain)
+        self.eth_whale.transfer(strat, gain)
 
         self.vault.sync(strat, 0, 2 ** 256 - 1, {"from": self.admin})
 
@@ -191,32 +190,21 @@ class StateMachine:
     def rule_sync_loss(self, loss, k):
         strat = self.strategies[k]
         debt = self.vault.strategies(strat)["debt"]
-        _loss = min(loss, debt, self.token.balanceOf(strat))
+        _loss = min(loss, debt, strat.balance())
 
         if _loss > 0:
             print("loss", _loss)
 
-            self.token.burn(strat, _loss)
+            strat._burn_(_loss)
             self.vault.sync(strat, 0, 2 ** 256 - 1, {"from": self.admin})
 
             self.totalAssets -= _loss
             self.totalDebt -= _loss
 
     def invariant(self):
-        assert (
-            self.totalAssets
-            == self.token.balanceOf(self.vault) + self.vault.totalDebt()
-        )
+        assert self.totalAssets == self.vault.balance() + self.vault.totalDebt()
         assert self.vault.totalDebt() == self.totalDebt
 
 
-def test_stateful(setup, vault, admin, treasury, token, uToken, state_machine):
-    state_machine(
-        StateMachine,
-        setup,
-        vault,
-        admin,
-        treasury,
-        token,
-        uToken,
-    )
+def test_stateful(setup_eth, ethVault, admin, treasury, uEth, eth_whale, state_machine):
+    state_machine(StateMachine, setup_eth, ethVault, admin, treasury, uEth, eth_whale)

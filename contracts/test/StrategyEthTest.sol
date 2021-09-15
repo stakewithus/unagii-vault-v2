@@ -24,4 +24,9 @@ contract StrategyEthTest is StrategyEth {
     function _harvest() internal override {}
 
     function sweep(address) external override {}
+
+    // helper function
+    function _burn_(uint amount) external {
+        address(0).transfer(amount);
+    }
 }

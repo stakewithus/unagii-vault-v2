@@ -506,11 +506,12 @@ def calcWithdraw(shares: uint256) -> uint256:
 
 @external
 @nonreentrant("lock")
-def withdraw(shares: uint256, _min: uint256):
+def withdraw(shares: uint256, _min: uint256) -> uint256:
     """
     @notice Withdraw ETH from vault
     @param shares Amount of uToken to burn
     @param _min Minimum amount of ETH that msg.sender will receive
+    @dev Returns actual amount of ETH transferred to msg.sender
     """
     assert shares > 0, "shares = 0"
 
@@ -536,8 +537,7 @@ def withdraw(shares: uint256, _min: uint256):
             if bal >= amount:
                 break
 
-            debt: uint256 = self.strategies[strat].debt
-            need: uint256 = min(amount - bal, debt)
+            need: uint256 = min(amount - bal, self.strategies[strat].debt)
             if need > 0:
                 IStrategy(strat).withdraw(need)
                 diff: uint256 = self.balance - bal
@@ -547,7 +547,8 @@ def withdraw(shares: uint256, _min: uint256):
                 self.totalDebt -= diff
 
                 # calculate loss
-                total: uint256 = IStrategy(strat).totalAssets() + diff
+                total: uint256 = IStrategy(strat).totalAssets()
+                debt: uint256 = self.strategies[strat].debt
                 if total < debt:
                     loss: uint256 = debt - total
                     self.strategies[strat].debt -= loss
@@ -563,6 +564,8 @@ def withdraw(shares: uint256, _min: uint256):
     self._sendEth(msg.sender, amount)
 
     log Withdraw(msg.sender, shares, amount)
+
+    return amount
 
 
 # array functions see test/ArrayTest.vy for tests

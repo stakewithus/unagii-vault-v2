@@ -548,8 +548,7 @@ def withdraw(shares: uint256, _min: uint256) -> uint256:
             if bal >= amount:
                 break
 
-            debt: uint256 = self.strategies[strat].debt
-            need: uint256 = min(amount - bal, debt)
+            need: uint256 = min(amount - bal, self.strategies[strat].debt)
             if need > 0:
                 IStrategy(strat).withdraw(need)
                 diff: uint256 = self.token.balanceOf(self) - bal
@@ -559,7 +558,8 @@ def withdraw(shares: uint256, _min: uint256) -> uint256:
                 self.totalDebt -= diff
 
                 # calculate loss
-                total: uint256 = IStrategy(strat).totalAssets() + diff
+                total: uint256 = IStrategy(strat).totalAssets()
+                debt: uint256 = self.strategies[strat].debt
                 if total < debt:
                     loss: uint256 = debt - total
                     self.strategies[strat].debt -= loss
