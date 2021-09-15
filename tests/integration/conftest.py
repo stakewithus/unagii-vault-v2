@@ -3,6 +3,7 @@ from brownie import (
     ZERO_ADDRESS,
     accounts,
     Vault,
+    EthVault,
     UnagiiToken,
     TimeLock,
     TestToken,
@@ -78,6 +79,12 @@ def vault(Vault, token, uToken, admin, guardian, worker):
 
 
 @pytest.fixture(scope="module")
+def ethVault(EthVault, uEth, admin, guardian, worker):
+    vault = EthVault.deploy(uEth, guardian, worker, {"from": admin})
+    yield vault
+
+
+@pytest.fixture(scope="module")
 def flash(TestFlash, token, uToken, vault, attacker):
     flash = TestFlash.deploy(token, uToken, vault, {"from": attacker})
     yield flash
@@ -106,6 +113,36 @@ def setup(chain, uToken, vault, timeLock, admin):
     eta = tx.timestamp + DELAY
     chain.sleep(DELAY)
     timeLock.execute(uToken, 0, data, eta, 0, {"from": admin})
+
+    # vault - setup
+    vault.setBlockDelay(1, {"from": admin})
+    vault.setPause(False, {"from": admin})
+
+    # vault - set admin to time lock
+    vault.setNextTimeLock(timeLock, {"from": admin})
+
+    data = vault.acceptTimeLock.encode_input()
+    tx = timeLock.queue(vault, 0, data, DELAY, 0, {"from": admin})
+    eta = tx.timestamp + DELAY
+    chain.sleep(DELAY)
+    timeLock.execute(vault, 0, data, eta, 0, {"from": admin})
+
+
+@pytest.fixture(scope="module")
+def setup_eth(chain, uEth, ethVault, timeLock, admin):
+    vault = ethVault
+
+    # uEth - set minter to vault
+    uEth.setMinter(vault, {"from": admin})
+
+    # uEth - set next time lock
+    uEth.setNextTimeLock(timeLock, {"from": admin})
+
+    data = uEth.acceptTimeLock.encode_input()
+    tx = timeLock.queue(uEth, 0, data, DELAY, 0, {"from": admin})
+    eta = tx.timestamp + DELAY
+    chain.sleep(DELAY)
+    timeLock.execute(uEth, 0, data, eta, 0, {"from": admin})
 
     # vault - setup
     vault.setBlockDelay(1, {"from": admin})
