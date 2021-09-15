@@ -8,7 +8,9 @@ from brownie import (
     TimeLock,
     TestToken,
     TestFlash,
+    TestFlashEth,
     TestZap,
+    TestZapEth,
 )
 
 
@@ -91,8 +93,20 @@ def flash(TestFlash, token, uToken, vault, attacker):
 
 
 @pytest.fixture(scope="module")
+def flashEth(TestFlashEth, uEth, ethVault, attacker):
+    flash = TestFlashEth.deploy(uEth, ethVault, {"from": attacker})
+    yield flash
+
+
+@pytest.fixture(scope="module")
 def zap(TestZap, token, uToken, vault, admin):
     zap = TestZap.deploy(token, uToken, vault, {"from": admin})
+    yield zap
+
+
+@pytest.fixture(scope="module")
+def zapEth(TestZapEth, uEth, ethVault, admin):
+    zap = TestZapEth.deploy(uEth, ethVault, {"from": admin})
     yield zap
 
 
