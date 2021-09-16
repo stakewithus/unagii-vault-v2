@@ -17,6 +17,8 @@ interface IEthFundManager {
     function report(uint gain, uint loss) external payable;
 
     function getDebt(address strategy) external view returns (uint);
+
+    function calcMaxBorrow(address strategy) external view returns (uint);
 }
 
 abstract contract V2StrategyEth {

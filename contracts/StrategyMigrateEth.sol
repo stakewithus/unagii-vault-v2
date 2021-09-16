@@ -2,9 +2,9 @@
 pragma solidity 0.7.6;
 
 // contract to migrate from v2 to v3 vault
-import "./v2/V2Strategy.sol";
+import "./v2/V2StrategyEth.sol";
 
-interface IV2Vault {
+interface IV2EthVault {
     function paused() external view returns (bool);
 
     function token() external view returns (address);
@@ -14,7 +14,7 @@ interface IV2Vault {
     function totalAssets() external view returns (uint);
 }
 
-interface IV3Vault {
+interface IV3EthVault {
     function paused() external view returns (bool);
 
     function token() external view returns (address);
@@ -26,33 +26,32 @@ interface IUnagiiToken {
     function minter() external view returns (address);
 }
 
-contract StrategyMigrate is V2Strategy {
+contract StrategyMigrateEth is V2StrategyEth {
     using SafeERC20 for IERC20;
     using SafeMath for uint;
 
-    IV2Vault public v2;
-    IV3Vault public v3;
+    IV2EthVault public v2;
+    IV3EthVault public v3;
 
     constructor(
-        address _token,
         address _fundManager,
         address _treasury,
         address _v2,
         address _v3
-    ) V2Strategy(_token, _fundManager, _treasury) {
+    ) V2StrategyEth(_fundManager, _treasury) {
         require(_v2 != _v3, "v2 = v3");
 
-        v2 = IV2Vault(_v2);
-        v3 = IV3Vault(_v3);
+        v2 = IV2EthVault(_v2);
+        v3 = IV3EthVault(_v3);
 
-        require(v2.token() == _token, "v2 token != token");
-        require(v3.token() == _token, "v3 token != token");
+        require(v2.token() == ETH, "v2 token != ETH");
+        require(v3.token() == ETH, "v3 token != ETH");
 
         require(v2.uToken() == v3.uToken(), "v2 uToken != v3 uToken");
     }
 
     function totalAssets() external view override returns (uint) {
-        return token.balanceOf(address(this));
+        return address(this).balance;
     }
 
     function deposit(uint _amount, uint _min) external override onlyAuthorized {
@@ -61,12 +60,12 @@ contract StrategyMigrate is V2Strategy {
     }
 
     function withdraw(uint _amount) external override onlyFundManager returns (uint) {
-        token.transfer(address(fundManager), _amount);
+        _sendEth(address(fundManager), _amount);
         return 0;
     }
 
     function repay(uint _amount, uint _min) external override onlyAuthorized {
-        uint repaid = fundManager.repay(_amount);
+        uint repaid = fundManager.repay{value: _amount}(_amount);
         require(repaid >= _min, "repaid < min");
     }
 
@@ -90,19 +89,18 @@ contract StrategyMigrate is V2Strategy {
         revert("no op");
     }
 
-    function migrate(address) external override {
+    function migrate(address payable) external override {
         revert("no op");
     }
 
     function sweep(address _token) external override onlyAuthorized {
-        require(_token != address(token), "protected token");
         IERC20(_token).safeTransfer(admin, IERC20(_token).balanceOf(address(this)));
     }
 
     /*
     Migrate from V2 to V3 vault
 
-    t = token
+    eth = eth
     ut = unagii token
     v2 = v2 vault
     v3 = v3 vault
@@ -122,7 +120,7 @@ contract StrategyMigrate is V2Strategy {
     v2.setMinReserve(0) | admin
     --------------------------
     # transfer funds from v2 to fund manager
-    f.borrowFromVault(MAX_UINT, t.balanceOf(v2)) | time lock
+    f.borrowFromVault(MAX_UINT, address(v2).balance) | time lock
     --------------------------
     v2.setPause(true) | time lock
 
@@ -132,18 +130,18 @@ contract StrategyMigrate is V2Strategy {
 
     ut.minter() == v2
 
-    t.balanceOf(v2) == 0
-    t.balanceOf(f) >= v2.totalAssets()
-    f.calcMaxBorrow(s) == t.balanceOf(f)
+    address(v2).balance == 0
+    address(f).balance >= v2.totalAssets()
+    f.calcMaxBorrow(s) == address(f).balance
 
     # transfer funds from V2 to V3
     s.migrateToV3() | time lock
 
     # checks right after migration
-    t.balanceOf(v2) == 0
-    t.balanceOf(f) == 0
-    t.balanceOf(s) == 0
-    t.balanceOf(v3) >= balance of fund manager before transfer
+    address(v2).balance == 0
+    address(f).balance == 0
+    address(s).balance == 0
+    address(v3).balance >= balance of fund manager before transfer
     --------------------------
     ut.setMinter(v3) | time lock
     */
@@ -156,8 +154,8 @@ contract StrategyMigrate is V2Strategy {
         require(IUnagiiToken(v2.uToken()).minter() == address(v2), "v2 != minter");
 
         // check fund manager has borrowed everything in v2
-        require(token.balanceOf(address(v2)) == 0, "v2 balance > 0");
-        uint bal = token.balanceOf((address(fundManager)));
+        require(address(this).balance == 0, "v2 balance > 0");
+        uint bal = address(fundManager).balance;
         require(bal >= v2.totalAssets(), "fund manager balance < v2 total assets");
 
         // check this contract can borrow everything from fund manager
@@ -171,20 +169,20 @@ contract StrategyMigrate is V2Strategy {
         _checkBefore();
 
         // borrow all from fund manager
-        uint bal = token.balanceOf(address(fundManager));
+        uint bal = address(fundManager).balance;
         uint borrowed = fundManager.borrow(bal);
         require(borrowed >= bal, "borrowed < min");
 
         // transfer to V3
-        token.safeTransfer(address(v3), token.balanceOf(address(this)));
+        _sendEth(address(v3), address(this).balance);
 
         _checkAfter(bal);
     }
 
     function _checkAfter(uint _balBefore) private view {
-        require(token.balanceOf(address(v2)) == 0, "v2 balance > 0");
-        require(token.balanceOf(address(fundManager)) == 0, "fund manager balance > 0");
-        require(token.balanceOf(address(this)) == 0, "balance > 0");
-        require(token.balanceOf(address(v3)) >= _balBefore, "v3 balance != v2 balance");
+        require(address(v2).balance == 0, "v2 balance > 0");
+        require(address(fundManager).balance == 0, "fund manager balance > 0");
+        require(address(this).balance == 0, "balance > 0");
+        require(address(v3).balance >= _balBefore, "v3 balance != v2 balance");
     }
 }
