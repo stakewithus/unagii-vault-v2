@@ -1,11 +1,11 @@
 import brownie
 from brownie import (
     ZERO_ADDRESS,
-    V2Vault,
-    V2FundManager,
-    V2StrategyTest,
-    StrategyMigrate,
-    Vault,
+    V2EthVault,
+    V2EthFundManager,
+    V2StrategyEthTest,
+    StrategyMigrateEth,
+    EthVault,
 )
 import pytest
 
@@ -16,24 +16,24 @@ N = 3  # number of active strategies
 
 
 @pytest.fixture(scope="module")
-def v2(token, uToken, admin):
-    yield V2Vault.deploy(token, uToken, ZERO_ADDRESS, ZERO_ADDRESS, {"from": admin})
+def v2(uEth, admin):
+    yield V2EthVault.deploy(uEth, ZERO_ADDRESS, ZERO_ADDRESS, {"from": admin})
 
 
 @pytest.fixture(scope="module")
-def fundManager(token, admin):
-    yield V2FundManager.deploy(
-        token, ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS, {"from": admin}
+def fundManager(admin):
+    yield V2EthFundManager.deploy(
+        ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS, {"from": admin}
     )
 
 
 @pytest.fixture(scope="module")
-def v2_setup(chain, v2, fundManager, token, uToken, timeLock, admin, user):
-    uToken.setMinter(v2, {"from": admin})
+def v2_setup(chain, v2, fundManager, uEth, timeLock, admin, user):
+    uEth.setMinter(v2, {"from": admin})
 
-    # uToken set time lock
-    uToken.setNextTimeLock(timeLock, {"from": admin})
-    uToken.acceptTimeLock({"from": timeLock})
+    # uEth set time lock
+    uEth.setNextTimeLock(timeLock, {"from": admin})
+    uEth.acceptTimeLock({"from": timeLock})
 
     fundManager.setVault(v2, {"from": admin})
     fundManager.initialize({"from": admin})
@@ -54,7 +54,7 @@ def v2_setup(chain, v2, fundManager, token, uToken, timeLock, admin, user):
     # activate strategies
     strats = []
     for i in range(N):
-        strat = V2StrategyTest.deploy(token, fundManager, admin, {"from": admin})
+        strat = V2StrategyEthTest.deploy(fundManager, admin, {"from": admin})
 
         # set time lock
         strat.setNextTimeLock(timeLock, {"from": admin})
@@ -67,9 +67,7 @@ def v2_setup(chain, v2, fundManager, token, uToken, timeLock, admin, user):
         strats.append(strat)
 
     # deposit
-    token.mint(user, 1000)
-    token.approve(v2, 1000, {"from": user})
-    v2.deposit(1000, 1000, {"from": user})
+    v2.deposit(1000, 1000, {"from": user, "value": 1000})
 
     # deposit strategies
     fundManager.borrowFromVault(2 ** 256 - 1, 1, {"from": admin})
@@ -79,8 +77,8 @@ def v2_setup(chain, v2, fundManager, token, uToken, timeLock, admin, user):
 
 
 @pytest.fixture(scope="module")
-def v3(token, uToken, admin):
-    yield Vault.deploy(token, uToken, ZERO_ADDRESS, ZERO_ADDRESS, {"from": admin})
+def v3(uEth, admin):
+    yield EthVault.deploy(uEth, ZERO_ADDRESS, ZERO_ADDRESS, {"from": admin})
 
 
 @pytest.fixture(scope="module")
@@ -95,14 +93,13 @@ def v3_setup(chain, timeLock, v3, admin):
 
 
 @pytest.fixture(scope="module")
-def strategyMigrate(chain, token, fundManager, v2, v3, admin):
-    yield StrategyMigrate.deploy(token, fundManager, admin, v2, v3, {"from": admin})
+def strategyMigrate(chain, fundManager, v2, v3, admin):
+    yield StrategyMigrateEth.deploy(fundManager, admin, v2, v3, {"from": admin})
 
 
 def test_migrate_v2_v3(
     chain,
-    token,
-    uToken,
+    uEth,
     admin,
     timeLock,
     v2_setup,
@@ -115,7 +112,7 @@ def test_migrate_v2_v3(
     assert v2.timeLock() == timeLock
     assert v2.admin() == admin
     assert not v2.paused()
-    assert uToken.minter() == v2
+    assert uEth.minter() == v2
 
     assert fundManager.timeLock() == timeLock
     assert fundManager.admin() == admin
@@ -124,14 +121,17 @@ def test_migrate_v2_v3(
     assert v3.admin() == admin
     assert v3.paused()
 
+    # allow strategy migrate to send ETH to v3
+    v3.setWhitelist(strategyMigrate, True, {"from": admin})
+
     # withdraw from strategies
     for i in range(N):
-        strat = V2StrategyTest.at(fundManager.queue(i))
-        strat.repay(2 ** 256 - 1, 1, {"from": admin})
+        strat = V2StrategyEthTest.at(fundManager.queue(i))
+        strat.repay(strat.balance(), 1, {"from": admin})
 
     # deactivate strategies
     for i in range(N):
-        strat = V2StrategyTest.at(fundManager.queue(0))
+        strat = V2StrategyEthTest.at(fundManager.queue(0))
         fundManager.removeStrategyFromQueue(strat, {"from": admin})
 
     # set time lock on strategy migrate
@@ -147,7 +147,7 @@ def test_migrate_v2_v3(
 
     v2.setMinReserve(0, {"from": admin})
 
-    assert v2.calcMaxBorrow() == token.balanceOf(v2)
+    assert v2.calcMaxBorrow() == v2.balance()
 
     def snapshot():
         return {
@@ -156,10 +156,10 @@ def test_migrate_v2_v3(
                 "debt": v2.debt(),
             },
             "token": {
-                "v2": token.balanceOf(v2),
-                "v3": token.balanceOf(v3),
-                "fundManager": token.balanceOf(fundManager),
-                "strategyMigrate": token.balanceOf(strategyMigrate),
+                "v2": v2.balance(),
+                "v3": v3.balance(),
+                "fundManager": fundManager.balance(),
+                "strategyMigrate": strategyMigrate.balance(),
             },
         }
 
@@ -168,16 +168,21 @@ def test_migrate_v2_v3(
         fundManager,
         v2,
         strategyMigrate,
-        uToken,
+        uEth,
     ]
     values = [0, 0, 0, 0]
     data = [
         fundManager.borrowFromVault.encode_input(2 ** 256 - 1, 1),
         v2.setPause.encode_input(True),
         strategyMigrate.migrateToV3.encode_input(),
-        uToken.setMinter.encode_input(v3),
+        uEth.setMinter.encode_input(v3),
     ]
-    delays = [DELAY, DELAY, DELAY, DELAY]
+    delays = [
+        DELAY,
+        DELAY,
+        DELAY,
+        DELAY,
+    ]
     nonces = [0, 0, 0, 0]
 
     tx = timeLock.batchQueue(targets, values, data, delays, nonces, {"from": admin})
@@ -204,4 +209,4 @@ def test_migrate_v2_v3(
     assert after["token"]["v3"] == before["v2"]["totalAssets"]
 
     assert v2.paused()
-    assert uToken.minter() == v3
+    assert uEth.minter() == v3
