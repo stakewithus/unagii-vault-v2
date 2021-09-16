@@ -1,7 +1,10 @@
 import os
 import pytest
 
-from brownie import interface, Vault, UnagiiToken, ZERO_ADDRESS
+from brownie import interface, Vault, EthVault, UnagiiToken, ZERO_ADDRESS
+
+
+ETH = "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE"
 
 
 @pytest.fixture(scope="session")
@@ -81,6 +84,20 @@ def uWbtc(wbtc, admin):
 def wbtcVault(wbtc, uWbtc, admin, guardian, worker):
     vault = Vault.deploy(wbtc, uWbtc, guardian, worker, {"from": admin})
     uWbtc.setMinter(vault, {"from": admin})
+    vault.setPause(False)
+    yield vault
+
+
+@pytest.fixture(scope="session")
+def uEth(admin):
+    uToken = UnagiiToken.deploy(ETH, {"from": admin})
+    yield uToken
+
+
+@pytest.fixture(scope="session")
+def ethVault(dai, uEth, admin, guardian, worker):
+    vault = EthVault.deploy(uEth, guardian, worker, {"from": admin})
+    uEth.setMinter(vault, {"from": admin})
     vault.setPause(False)
     yield vault
 
