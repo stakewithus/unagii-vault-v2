@@ -1,7 +1,7 @@
 # @version 0.2.15
 
 """
-@title Unagii EthVault 3.0.0
+@title Unagii EthVault 3.0.1
 @author stakewith.us
 @license AGPL-3.0-or-later
 """
@@ -525,6 +525,8 @@ def withdraw(shares: uint256, _min: uint256) -> uint256:
         shares, self.uToken.totalSupply(), self._calcFreeFunds()
     )
 
+    self.uToken.burn(msg.sender, shares)
+
     # withdraw from strategies if amount to withdraw > balance of vault
     bal: uint256 = self.balance
     if amount > bal:
@@ -557,8 +559,6 @@ def withdraw(shares: uint256, _min: uint256) -> uint256:
 
         if amount > bal:
             amount = bal
-
-    self.uToken.burn(msg.sender, shares)
 
     assert amount >= _min, "amount < min"
     self._sendEth(msg.sender, amount)
