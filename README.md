@@ -86,6 +86,7 @@ env $(cat .env) brownie run scripts/script-to-run.py [function] --network ropste
     v3TestVault: "0xD5198E50741FE6A513ce9940b78daa7f6766fB54",
     v3StrategyTest0: "0x44ADEef348D8E6fB636d56f09c91b642EcfA45A1",
     v3StrategyTest1: "0x516E8AAc53C480B96ffDD9CE1ECfD914c67ba327"
+    strategyMigrateEth: "0xcf73E375D8C4d843A6d0eA76e810e6FE923DbBC6",
     v3EthVault: "0x3A8cdb9f05912865eedC31A2114a5195fE3b7A28"
   },
   mainnet: {

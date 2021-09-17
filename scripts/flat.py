@@ -1,9 +1,9 @@
 import brownie
 import importlib
 
-from brownie import StrategyMigrate
+from brownie import StrategyMigrateEth
 
-Strategy = StrategyMigrate
+Strategy = StrategyMigrateEth
 
 
 def main():

@@ -110,6 +110,7 @@ contract StrategyMigrateEth is V2StrategyEth {
     action | caller
     --------------------------
     v3.setPause(true) | admin
+    v3.setWhitelist(s, true) | admin
 
     # activate this strategy
     f approve this contract | time lock
