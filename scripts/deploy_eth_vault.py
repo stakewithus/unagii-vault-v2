@@ -34,5 +34,6 @@ def deploy(args):
     print("-------------------")
 
     guardian = account
+    worker = account
 
-    EthVault.deploy(args["uToken"], guardian, ZERO_ADDRESS, {"from": account})
+    EthVault.deploy(args["uToken"], guardian, worker, {"from": account})
