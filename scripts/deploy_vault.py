@@ -11,7 +11,7 @@ config = {
     "mainnet": {
         "DAI": {
             "token": "0x6B175474E89094C44DA98B954EEDEAC495271D0F",
-            "uToken": "0x634b0273D7060313FAA60f96705116c9DE50fA1f",
+            "uToken": "0xffd51A24C65CC6981F3A543320fDadaf57ffFD7A",
         },
         "USDC": {
             "token": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
@@ -62,7 +62,7 @@ def deploy(args):
     guardian = account
     worker = account
 
-    gas_price = web3.eth.gas_price * 1.2
+    gas_price = web3.eth.gas_price * 1.1
     print("gas price:", gas_price)
 
     Vault.deploy(

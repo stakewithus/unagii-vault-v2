@@ -140,6 +140,8 @@ env $(cat .env) brownie run scripts/script-to-run.py [function] --network ropste
     dev_usdtFundManager: "0xBd998633af470836fEf1C0E6b5c0A0AC3E325C39",
     dev_wbtcFundManager: "0xd5A84Cbb69351c6991BA56CF78052f59092d404C",
     dev_ethFundManager: "0x09f15F979Bf1b0CC8c8a19ed2E2feFF8EdE60e54",
+    // v3 vaults
+    dev_daiVaultV3: "0x2127c8ff8467b1A368b85949C8490A400c8Ad339",
     // dai
     dev_strategyCompLevDai: "0xC1B8F4Ac6c4aF37bD5Fca280F27Db7b950872417",
     dev_strategyConvexAlUsdDai: "0x9c9462314607D4D1759a6F1563ABB6025b561d5B",
