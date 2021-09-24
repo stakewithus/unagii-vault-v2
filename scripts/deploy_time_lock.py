@@ -12,7 +12,7 @@ def main():
     print("ETH balance:", bal)
     print("-------------------")
 
-    gas_price = web3.eth.gas_price
+    gas_price = web3.eth.gas_price * 1.1
     print(f"gas price: {gas_price}")
 
-    TimeLock.deploy({"from": account, "gas_price": 10 * gas_price})
+    TimeLock.deploy({"from": account, "gas_price": gas_price})

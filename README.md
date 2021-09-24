@@ -124,7 +124,7 @@ env $(cat .env) brownie run scripts/script-to-run.py [function] --network ropste
     // eth
     strategyConvexStEth: "0xe859231d5ef4051D300698B9D46C421de1D7D5e0",
     // dev //
-    dev_timeLock: "",
+    dev_timeLock: "0x9f61F9724E61A4abc9C37651336Bf8Ab540d252c",
     dev_uDai: "0xffd51A24C65CC6981F3A543320fDadaf57ffFD7A",
     dev_uUsdc: "0x8ae16964763Bab7D73c5ECEBe7A51E6827BaED66",
     dev_uUsdt: "0x91Ea2CEbB595677368B2D5aa373eE836f90E7269",
