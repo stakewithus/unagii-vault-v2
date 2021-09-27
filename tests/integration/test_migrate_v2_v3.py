@@ -87,11 +87,12 @@ def v3(token, uToken, admin):
 def v3_setup(chain, timeLock, v3, admin):
     v3.setNextTimeLock(timeLock, {"from": admin})
 
+    target = v3
     data = v3.acceptTimeLock.encode_input()
-    tx = timeLock.queue(v3, 0, data, DELAY, 0, {"from": admin})
+    tx = timeLock.queue(target, 0, data, DELAY, 0, {"from": admin})
     eta = tx.timestamp + DELAY
     chain.sleep(DELAY)
-    timeLock.execute(v3, 0, data, eta, 0, {"from": admin})
+    timeLock.execute(target, 0, data, eta, 0, {"from": admin})
 
 
 @pytest.fixture(scope="module")
@@ -124,6 +125,28 @@ def test_migrate_v2_v3(
     assert v3.admin() == admin
     assert v3.paused()
 
+    # set time lock on strategy migrate
+    strategyMigrate.setNextTimeLock(timeLock, {"from": admin})
+
+    target = strategyMigrate
+    data = strategyMigrate.acceptTimeLock.encode_input()
+    tx = timeLock.queue(target, 0, data, DELAY, 0, {"from": admin})
+    eta = tx.timestamp + DELAY
+    chain.sleep(DELAY)
+    timeLock.execute(target, 0, data, eta, 0, {"from": admin})
+
+    # approve and activate strategy migrate
+    target = fundManager
+    data = fundManager.approveStrategy.encode_input(strategyMigrate)
+    tx = timeLock.queue(target, 0, data, DELAY, 0, {"from": admin})
+    eta = tx.timestamp + DELAY
+    chain.sleep(DELAY)
+    timeLock.execute(target, 0, data, eta, 0, {"from": admin})
+
+    fundManager.addStrategyToQueue(
+        strategyMigrate, 100, 0, 2 ** 256 - 1, {"from": admin}
+    )
+
     # withdraw from strategies
     for i in range(N):
         strat = V2StrategyTest.at(fundManager.queue(i))
@@ -133,17 +156,6 @@ def test_migrate_v2_v3(
     for i in range(N):
         strat = V2StrategyTest.at(fundManager.queue(0))
         fundManager.removeStrategyFromQueue(strat, {"from": admin})
-
-    # set time lock on strategy migrate
-    strategyMigrate.setNextTimeLock(timeLock, {"from": admin})
-    strategyMigrate.acceptTimeLock({"from": timeLock})
-
-    # approve and activate strategy migrate
-    fundManager.approveStrategy(strategyMigrate, {"from": timeLock})
-
-    fundManager.addStrategyToQueue(
-        strategyMigrate, 100, 0, 2 ** 256 - 1, {"from": admin}
-    )
 
     v2.setMinReserve(0, {"from": admin})
 
