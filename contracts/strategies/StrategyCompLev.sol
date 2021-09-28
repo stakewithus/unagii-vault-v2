@@ -529,7 +529,7 @@ contract StrategyCompLev is Strategy {
         emit Withdraw(_amount, available, loss);
     }
 
-    function repay(uint _amount, uint _min) external override {
+    function repay(uint _amount, uint _min) external override onlyAuthorized {
         require(_amount > 0, "repay = 0");
         // availabe <= _amount
         uint available = _withdraw(_amount);
