@@ -108,7 +108,7 @@ env $(cat .env) brownie run scripts/script-to-run.py [function] --network ropste
     strategyConvexAlUsdDai: "0x994cC3a3fC0e1cB9A16f5eD06Cf52169c09ab480",
     strategyConvexUsdpDai: "0x434d68Ffc1C4DaE115E2176EdDf6539A5b8ce7D9",
     // usdc
-    strategyCompLevUsdc: "0x6d54f625983343c03AD9A0e671A1C758B35c6C7b",
+    strategyCompLevUsdc: "0x7bF9075D5e3FCD7819A978cF3E8Bb836aDBEf3E8",
     strategyConvexAlUsdUsdc: "0x159569426128deF2afBd3F5da5d230298f1D5Ab7",
     strategyConvexUsdpUsdc: "0x6250002E436fc3df09cB09D654A46270c4344345",
     // usdt
