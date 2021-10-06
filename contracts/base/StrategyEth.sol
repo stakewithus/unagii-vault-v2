@@ -21,6 +21,7 @@ abstract contract StrategyEth is PerfFee, Dex {
     event Authorize(address addr, bool authorized);
     event SetTreasury(address treasury);
     event SetVault(address vault);
+    event Harvest(uint profit);
 
     event ReceiveEth(address indexed sender, uint amount);
 
@@ -254,8 +255,11 @@ abstract contract StrategyEth is PerfFee, Dex {
             uint fee = _calcPerfFee(diff);
             if (fee > 0) {
                 _sendEth(treasury, fee);
+                diff = diff.sub(fee);
             }
         }
+
+        emit Harvest(diff);
     }
 
     /*
