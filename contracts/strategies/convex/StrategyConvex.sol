@@ -45,6 +45,7 @@ abstract contract StrategyConvex is Strategy {
         address _booster,
         uint _pid,
         address _curve,
+        address _lp,
         uint _index,
         uint _decimals,
         address[] memory _rewards,
@@ -53,13 +54,14 @@ abstract contract StrategyConvex is Strategy {
         (address lp, , , address baseReward, , bool shutdown) = Booster(_booster)
         .poolInfo(_pid);
         require(!shutdown, "booster shut down");
+        require(lp == _lp, "curve lp != booster lp");
 
         BOOSTER = Booster(_booster);
         PID = _pid;
         BASE_REWARD_POOL = BaseRewardPool(baseReward);
 
         CURVE = StableSwap(_curve);
-        CURVE_LP = IERC20(lp);
+        CURVE_LP = IERC20(_lp);
 
         INDEX = _index;
         MUL = 10**(uint(18).sub(_decimals));

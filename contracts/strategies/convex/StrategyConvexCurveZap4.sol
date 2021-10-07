@@ -23,6 +23,7 @@ contract StrategyConvexCurveZap4 is StrategyConvex {
         uint _pid,
         address _zap,
         address _curve,
+        address _lp,
         uint _index,
         uint _decimals,
         address[] memory _rewards,
@@ -35,6 +36,7 @@ contract StrategyConvexCurveZap4 is StrategyConvex {
             _booster,
             _pid,
             _curve,
+            _lp,
             _index,
             _decimals,
             _rewards,
@@ -45,20 +47,23 @@ contract StrategyConvexCurveZap4 is StrategyConvex {
 
         ZAP = Deposit(_zap);
 
+        address lp = Deposit(_zap).token();
+        require(lp == _lp, "zap lp != curve lp");
+
         // allow token deposit into curve
         IERC20(_token).safeApprove(_zap, type(uint).max);
+
         // allow withdraw from curve
-        address lp = Deposit(_zap).token();
         IERC20(lp).safeApprove(_zap, type(uint).max);
     }
 
     function _addLiquidity(uint _amount, uint _min) internal override {
-        // uint[N_TOKENS] memory amounts;
-        // amounts[INDEX] = _amount;
-        // CURVE.add_liquidity(amounts, _min);
+        uint[N_TOKENS] memory amounts;
+        amounts[INDEX] = _amount;
+        ZAP.add_liquidity(amounts, _min);
     }
 
     function _removeLiquidity(uint _shares, uint _min) internal override {
-        // CURVE.remove_liquidity_one_coin(_shares, int128(INDEX), _min);
+        ZAP.remove_liquidity_one_coin(_shares, int128(INDEX), _min);
     }
 }
