@@ -13,9 +13,7 @@ contract StrategyTest is Strategy {
     constructor(
         address _token,
         address _vault,
-        address _treasury,
-        uint _minProfit,
-        uint _maxProfit
+        address _treasury
     ) Strategy(_token, _vault, _treasury) {}
 
     function _totalAssets() internal view override returns (uint) {

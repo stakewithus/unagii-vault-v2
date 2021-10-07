@@ -112,21 +112,23 @@ def perfFeeTest(PerfFeeTest, admin):
 
 @pytest.fixture(scope="module")
 def strategyTest(StrategyTest, token, testVault, admin, treasury):
+    strategyTest = StrategyTest.deploy(token, testVault, treasury, {"from": admin})
+
     minProfit = 10 ** token.decimals()
     maxProfit = 1000 * 10 ** token.decimals()
-    strategyTest = StrategyTest.deploy(
-        token, testVault, treasury, minProfit, maxProfit, {"from": admin}
-    )
+
+    strategyTest.setMinMaxProfit(minProfit, maxProfit, {"fron": admin})
     yield strategyTest
 
 
 @pytest.fixture(scope="module")
 def strategyEthTest(StrategyEthTest, testEthVault, admin, treasury):
+    strategyTest = StrategyEthTest.deploy(testEthVault, treasury, {"from": admin})
+
     minProfit = 10 ** 18
     maxProfit = 1000 * 10 ** 18
-    strategyTest = StrategyEthTest.deploy(
-        testEthVault, treasury, minProfit, maxProfit, {"from": admin}
-    )
+
+    strategyTest.setMinMaxProfit(minProfit, maxProfit, {"fron": admin})
     yield strategyTest
 
 

@@ -6,12 +6,7 @@ import "../base/StrategyEth.sol";
 contract StrategyEthTest is StrategyEth {
     using SafeERC20 for IERC20;
 
-    constructor(
-        address _vault,
-        address _treasury,
-        uint _minProfit,
-        uint _maxProfit
-    ) StrategyEth(_vault, _treasury) {}
+    constructor(address _vault, address _treasury) StrategyEth(_vault, _treasury) {}
 
     function _totalAssets() internal view override returns (uint) {
         return address(this).balance;
