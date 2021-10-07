@@ -58,8 +58,6 @@ contract StrategyCompLev is Strategy {
         address _token,
         address _vault,
         address _treasury,
-        uint _minProfit,
-        uint _maxProfit,
         address _cToken
     ) Strategy(_token, _vault, _treasury) {
         require(_cToken != address(0), "CTOKEN = zero address");

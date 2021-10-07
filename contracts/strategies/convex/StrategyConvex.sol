@@ -42,8 +42,6 @@ abstract contract StrategyConvex is Strategy {
         address _token,
         address _vault,
         address _treasury,
-        uint _minProfit,
-        uint _maxProfit,
         address _booster,
         uint _pid,
         address _curve,

@@ -62,8 +62,6 @@ contract StrategyConvexUsdp is Strategy {
         address _token,
         address _vault,
         address _treasury,
-        uint _minProfit,
-        uint _maxProfit,
         uint _index
     ) Strategy(_token, _vault, _treasury) {
         // disable USDP

@@ -50,12 +50,7 @@ contract StrategyConvexStEth is StrategyEth {
     */
     uint private constant INDEX = 0; // index of token
 
-    constructor(
-        address _vault,
-        address _treasury,
-        uint _minProfit,
-        uint _maxProfit
-    ) StrategyEth(_vault, _treasury) {
+    constructor(address _vault, address _treasury) StrategyEth(_vault, _treasury) {
         (address lptoken, , , address crvRewards, , ) = BOOSTER.poolInfo(PID);
         require(address(CURVE_LP) == lptoken, "curve pool lp != pool info lp");
         require(address(REWARD) == crvRewards, "reward != pool info reward");

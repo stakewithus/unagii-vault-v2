@@ -8,9 +8,7 @@ def strategy(usdtVault, admin, treasury):
     vault = usdtVault
     timeLock = vault.timeLock()
 
-    strategy = StrategyConvexUsdpUsdt.deploy(
-        vault, treasury, 0, 2 ** 256 - 1, {"from": admin}
-    )
+    strategy = StrategyConvexUsdpUsdt.deploy(vault, treasury, {"from": admin})
 
     vault.approveStrategy(strategy, {"from": timeLock})
     vault.activateStrategy(strategy, 100, {"from": admin})
