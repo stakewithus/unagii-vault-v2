@@ -17,12 +17,8 @@ class StateMachine:
         cls.admin = admin
         cls.strategies = []
         for i in range(N):
-            min_tvl = 100
-            max_tvl = 10000
             cls.strategies.append(
-                StrategyTest.deploy(
-                    token, vault, treasury, min_tvl, max_tvl, {"from": cls.timeLock}
-                )
+                StrategyTest.deploy(token, vault, treasury, {"from": cls.timeLock})
             )
 
     def setup(self):

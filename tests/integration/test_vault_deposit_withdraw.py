@@ -32,11 +32,7 @@ class StateMachine:
 
         cls.strategies = []
         for i in range(N):
-            min_tvl = 100
-            max_tvl = 10000
-            strat = StrategyTest.deploy(
-                token, vault, treasury, min_tvl, max_tvl, {"from": admin}
-            )
+            strat = StrategyTest.deploy(token, vault, treasury, {"from": admin})
 
             vault.approveStrategy(strat, {"from": timeLock})
             vault.activateStrategy(strat, 1, {"from": timeLock})
