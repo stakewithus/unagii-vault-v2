@@ -15,9 +15,10 @@ contract PerfFee {
     uint private constant PERF_FEE_DENOMINATOR = 10000;
     /*
     min and max profit are used to calculate performance fee
+    minProfit must be < maxProfit
     */
     uint public minProfit;
-    uint public maxProfit;
+    uint public maxProfit = 1;
 
     /*
     @notice Set min and max profit
@@ -49,8 +50,8 @@ contract PerfFee {
         y = perf fee
           = (y1 - y0) / (x1 - x0) * (x - x0) + y0
 
-        when x = x0, y = y0
-             x = x1, y = y1
+        when x = x0 then y = y0
+             x = x1 then y = y1
         */
         if (_profit <= minProfit) {
             return MAX_PERF_FEE;
