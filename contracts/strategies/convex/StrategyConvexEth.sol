@@ -5,7 +5,7 @@ pragma solidity 0.7.6;
 // version 1.0.0
 import "../../interfaces/convex/BaseRewardPool.sol";
 import "../../interfaces/convex/Booster.sol";
-import "../../interfaces/curve/StableSwap.sol";
+import "../../interfaces/curve/StableSwapEth.sol";
 import "../../base/StrategyEth.sol";
 
 abstract contract StrategyConvexEth is StrategyEth {
@@ -27,7 +27,7 @@ abstract contract StrategyConvexEth is StrategyEth {
     bool public shouldClaimExtras = true;
 
     // Curve //
-    StableSwap internal immutable CURVE;
+    StableSwapEth internal immutable CURVE;
     IERC20 private immutable CURVE_LP;
 
     // prevent slippage from deposit / withdraw
@@ -56,7 +56,7 @@ abstract contract StrategyConvexEth is StrategyEth {
         PID = _pid;
         BASE_REWARD_POOL = BaseRewardPool(baseReward);
 
-        CURVE = StableSwap(_curve);
+        CURVE = StableSwapEth(_curve);
         CURVE_LP = IERC20(_lp);
 
         INDEX = _index;
