@@ -10,7 +10,6 @@ uint constant N_TOKENS = 4;
 
 contract StrategyConvexCurve4 is StrategyConvex {
     using SafeERC20 for IERC20;
-    using SafeMath for uint;
 
     constructor(
         address _token,

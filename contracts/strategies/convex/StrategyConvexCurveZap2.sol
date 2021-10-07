@@ -11,7 +11,6 @@ uint constant N_TOKENS = 2;
 
 contract StrategyConvexCurveZap2 is StrategyConvex {
     using SafeERC20 for IERC20;
-    using SafeMath for uint;
 
     Deposit private immutable ZAP;
 
