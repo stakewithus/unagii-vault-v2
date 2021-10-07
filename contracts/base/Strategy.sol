@@ -38,9 +38,7 @@ abstract contract Strategy is PerfFee, Dex {
     constructor(
         address _token,
         address _vault,
-        address _treasury,
-        uint _minProfit,
-        uint _maxProfit
+        address _treasury
     ) {
         // Don't allow accidentally sending perf fee to 0 address
         require(_treasury != address(0), "treasury = 0 address");
@@ -48,8 +46,6 @@ abstract contract Strategy is PerfFee, Dex {
         timeLock = msg.sender;
         admin = msg.sender;
         treasury = _treasury;
-
-        _setMinMaxProfit(_minProfit, _maxProfit);
 
         require(IVault(_vault).token() == _token, "vault token != token");
 

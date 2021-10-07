@@ -11,7 +11,7 @@ contract StrategyEthTest is StrategyEth {
         address _treasury,
         uint _minProfit,
         uint _maxProfit
-    ) StrategyEth(_vault, _treasury, _minProfit, _maxProfit) {}
+    ) StrategyEth(_vault, _treasury) {}
 
     function _totalAssets() internal view override returns (uint) {
         return address(this).balance;

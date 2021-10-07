@@ -61,7 +61,7 @@ contract StrategyCompLev is Strategy {
         uint _minProfit,
         uint _maxProfit,
         address _cToken
-    ) Strategy(_token, _vault, _treasury, _minProfit, _maxProfit) {
+    ) Strategy(_token, _vault, _treasury) {
         require(_cToken != address(0), "CTOKEN = zero address");
         CTOKEN = CErc20(_cToken);
         IERC20(_token).safeApprove(_cToken, type(uint).max);

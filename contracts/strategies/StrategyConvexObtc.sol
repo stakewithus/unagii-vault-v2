@@ -64,7 +64,7 @@ contract StrategyConvexObtc is Strategy {
         uint _minProfit,
         uint _maxProfit,
         uint _index
-    ) Strategy(_token, _vault, _treasury, _minProfit, _maxProfit) {
+    ) Strategy(_token, _vault, _treasury) {
         // only WBTC
         require(_index == 2, "index != 2");
         INDEX = _index;

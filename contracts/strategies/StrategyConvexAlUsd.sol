@@ -66,7 +66,7 @@ contract StrategyConvexAlUsd is Strategy {
         uint _minProfit,
         uint _maxProfit,
         uint _index
-    ) Strategy(_token, _vault, _treasury, _minProfit, _maxProfit) {
+    ) Strategy(_token, _vault, _treasury) {
         // disable alUSD
         require(_index > 0, "index = 0");
         INDEX = _index;

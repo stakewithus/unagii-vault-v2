@@ -16,7 +16,7 @@ contract StrategyTest is Strategy {
         address _treasury,
         uint _minProfit,
         uint _maxProfit
-    ) Strategy(_token, _vault, _treasury, _minProfit, _maxProfit) {}
+    ) Strategy(_token, _vault, _treasury) {}
 
     function _totalAssets() internal view override returns (uint) {
         return token.balanceOf(address(this));

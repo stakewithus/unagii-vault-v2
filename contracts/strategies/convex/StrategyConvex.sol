@@ -51,7 +51,7 @@ abstract contract StrategyConvex is Strategy {
         uint _decimals,
         address[] memory _rewards,
         address[] memory _dexes
-    ) Strategy(_token, _vault, _treasury, _minProfit, _maxProfit) {
+    ) Strategy(_token, _vault, _treasury) {
         (address lp, , , address baseReward, , bool shutdown) = Booster(_booster)
         .poolInfo(_pid);
         require(!shutdown, "booster shut down");

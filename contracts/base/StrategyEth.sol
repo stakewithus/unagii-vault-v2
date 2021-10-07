@@ -38,20 +38,13 @@ abstract contract StrategyEth is PerfFee, Dex {
     address public constant token = ETH;
     IEthVault public vault;
 
-    constructor(
-        address _vault,
-        address _treasury,
-        uint _minProfit,
-        uint _maxProfit
-    ) {
+    constructor(address _vault, address _treasury) {
         // Don't allow accidentally sending perf fee to 0 address
         require(_treasury != address(0), "treasury = 0 address");
 
         timeLock = msg.sender;
         admin = msg.sender;
         treasury = _treasury;
-
-        _setMinMaxProfit(_minProfit, _maxProfit);
 
         require(IEthVault(_vault).token() == ETH, "fund manager token != ETH");
 
