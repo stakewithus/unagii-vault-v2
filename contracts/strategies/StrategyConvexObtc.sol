@@ -4,6 +4,8 @@ pragma solidity 0.7.6;
 // version 1.0.0
 import "./convex/StrategyConvexCurveZap4.sol";
 
+address constant WBTC = 0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599;
+
 contract StrategyConvexObtc is StrategyConvexCurveZap4 {
     address private constant _BOOSTER = 0xF403C135812408BFbE8713b5A23a04b3D48AAE31;
     uint private constant _PID = 20;

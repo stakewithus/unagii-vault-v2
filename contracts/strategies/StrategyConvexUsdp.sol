@@ -4,6 +4,11 @@ pragma solidity 0.7.6;
 // version 1.0.0
 import "./convex/StrategyConvexCurveZap4.sol";
 
+address constant USDP = 0x1456688345527bE1f37E9e627DA0837D6f08C925;
+address constant DAI = 0x6B175474E89094C44Da98b954EedeAC495271d0F;
+address constant USDC = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;
+address constant USDT = 0xdAC17F958D2ee523a2206206994597C13D831ec7;
+
 contract StrategyConvexUsdp is StrategyConvexCurveZap4 {
     address private constant _BOOSTER = 0xF403C135812408BFbE8713b5A23a04b3D48AAE31;
     uint private constant _PID = 28;
