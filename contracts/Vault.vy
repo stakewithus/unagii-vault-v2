@@ -884,6 +884,8 @@ def sync(strategy: address, minTotal: uint256, maxTotal: uint256):
     # log debt before update, so gain and loss can be computed offchain
     log Sync(strategy, total, debt, self.lockedProfit)
 
+# TODO: migrate strategy
+
 
 @external
 def sweep(token: address):
