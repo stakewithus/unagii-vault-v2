@@ -22,6 +22,7 @@ contract StrategyConvexObtc is Strategy {
 
     address private constant CRV = 0xD533a949740bb3306d119CC777fa900bA034cd52;
     address private constant CVX = 0x4e3FBD56CD56c3e72c1403e103b45Db9da5B9D2B;
+    // TODO: change address
     address private constant BOR = 0x3c9d6c1C73b31c837832c72E04D3152f051fc1A9;
 
     // Solc 0.7 cannot create constant arrays
