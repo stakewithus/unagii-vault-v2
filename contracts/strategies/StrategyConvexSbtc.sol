@@ -12,18 +12,20 @@ contract StrategyConvexSbtc is Strategy {
     using SafeMath for uint;
 
     // Uniswap and Sushiswap //
-    // UNISWAP = 0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D;
-    // SUSHISWAP = 0xd9e1cE17f2641f24aE83637ab66a2cca9C378B9F;
+    address private constant UNISWAP = 0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D;
+    address private constant SUSHISWAP = 0xd9e1cE17f2641f24aE83637ab66a2cca9C378B9F;
     address private constant WETH = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
+
+    uint private constant NUM_REWARDS = 2;
     // address of DEX (uniswap or sushiswap) to use for selling reward tokens
     // CRV, CVX
-    address[2] public dex;
+    address[NUM_REWARDS] public dex;
 
     address private constant CRV = 0xD533a949740bb3306d119CC777fa900bA034cd52;
     address private constant CVX = 0x4e3FBD56CD56c3e72c1403e103b45Db9da5B9D2B;
 
     // Solc 0.7 cannot create constant arrays
-    address[2] private REWARDS = [CRV, CVX];
+    address[NUM_REWARDS] private REWARDS = [CRV, CVX];
 
     // Convex //
     Booster private constant BOOSTER =
@@ -79,8 +81,8 @@ contract StrategyConvexSbtc is Strategy {
         // deposit into BOOSTER
         CURVE_LP.safeApprove(address(BOOSTER), type(uint).max);
 
-        _setDex(0, 0xd9e1cE17f2641f24aE83637ab66a2cca9C378B9F); // CRV - sushiswap
-        _setDex(1, 0xd9e1cE17f2641f24aE83637ab66a2cca9C378B9F); // CVX - sushiswap
+        _setDex(0, SUSHISWAP); // CRV
+        _setDex(1, SUSHISWAP); // CVX
     }
 
     function _setDex(uint _i, address _dex) private {
@@ -116,7 +118,7 @@ contract StrategyConvexSbtc is Strategy {
         shouldClaimExtras = _shouldClaimExtras;
     }
 
-    function _totalAssets() private view returns (uint) {
+    function _totalAssets() private view returns (uint total) {
         /*
         s0 = shares in curve pool
         p0 = price per share of curve pool
@@ -126,11 +128,8 @@ contract StrategyConvexSbtc is Strategy {
         */
         // amount of Curve LP tokens in Convex
         uint lpBal = REWARD.balanceOf(address(this));
-        uint bal = lpBal.mul(CURVE_POOL.get_virtual_price()) / (MUL * 1e18);
-
-        bal = bal.add(token.balanceOf(address(this)));
-
-        return bal;
+        total = lpBal.mul(CURVE_POOL.get_virtual_price()) / (MUL * 1e18);
+        total = total.add(token.balanceOf(address(this)));
     }
 
     function totalAssets() external view override returns (uint) {
@@ -306,7 +305,7 @@ contract StrategyConvexSbtc is Strategy {
             "get reward failed"
         );
 
-        for (uint i = 0; i < REWARDS.length; i++) {
+        for (uint i = 0; i < NUM_REWARDS; i++) {
             uint rewardBal = IERC20(REWARDS[i]).balanceOf(address(this));
             if (rewardBal > 0) {
                 // swap may fail if rewards are too small
@@ -397,6 +396,11 @@ contract StrategyConvexSbtc is Strategy {
             address(strat.fundManager()) == address(fundManager),
             "strategy fund manager != fund manager"
         );
+
+        if (claimRewardsOnMigrate) {
+            _claimRewards(1);
+        }
+
         uint bal = _withdraw(type(uint).max);
         token.safeApprove(_strategy, bal);
         strat.transferTokenFrom(address(this), bal);
@@ -408,7 +412,7 @@ contract StrategyConvexSbtc is Strategy {
     */
     function sweep(address _token) external override onlyAuthorized {
         require(_token != address(token), "protected token");
-        for (uint i = 0; i < REWARDS.length; i++) {
+        for (uint i = 0; i < NUM_REWARDS; i++) {
             require(_token != REWARDS[i], "protected token");
         }
         IERC20(_token).safeTransfer(admin, IERC20(_token).balanceOf(address(this)));

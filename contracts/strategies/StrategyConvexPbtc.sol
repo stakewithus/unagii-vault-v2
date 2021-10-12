@@ -403,6 +403,11 @@ contract StrategyConvexPbtc is Strategy {
             address(strat.fundManager()) == address(fundManager),
             "strategy fund manager != fund manager"
         );
+
+        if (claimRewardsOnMigrate) {
+            _claimRewards(1);
+        }
+
         uint bal = _withdraw(type(uint).max);
         token.safeApprove(_strategy, bal);
         strat.transferTokenFrom(address(this), bal);
@@ -414,7 +419,7 @@ contract StrategyConvexPbtc is Strategy {
     */
     function sweep(address _token) external override onlyAuthorized {
         require(_token != address(token), "protected token");
-        for (uint i = 0; i < REWARDS.length; i++) {
+        for (uint i = 0; i < NUM_REWARDS; i++) {
             require(_token != REWARDS[i], "protected token");
         }
         IERC20(_token).safeTransfer(admin, IERC20(_token).balanceOf(address(this)));

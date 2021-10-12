@@ -2,11 +2,6 @@
 pragma solidity 0.7.6;
 
 interface StableSwapSbtc {
-    /*
-    0 renBTC
-    1 wBTC
-    2 sBTC
-    */
     function add_liquidity(uint[3] memory amounts, uint min) external;
 
     function remove_liquidity_one_coin(
