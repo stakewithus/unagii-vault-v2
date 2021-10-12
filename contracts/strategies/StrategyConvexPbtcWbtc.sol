@@ -5,6 +5,6 @@ import "./StrategyConvexPbtc.sol";
 
 contract StrategyConvexPbtcWbtc is StrategyConvexPbtc {
     constructor(address _fundManager, address _treasury)
-        StrategyConvexPbtc(WBTC, _fundManager, _treasury, 1)
+        StrategyConvexPbtc(WBTC, _fundManager, _treasury, 2)
     {}
 }
