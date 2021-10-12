@@ -1,4 +1,5 @@
 import pytest
+import os
 
 from brownie import interface, FundManager, EthFundManager, ZERO_ADDRESS
 
@@ -93,19 +94,19 @@ def wbtc():
 
 @pytest.fixture(scope="session")
 def dai_whale(accounts):
-    yield accounts.at("0xF977814e90dA44bFA03b6295A0616a897441aceC", force=True)
+    yield accounts.at(os.getenv("DAI_WHALE"), force=True)
 
 
 @pytest.fixture(scope="session")
 def usdc_whale(accounts):
-    yield accounts.at("0xF977814e90dA44bFA03b6295A0616a897441aceC", force=True)
+    yield accounts.at(os.getenv("USDC_WHALE"), force=True)
 
 
 @pytest.fixture(scope="session")
 def usdt_whale(accounts):
-    yield accounts.at("0xF977814e90dA44bFA03b6295A0616a897441aceC", force=True)
+    yield accounts.at(os.getenv("USDT_WHALE"), force=True)
 
 
 @pytest.fixture(scope="session")
 def wbtc_whale(accounts):
-    yield accounts.at("0xF977814e90dA44bFA03b6295A0616a897441aceC", force=True)
+    yield accounts.at(os.getenv("WBTC_WHALE"), force=True)

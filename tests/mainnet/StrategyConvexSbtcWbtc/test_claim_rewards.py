@@ -29,8 +29,8 @@ def test_claim_rewards(strategy, wbtcFundManager, admin, wbtc, wbtc_whale):
 
     print(before)
     print(after)
-    for e in tx.events:
-        print(e)
+    # for e in tx.events:
+    #     print(e)
 
     event = tx.events[-1]
     profit = event["profit"]
