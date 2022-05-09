@@ -59,7 +59,8 @@ contract StrategyConvexPbtc is Strategy {
     2 - WBTC
     3 - SBTC
     */
-    uint private immutable INDEX = 2; // index of token
+    uint private constant INDEX = 2; // index of token, WBTC
+    uint private constant MUL = 1e10; // multiplier of token, WBTC
 
     address private constant WBTC = 0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599;
 
@@ -124,7 +125,8 @@ contract StrategyConvexPbtc is Strategy {
         */
         // amount of Curve LP tokens in Convex
         uint lpBal = REWARD.balanceOf(address(this));
-        total = lpBal.mul(CURVE_POOL.get_virtual_price()) / 1e18;
+        total = lpBal.mul(CURVE_POOL.get_virtual_price()) / (MUL * 1e18);
+
         total = total.add(token.balanceOf(address(this)));
     }
 
@@ -141,7 +143,7 @@ contract StrategyConvexPbtc is Strategy {
             shares = token amount * multiplier * 1e18 / price per share
             */
             uint pricePerShare = CURVE_POOL.get_virtual_price();
-            uint shares = bal.mul(1e18).div(pricePerShare);
+            uint shares = bal.mul(MUL).mul(1e18).div(pricePerShare);
             uint min = shares.mul(SLIP_MAX - slip) / SLIP_MAX;
 
             ZAP.add_liquidity(amounts, min);

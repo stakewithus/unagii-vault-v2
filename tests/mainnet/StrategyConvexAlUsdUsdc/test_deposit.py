@@ -21,7 +21,7 @@ def test_deposit(strategy, usdcFundManager, admin, usdc, usdc_whale):
         }
 
     before = snapshot()
-    tx = strategy.deposit(2 ** 256 - 1, 1, {"from": admin})
+    strategy.deposit(2 ** 256 - 1, 1, {"from": admin})
     after = snapshot()
 
     # print(before)

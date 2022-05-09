@@ -1,4 +1,5 @@
 import brownie
+from brownie import chain
 import pytest
 
 
