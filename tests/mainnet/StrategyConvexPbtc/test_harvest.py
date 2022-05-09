@@ -1,4 +1,5 @@
 import brownie
+from brownie import chain
 import pytest
 
 
@@ -30,7 +31,10 @@ def test_harvest(strategy, wbtcFundManager, admin, wbtc, wbtc_whale):
     token.transfer(strategy, min_profit, {"from": whale})
 
     before = snapshot()
-    tx = strategy.harvest(1, 0, 2 ** 256 - 1, {"from": admin})
+
+    chain.mine(5_000)  # need a lot of blocks to avoid having insufficient output amount
+
+    strategy.harvest(1, 0, 2 ** 256 - 1, {"from": admin})
     after = snapshot()
 
     print(before)

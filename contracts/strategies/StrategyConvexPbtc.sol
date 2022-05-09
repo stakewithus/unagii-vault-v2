@@ -41,7 +41,7 @@ contract StrategyConvexPbtc is Strategy {
     // Curve //
     // Deposit
     DepositPbtc private constant ZAP =
-        DepositPbtc(0xC45b2EEe6e09cA176Ca3bB5f7eEe7C47bF93c756);
+        DepositPbtc(0x11F419AdAbbFF8d595E7d5b223eee3863Bb3902C);
     // StableSwap
     StableSwapPbtc private constant CURVE_POOL =
         StableSwapPbtc(0x7F55DDe206dbAD629C080068923b36fe9D6bDBeF);
@@ -79,7 +79,7 @@ contract StrategyConvexPbtc is Strategy {
 
         _setDex(0, 0xd9e1cE17f2641f24aE83637ab66a2cca9C378B9F); // CRV - sushiswap
         _setDex(1, 0xd9e1cE17f2641f24aE83637ab66a2cca9C378B9F); // CVX - sushiswap
-        _setDex(2, 0x68b3465833fb72A70ecDF485E0e4C7bD8665Fc45); // PNT - uniswap v2
+        _setDex(2, 0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D); // PNT - uniswap v2
     }
 
     function _setDex(uint _i, address _dex) private {

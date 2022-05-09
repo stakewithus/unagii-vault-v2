@@ -25,6 +25,9 @@ def test_claim_rewards(strategy, wbtcFundManager, admin, wbtc, wbtc_whale):
     min_profit = 1
 
     before = snapshot()
+
+    chain.mine(5_000)  # need a lot of blocks to avoid having insufficient output amount
+
     tx = strategy.claimRewards(min_profit, {"from": admin})
     after = snapshot()
 
