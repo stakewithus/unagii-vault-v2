@@ -2,13 +2,13 @@ import brownie
 import pytest
 
 
-def test_deposit(strategy, usdcFundManager, admin, usdc, usdc_whale):
-    token = usdc
-    whale = usdc_whale
+def test_deposit(strategy, wbtcFundManager, admin, wbtc, wbtc_whale):
+    token = wbtc
+    whale = wbtc_whale
 
-    fundManager = usdcFundManager
+    fundManager = wbtcFundManager
 
-    amount = 10 ** 6
+    amount = 10 ** 8
     token.transfer(fundManager, amount, {"from": whale})
 
     def snapshot():
@@ -24,8 +24,8 @@ def test_deposit(strategy, usdcFundManager, admin, usdc, usdc_whale):
     strategy.deposit(2 ** 256 - 1, 1, {"from": admin})
     after = snapshot()
 
-    # print(before)
-    # print(after)
+    print(before)
+    print(after)
     # for e in tx.events:
     #     print(e)
 
@@ -33,5 +33,5 @@ def test_deposit(strategy, usdcFundManager, admin, usdc, usdc_whale):
     # all token were deposited into Convex
     assert after["token"]["strategy"] == before["token"]["strategy"]
     assert (
-        after["strategy"]["totalAssets"] - before["token"]["strategy"] >= 0.999 * amount
+        after["strategy"]["totalAssets"] - before["token"]["strategy"] >= 0.99 * amount
     )
