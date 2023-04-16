@@ -22,3 +22,5 @@ dist
 tmp
 memo
 flat.sol
+
+.vscode

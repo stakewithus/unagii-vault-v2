@@ -98,7 +98,7 @@ def dai_whale(accounts):
 
 @pytest.fixture(scope="session")
 def usdc_whale(accounts):
-    yield accounts.at("0xF977814e90dA44bFA03b6295A0616a897441aceC", force=True)
+    yield accounts.at("0xcEe284F754E854890e311e3280b767F80797180d", force=True)
 
 
 @pytest.fixture(scope="session")
